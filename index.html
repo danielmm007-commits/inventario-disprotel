@@ -6,20 +6,102 @@
   <meta name="theme-color" content="#17313d">
   <title>Inventario DISPROTEL</title>
   <style>
-    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f7f9;color:#17313d;padding:24px}.card{max-width:560px;margin:40px auto;background:white;border-radius:18px;padding:26px;box-shadow:0 8px 28px rgba(0,0,0,.08)}h1{margin:0 0 8px;font-size:30px}.sub{color:#60737c;margin-bottom:22px}.ok{background:#eaf7ef;color:#1d6f46;padding:14px;border-radius:12px;font-weight:700;margin:18px 0}.box{border:1px solid #dbe5ea;border-radius:12px;padding:16px;margin-top:16px}small{color:#6d7f87}button{width:100%;border:0;border-radius:12px;padding:14px;background:#17313d;color:#fff;font-size:16px;font-weight:700;margin-top:16px;cursor:pointer}
+    *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f7f9;color:#17313d;padding:18px}.wrap{max-width:620px;margin:20px auto}.card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 7px 24px rgba(0,0,0,.08);margin-bottom:16px}h1{margin:0 0 4px;font-size:28px}.sub{color:#60737c;margin-bottom:18px}.tag{display:inline-block;background:#fff3cd;color:#725b00;padding:7px 10px;border-radius:20px;font-size:13px;font-weight:700;margin-bottom:16px}label{font-weight:700;display:block;margin:14px 0 6px}input,select{width:100%;padding:13px;border:1px solid #cbd8de;border-radius:11px;font-size:16px;background:#fff}button{width:100%;border:0;border-radius:12px;padding:14px;background:#17313d;color:#fff;font-size:16px;font-weight:700;margin-top:14px;cursor:pointer}.secondary{background:#e8eef1;color:#17313d}.hidden{display:none}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.stat{background:#f4f7f9;padding:12px 6px;border-radius:12px;text-align:center}.n{font-size:23px;font-weight:800}.lbl{font-size:11px;color:#657982}.msg{padding:12px;border-radius:10px;margin-top:13px;display:none}.ok{display:block;background:#e8f6ed;color:#1b6c43}.err{display:block;background:#fdecec;color:#9d2525}.muted{color:#667b84;font-size:13px}.row{display:flex;gap:8px}.row>*{flex:1}@media(max-width:480px){body{padding:10px}.card{padding:18px}.stats{gap:5px}}
   </style>
 </head>
 <body>
-  <main class="card">
+<div class="wrap">
+  <section class="card" id="loginCard">
     <h1>Inventario DISPROTEL</h1>
-    <div class="sub">Sistema móvil de inventario · Versión de prueba</div>
-    <div class="ok">✓ La página web está funcionando correctamente.</div>
-    <div class="box">
-      <strong>Prueba de publicación</strong>
-      <p>Si ves esta pantalla como una página normal, GitHub Pages está funcionando y ya podemos conectar aquí la carga de seriales, compras y movimientos con Supabase.</p>
-      <small>Los datos actuales continúan siendo datos de prueba.</small>
+    <div class="sub">Sistema móvil · Versión de prueba</div>
+    <span class="tag">DATOS DE PRUEBA</span>
+    <label for="pin">PIN de acceso</label>
+    <input id="pin" inputmode="numeric" maxlength="8" placeholder="Ingresa el PIN">
+    <button id="btnEntrar">Entrar</button>
+    <div id="loginMsg" class="msg"></div>
+  </section>
+
+  <section class="card hidden" id="appCard">
+    <h1>Carga de seriales</h1>
+    <div class="sub">Los registros se guardan en la base central de Supabase.</div>
+    <label for="compra">Compra</label>
+    <select id="compra"></select>
+
+    <div class="stats">
+      <div class="stat"><div class="n" id="comprados">0</div><div class="lbl">COMPRADOS</div></div>
+      <div class="stat"><div class="n" id="registrados">0</div><div class="lbl">SERIALES</div></div>
+      <div class="stat"><div class="n" id="pendientes">0</div><div class="lbl">PENDIENTES</div></div>
     </div>
-    <button onclick="alert('Página web funcionando correctamente')">Probar página</button>
-  </main>
+
+    <div id="detalle" class="muted"></div>
+    <label for="serial">Serial del router</label>
+    <input id="serial" autocomplete="off" autocapitalize="characters" placeholder="Escanea o escribe el serial">
+    <button id="btnGuardar">Registrar serial</button>
+    <button class="secondary" id="btnActualizar">Actualizar datos</button>
+    <div id="appMsg" class="msg"></div>
+  </section>
+</div>
+<script>
+const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-api';
+let PIN='';
+let compras=[];
+const $=id=>document.getElementById(id);
+function msg(el,text,type='err'){el.className='msg '+(type==='ok'?'ok':'err');el.textContent=text}
+function clearMsg(el){el.className='msg';el.textContent=''}
+async function api(action,payload={}){
+  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-pin':PIN},body:JSON.stringify({action,...payload})});
+  const data=await r.json().catch(()=>({error:'Respuesta inválida del servidor'}));
+  if(!r.ok) throw new Error(data.error||'Error del servidor');
+  return data;
+}
+function renderCompra(){
+  const c=compras.find(x=>x.id===$('compra').value);
+  if(!c)return;
+  $('comprados').textContent=c.cantidad;
+  $('registrados').textContent=c.seriales_registrados;
+  $('pendientes').textContent=Math.max(0,c.cantidad-c.seriales_registrados);
+  $('detalle').textContent=`${c.codigo} · ${c.producto} · ${c.proveedor||'Sin proveedor'}`;
+  $('serial').disabled=!c.requiere_serial || c.seriales_registrados>=c.cantidad;
+  $('btnGuardar').disabled=$('serial').disabled;
+}
+async function cargar(){
+  clearMsg($('appMsg'));
+  const data=await api('list-purchases');
+  compras=data.compras||[];
+  const soloSerial=compras.filter(c=>c.requiere_serial);
+  $('compra').innerHTML=soloSerial.map(c=>`<option value="${c.id}">${c.id_compra} · ${c.codigo} · ${c.seriales_registrados}/${c.cantidad}</option>`).join('');
+  if(!soloSerial.length){$('compra').innerHTML='<option>Sin compras con serial</option>';return}
+  renderCompra();
+}
+$('btnEntrar').onclick=async()=>{
+  clearMsg($('loginMsg'));
+  PIN=$('pin').value.trim();
+  if(!PIN){msg($('loginMsg'),'Ingresa el PIN');return}
+  $('btnEntrar').disabled=true;
+  try{
+    await cargar();
+    $('loginCard').classList.add('hidden');
+    $('appCard').classList.remove('hidden');
+    $('serial').focus();
+  }catch(e){msg($('loginMsg'),e.message)}finally{$('btnEntrar').disabled=false}
+};
+$('compra').onchange=renderCompra;
+$('btnActualizar').onclick=async()=>{try{await cargar();msg($('appMsg'),'Datos actualizados','ok')}catch(e){msg($('appMsg'),e.message)}};
+$('btnGuardar').onclick=async()=>{
+  clearMsg($('appMsg'));
+  const compra_id=$('compra').value;
+  const serial=$('serial').value.trim();
+  if(!serial){msg($('appMsg'),'Escribe o escanea el serial');return}
+  $('btnGuardar').disabled=true;
+  try{
+    const data=await api('add-serial',{compra_id,serial});
+    $('serial').value='';
+    await cargar();
+    msg($('appMsg'),`Serial ${data.serial.serial} registrado correctamente`,'ok');
+    $('serial').focus();
+  }catch(e){msg($('appMsg'),e.message)}finally{renderCompra()}
+};
+$('serial').addEventListener('keydown',e=>{if(e.key==='Enter')$('btnGuardar').click()});
+</script>
 </body>
 </html>
