@@ -13,22 +13,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Parchar encabezado directo en HTML
+      - name: Agregar tipo de trabajo al encabezado
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('instalacion-ejecucion.html')
           s=p.read_text(encoding='utf-8')
-          old='<section class="card intro"><h1>🔧 Ejecución técnica</h1><div class="muted">Continúa la misma orden. Abre únicamente la sección que necesitas.</div><div id="msg"></div></section>'
-          new='<section class="card intro"><h1>🔧 Ejecución técnica</h1><div data-contexto-ejecucion="1" style="margin-top:8px"><div style="font-size:20px;font-weight:800">CARGANDO OT · CLIENTE...</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><span class="badge">👷 TÉCNICO</span><span class="badge okb">🚐 GRUPO</span></div></div><div id="msg"></div></section>'
+          old="const tec=up(s.nombre||s.usuario||'—'),grp=up(s.unidad_grupo||s.grupo||'—');ctx.innerHTML=`<div style=\"font-size:20px;font-weight:800\">${esc(up(O.id_orden||ordenId()||'—'))} · ${esc(up(O.cliente_nombre||'CLIENTE'))}</div><div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-top:10px\"><span class=\"badge\">👷 ${esc(tec)}</span><span class=\"badge okb\">🚐 ${esc(grp)}</span></div>`"
+          new="const tec=up(s.nombre||s.usuario||'—'),grp=up(s.unidad_grupo||s.grupo||'—'),tipos={INSTALACION_INTERNET:'INSTALACIÓN',INSTALACION_INTERNET_TV:'INSTALACIÓN',ACTIVACION_TV_EXISTENTE:'ACTIVACIÓN TV',CAMBIO_EQUIPOS:'CAMBIO DE EQUIPOS',SOPORTE_TECNICO:'SOPORTE TÉCNICO',REUBICACION:'REUBICACIÓN',RETIRO:'RETIRO',OTRO:'OTRO'},tipo=tipos[O.tipo_trabajo]||up(O.tipo_trabajo||'—');ctx.innerHTML=`<div style=\"font-size:20px;font-weight:800\">${esc(up(O.id_orden||ordenId()||'—'))} · ${esc(up(O.cliente_nombre||'CLIENTE'))}</div><div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-top:10px\"><span class=\"badge\">👷 ${esc(tec)}</span><span class=\"badge okb\">🚐 ${esc(grp)}</span><span class=\"badge\">🛠️ ${esc(tipo)}</span></div>`"
           if old not in s:
-              raise SystemExit('No se encontro el encabezado esperado')
+              raise SystemExit('No se encontro el bloque actual del encabezado')
           s=s.replace(old,new,1)
-          old2="US=s.usuario;PIN=s.pin;O=JSON.parse(sessionStorage.getItem(INSTKEY)||'null');if(!O)throw new Error('No encuentro la instalación.');renderDatos();"
-          new2="US=s.usuario;PIN=s.pin;O=JSON.parse(sessionStorage.getItem(INSTKEY)||'null');if(!O)throw new Error('No encuentro la instalación.');const ctx=document.querySelector('[data-contexto-ejecucion]');if(ctx){const tec=up(s.nombre||s.usuario||'—'),grp=up(s.unidad_grupo||s.grupo||'—');ctx.innerHTML=`<div style=\"font-size:20px;font-weight:800\">${esc(up(O.id_orden||ordenId()||'—'))} · ${esc(up(O.cliente_nombre||'CLIENTE'))}</div><div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-top:10px\"><span class=\"badge\">👷 ${esc(tec)}</span><span class=\"badge okb\">🚐 ${esc(grp)}</span></div>`}renderDatos();"
-          if old2 not in s:
-              raise SystemExit('No se encontro el bloque de sesion esperado')
-          s=s.replace(old2,new2,1)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Commit del parche
@@ -36,5 +31,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add instalacion-ejecucion.html
-          git commit -m "Pintar contexto directamente en ejecucion" || exit 0
+          git commit -m "Mostrar tipo de trabajo en encabezado" || exit 0
           git push
