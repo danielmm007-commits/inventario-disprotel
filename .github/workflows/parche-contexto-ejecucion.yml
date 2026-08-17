@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Aplicar diseño técnico responsive
-        run: python .github/scripts/aplicar_encabezado_tecnico.py
+      - name: Aplicar flujo IP tentativa
+        run: python .github/scripts/aplicar_flujo_ip_tentativa.py
       - name: Guardar cambio
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add instalacion-ejecucion.html
-          git commit -m "Ajustar encabezado técnico para celular" || exit 0
+          git add ip-servicio-v2.js asignacion-ip.html instalacion-ejecucion.html
+          git commit -m "Implementar flujo IP tentativa y confirmacion" || exit 0
           git push
