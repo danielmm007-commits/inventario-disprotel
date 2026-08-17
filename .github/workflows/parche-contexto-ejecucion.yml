@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Dejar IP en solo lectura para técnico
+      - name: Dejar IP en solo lectura y ajustar estado agotado
         run: python .github/scripts/ip_solo_lectura_tecnico.py
       - name: Guardar cambio
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ip-servicio-v2.js instalacion-ejecucion.html
-          git commit -m "Dejar confirmacion IP solo para responsables autorizados" || exit 0
+          git commit -m "Actualizar lectura IP y estado de busqueda agotada" || exit 0
           git push
