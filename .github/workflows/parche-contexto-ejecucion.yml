@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Aplicar diseño técnico
+      - name: Aplicar diseño técnico responsive
         run: python .github/scripts/aplicar_encabezado_tecnico.py
       - name: Guardar cambio
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add instalacion-ejecucion.html
-          git commit -m "Aplicar diseño visual final al encabezado técnico" || exit 0
+          git commit -m "Ajustar encabezado técnico para celular" || exit 0
           git push
