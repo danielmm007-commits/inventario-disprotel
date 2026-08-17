@@ -48,6 +48,20 @@
       const r=$('ipResultado');if(r)r.innerHTML=`<div class="msg ok">${esc(texto)}</div>`
     }catch(e){show(e.message,'err');const r=$('ipResultado');if(r)r.innerHTML=`<div class="msg err">${esc(e.message)}</div>`}
   };
+
+  function activarEliminarArticulos(){
+    if(typeof renderEditarGuardado!=='function'||typeof cambiosPendientes!=='function')return;
+    window.toggleEliminarItem=function(id){const marcado=$('del_'+id)?.checked===true,rep=$('rep_'+id),aj=$('aj_'+id),lab=$('delLabel_'+id);if(rep)rep.disabled=marcado;if(aj)aj.disabled=marcado;if(lab)lab.style.background=marcado?'#fff3cd':'';actualizarConteoCambios()};
+    renderEditarGuardado=function(){
+      $('trabajoCabecera').classList.add('hidden');$('selectorTrabajo').classList.add('hidden');$('resumenGuardado').classList.remove('hidden');$('stTrabajo').textContent='✏️ MODIFICANDO';
+      const disponibles=(INV?.seriales||[]).filter(s=>s.estado==='DISPONIBLE');
+      const lineas=SAVED_ITEMS.map(x=>{if(x.serial){const ops=disponibles.map(s=>`<option value="${s.id}">${esc(up(s.producto))} · ${esc(s.serial)}</option>`).join('');return `<div class="editItem"><b>${esc(up(x.producto))}</b><div class="muted">Actual: SERIAL ${esc(x.serial)}</div><div class="editRow"><span>Reemplazar por</span><select id="rep_${x.id}" onchange="actualizarConteoCambios()"><option value="">-- SIN CAMBIO --</option>${ops}</select></div><label id="delLabel_${x.id}" style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:10px;border:1px solid #d7e1e5;border-radius:9px;font-weight:700"><input id="del_${x.id}" type="checkbox" style="width:20px;height:20px" onchange="toggleEliminarItem('${x.id}')"> 🗑️ ELIMINAR ESTE ÍTEM</label></div>`}return `<div class="editItem"><b>${esc(up(x.producto))}</b><div class="muted">Cantidad actual: ${x.cantidad} ${esc(x.unidad||'UNIDAD')}</div><div class="editRow"><span>Nueva cantidad</span><input id="aj_${x.id}" type="number" min="1" value="${x.cantidad}" oninput="actualizarConteoCambios()"></div><label id="delLabel_${x.id}" style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:10px;border:1px solid #d7e1e5;border-radius:9px;font-weight:700"><input id="del_${x.id}" type="checkbox" style="width:20px;height:20px" onchange="toggleEliminarItem('${x.id}')"> 🗑️ ELIMINAR ESTE ÍTEM</label></div>`}).join('');
+      $('resumenGuardado').innerHTML=`<div class="modeHead"><b>✏️ MODIFICAR ARTÍCULOS GUARDADOS</b><div class="muted">Puedes cambiar cantidades, reemplazar seriales o eliminar artículos. Nada se aplica al inventario hasta pulsar GUARDAR TODAS LAS MODIFICACIONES.</div></div><div class="pickBox">${lineas}</div><div id="conteoCambios" class="muted" style="margin-top:10px">0 cambios pendientes</div><button id="guardarCambiosMasivos" type="button" onclick="guardarModificacionesMasivas()" disabled>✅ GUARDAR TODAS LAS MODIFICACIONES</button><button type="button" class="secondary" onclick="volverResumen()">← CANCELAR / VOLVER AL RESUMEN</button>`;actualizarConteoCambios()
+    };
+    cambiosPendientes=function(){const cambios=[],seriales=new Set();for(const x of SAVED_ITEMS){if($('del_'+x.id)?.checked){cambios.push({tipo:'ELIMINAR',item_id:x.id});continue}if(x.serial){const sid=$('rep_'+x.id)?.value||'';if(sid){if(seriales.has(sid))throw new Error('No puedes asignar el mismo serial a dos equipos.');seriales.add(sid);cambios.push({tipo:'SERIAL',item_id:x.id,serial_nuevo_id:sid})}}else{const el=$('aj_'+x.id),n=Number(el?.value);if(!Number.isInteger(n)||n<1)throw new Error('Revisa las cantidades ingresadas.');if(n!==Number(x.cantidad))cambios.push({tipo:'CANTIDAD',item_id:x.id,cantidad_nueva:n})}}return cambios};
+  }
+
   const s=$('solicitar'),a=$('actualizar');if(s)s.onclick=window.solicitarIp;if(a)a.onclick=window.estadoIp;
-  [0,500,1200,2200].forEach(ms=>setTimeout(()=>{mostrarCorreoDatos();window.estadoIp()},ms));
+  activarEliminarArticulos();
+  [0,500,1200,2200].forEach(ms=>setTimeout(()=>{mostrarCorreoDatos();window.estadoIp();activarEliminarArticulos()},ms));
 })();
