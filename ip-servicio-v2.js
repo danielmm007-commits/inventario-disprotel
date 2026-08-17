@@ -2,11 +2,13 @@
   function tvInfo(){return Boolean(O?.tv_final??O?.tv_solicitada)?'SÍ · INTERNET + TV':'NO · SOLO INTERNET'}
   function fmtFecha(v){if(!v)return '—';try{return new Date(v).toLocaleString('es-EC')}catch{return v}}
   function ipv4Valida(ip){const p=String(ip||'').trim().split('.');return p.length===4&&p.every(x=>/^\d{1,3}$/.test(x)&&Number(x)>=0&&Number(x)<=255)}
+  function mostrarCorreoDatos(){const d=$('datos');if(!d||d.querySelector('[data-correo-cliente]'))return;const box=d.querySelector('.box');if(!box)return;const el=document.createElement('div');el.className='item';el.dataset.correoCliente='1';el.innerHTML=`<div class="label">Correo</div><div class="value">${esc(up(O?.cliente_correo_final||O?.cliente_correo||'—'))}</div>`;box.appendChild(el)}
   function manualBox(){return `<div class="candidate"><b>✍️ ASIGNAR IP MANUALMENTE</b><div class="muted">Úsalo cuando Fernando ya te haya enviado la IP. TV es solo informativo y no interviene en la detección.</div><div class="pickRow"><input id="ipManual" inputmode="decimal" autocomplete="off" placeholder="Ej. 172.25.1.120"><button type="button" onclick="asignarIpManual()">✅ ASIGNAR</button></div><div class="muted" style="margin-top:7px">Plan: se toma del router/Simple Queues cuando esté disponible. · TV: ${esc(tvInfo())}</div></div>`}
   function editarIpBox(ip){return `<div id="ipResultado"></div><div class="candidate"><b>✏️ MODIFICAR / VERIFICAR IP</b><div class="muted">Puedes guardar la misma IP para verificar que no esté duplicada, o cambiarla si fue digitada incorrectamente.</div><div class="pickRow"><input id="ipEditar" inputmode="decimal" autocomplete="off" value="${esc(ip||'')}" placeholder="Ej. 172.25.1.120"><button type="button" onclick="guardarIpEditada()">✅ GUARDAR</button></div><input id="motivoIp" style="width:100%;padding:11px;border:1px solid #cbd8de;border-radius:10px;font-size:15px;margin-top:8px" placeholder="Motivo opcional, ej. corrección de digitación"><div class="muted" style="margin-top:7px">Si la IP no cambia, se registrará como verificación sin cambios.</div></div>`}
   function planCandidato(c){const plan=c.plan_detectado||c.queue_parent||'';return plan?`<div class="muted"><b>PLAN / PARENT:</b> ${esc(up(plan))}${c.queue_name?` · QUEUE: ${esc(up(c.queue_name))}`:''}</div>`:'<div class="muted">PLAN: pendiente de lectura desde Simple Queues</div>'}
   window.estadoIp=async function(){
     try{
+      mostrarCorreoDatos();
       const d=await post(API_IP,'status',{orden_id:ordenId()}),q=d.solicitud,cs=d.candidatos||[];
       if(d.orden){O.plan_final=d.orden.plan_final??O.plan_final;O.tv_final=d.orden.tv_final??O.tv_final;sessionStorage.setItem(INSTKEY,JSON.stringify(O))}
       $('candidatos').innerHTML='';
@@ -47,5 +49,5 @@
     }catch(e){show(e.message,'err');const r=$('ipResultado');if(r)r.innerHTML=`<div class="msg err">${esc(e.message)}</div>`}
   };
   const s=$('solicitar'),a=$('actualizar');if(s)s.onclick=window.solicitarIp;if(a)a.onclick=window.estadoIp;
-  [0,700,1800].forEach(ms=>setTimeout(()=>window.estadoIp(),ms));
+  [0,500,1200,2200].forEach(ms=>setTimeout(()=>{mostrarCorreoDatos();window.estadoIp()},ms));
 })();
