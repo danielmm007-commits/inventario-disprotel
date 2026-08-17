@@ -13,14 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Aplicar flujo IP tentativa
-        run: python .github/scripts/aplicar_flujo_ip_tentativa.py
       - name: Aplicar contingencia IP
         run: python .github/scripts/aplicar_contingencia_ip.py
       - name: Guardar cambio
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ip-servicio-v2.js asignacion-ip.html instalacion-ejecucion.html
+          git add ip-servicio-v2.js instalacion-ejecucion.html
           git commit -m "Implementar contingencia de IP confirmada por Fernando" || exit 0
           git push
