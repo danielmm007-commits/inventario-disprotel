@@ -8,13 +8,13 @@ new = """<div class=\"muted\" style=\"margin-top:8px\"><b>El técnico no registr
 if old in s:
     s = s.replace(old, new)
 else:
-    print('Aviso: bloque contingencia exacto no encontrado; se intentará limpieza por regex')
     s = re.sub(r'<div class="muted" style="margin-top:8px">Cuando Fernando confirme la IP.*?</div><div class="pickRow".*?</div>', new, s, count=1)
 
 s = re.sub(r"window\.registrarIpFernando=async function\(\)\{.*?\};\n", "window.registrarIpFernando=async function(){show('La IP solo puede confirmarla un responsable autorizado.','warn')};\n", s, count=1, flags=re.S)
+s = s.replace("const agotado=q.detector_estado==='TIEMPO_AGOTADO';", "const agotado=q.detector_estado==='TIEMPO_AGOTADO'||q.detector_detalle?.motivo==='VENTANA_30_MINUTOS_FINALIZADA';")
 js.write_text(s, encoding='utf-8')
 
 html = Path('instalacion-ejecucion.html')
 h = html.read_text(encoding='utf-8')
-h = re.sub(r'ip-servicio-v2\.js\?v=[^\"\']+', 'ip-servicio-v2.js?v=20260817-1755', h)
+h = re.sub(r'ip-servicio-v2\.js\?v=[^\"\']+', 'ip-servicio-v2.js?v=20260817-1801', h)
 html.write_text(h, encoding='utf-8')
