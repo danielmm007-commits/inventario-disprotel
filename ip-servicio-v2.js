@@ -61,7 +61,13 @@
     cambiosPendientes=function(){const cambios=[],seriales=new Set();for(const x of SAVED_ITEMS){if($('del_'+x.id)?.checked){cambios.push({tipo:'ELIMINAR',item_id:x.id});continue}if(x.serial){const sid=$('rep_'+x.id)?.value||'';if(sid){if(seriales.has(sid))throw new Error('No puedes asignar el mismo serial a dos equipos.');seriales.add(sid);cambios.push({tipo:'SERIAL',item_id:x.id,serial_nuevo_id:sid})}}else{const el=$('aj_'+x.id),n=Number(el?.value);if(!Number.isInteger(n)||n<1)throw new Error('Revisa las cantidades ingresadas.');if(n!==Number(x.cantidad))cambios.push({tipo:'CANTIDAD',item_id:x.id,cantidad_nueva:n})}}return cambios};
   }
 
+  function activarCancelarAgregar(){
+    if(typeof abrirAgregar!=='function'||typeof renderResumenGuardado!=='function')return;
+    window.cancelarAgregarItems=function(){const hay=Object.keys(CART||{}).length>0;if(hay&&!confirm('Hay artículos en la canasta que todavía NO se han guardado. ¿Descartarlos y volver al resumen?'))return;ADDING=false;EDITING=false;SAVING=false;CART={};renderResumenGuardado();if($('accTrabajo'))$('accTrabajo').open=true;show('Sin cambios. No se modificó el inventario.','ok')};
+    abrirAgregar=function(){ADDING=true;EDITING=false;CART={};$('resumenGuardado').classList.add('hidden');$('trabajoCabecera').classList.remove('hidden');$('selectorTrabajo').classList.remove('hidden');$('stTrabajo').textContent='➕ AGREGANDO';$('confirmarUso').textContent='✅ GUARDAR ÍTEMS ADICIONALES';$('cartNota').textContent='Solo se guardarán los nuevos artículos que agregues ahora.';let b=$('cancelarAgregarItems');if(!b){b=document.createElement('button');b.id='cancelarAgregarItems';b.type='button';b.className='secondary';b.textContent='← CANCELAR / VOLVER AL RESUMEN';b.onclick=window.cancelarAgregarItems;$('selectorTrabajo').appendChild(b)}b.classList.remove('hidden');cargarInventario();tab(true)};
+  }
+
   const s=$('solicitar'),a=$('actualizar');if(s)s.onclick=window.solicitarIp;if(a)a.onclick=window.estadoIp;
-  activarEliminarArticulos();
-  [0,500,1200,2200].forEach(ms=>setTimeout(()=>{mostrarCorreoDatos();window.estadoIp();activarEliminarArticulos()},ms));
+  activarEliminarArticulos();activarCancelarAgregar();
+  [0,500,1200,2200].forEach(ms=>setTimeout(()=>{mostrarCorreoDatos();window.estadoIp();activarEliminarArticulos();activarCancelarAgregar()},ms));
 })();
