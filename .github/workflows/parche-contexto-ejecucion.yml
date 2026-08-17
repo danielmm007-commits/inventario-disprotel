@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Ajustar IP automática y ventana 30 minutos
-        run: python .github/scripts/ajustar_ip_auto_30min.py
+      - name: Dejar IP en solo lectura para técnico
+        run: python .github/scripts/ip_solo_lectura_tecnico.py
       - name: Guardar cambio
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ip-servicio-v2.js instalacion-ejecucion.html
-          git commit -m "Actualizar IP automaticamente y cerrar busqueda a 30 minutos" || exit 0
+          git commit -m "Dejar confirmacion IP solo para responsables autorizados" || exit 0
           git push
