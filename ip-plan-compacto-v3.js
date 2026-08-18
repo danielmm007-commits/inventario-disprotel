@@ -9,11 +9,12 @@
    if(!solicitado||!detectado||solicitado===detectado)return '';
    return `<div class="msg warn" style="margin-top:10px">⚠️ El plan detectado en el router parece diferente al solicitado. Esto es solo informativo y no impide continuar con la instalación.</div>`;
  }
- window.estadoIp=async function(){
+ const compactEstado=async function(){
    try{
      const d=await post(API_IP,'status',{orden_id:ordenId()}),q=d.solicitud,cs=d.candidatos||[],c=mejor(cs);
      if(d.orden){O.plan_final=d.orden.plan_final??O.plan_final;O.plan_solicitado=d.orden.plan_solicitado??O.plan_solicitado;O.tv_final=d.orden.tv_final??O.tv_final;sessionStorage.setItem(INSTKEY,JSON.stringify(O))}
      const estado=$('ipEstado'),cand=$('candidatos'),sol=$('solicitar'),act=$('actualizar');if(!estado||!cand)return;
+     const viejo=$('planCatalogoBox');if(viejo)viejo.remove();
      cand.innerHTML='';
      if(!q){
        estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><div class="muted" style="margin-top:8px">Cuando la instalación esté lista, solicita la asignación de IP. El sistema realizará las verificaciones internas automáticamente.</div>`;
@@ -32,17 +33,26 @@
      $('stIp').textContent='⏳ ESPERANDO IP';
    }catch(e){show(e.message,'err')}
  };
- window.solicitarIp=async function(){
+ const compactSolicitar=async function(){
    const b=$('solicitar');
    try{
      if(b)b.disabled=true;
      await post(API_O,'request-ip',{orden_id:ordenId(),plan_final:'',tv_final:Boolean(O.tv_final??O.tv_solicitada)});
      show('✅ Solicitud de asignación de IP enviada.');
-     await window.estadoIp();
+     await compactEstado();
    }catch(e){show(e.message,'err')}
    finally{if(b)b.disabled=false}
  };
- function enlazar(){const s=$('solicitar'),a=$('actualizar');if(s)s.onclick=window.solicitarIp;if(a)a.onclick=window.estadoIp;window.estadoIp()}
+ function tomarControl(){
+   window.estadoIp=compactEstado;
+   window.solicitarIp=compactSolicitar;
+   const s=$('solicitar'),a=$('actualizar');
+   if(s)s.onclick=compactSolicitar;
+   if(a)a.onclick=compactEstado;
+   const viejo=$('planCatalogoBox');if(viejo)viejo.remove();
+ }
+ function enlazar(){tomarControl();compactEstado()}
  document.readyState==='loading'?document.addEventListener('DOMContentLoaded',()=>setTimeout(enlazar,0)):setTimeout(enlazar,0);
- setTimeout(enlazar,500);
+ [100,300,700,1200,2200,4000].forEach(ms=>setTimeout(()=>{tomarControl();compactEstado()},ms));
+ setInterval(()=>{if(window.estadoIp!==compactEstado||window.solicitarIp!==compactSolicitar)tomarControl();const viejo=$('planCatalogoBox');if(viejo)viejo.remove()},1000);
 })();
