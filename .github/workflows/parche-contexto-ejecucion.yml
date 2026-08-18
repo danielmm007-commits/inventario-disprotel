@@ -17,10 +17,12 @@ jobs:
         run: python .github/scripts/actualizar_cache_evidencias_v2.py
       - name: Integrar visor de evidencias
         run: python .github/scripts/integrar_visor_evidencias.py
+      - name: Integrar notificaciones
+        run: python .github/scripts/integrar_notificaciones.py
       - name: Guardar cambio
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add instalacion-ejecucion.html
-          git commit -m "Publicar numeral 6 y cierre de instalacion" || exit 0
+          git add instalacion-ejecucion.html solicitudes-oficina.html asignacion-ip.html
+          git commit -m "Publicar cierre, reporte y notificaciones" || exit 0
           git push
