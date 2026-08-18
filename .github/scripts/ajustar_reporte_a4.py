@@ -35,7 +35,7 @@ window.addEventListener('load',()=>setTimeout(ajustarHojaA4,250));
 const _obs=new MutationObserver(()=>setTimeout(ajustarHojaA4,30));
 window.addEventListener('DOMContentLoaded',()=>{const c=document.getElementById('contenido');if(c)_obs.observe(c,{childList:true,subtree:true})});
 </script>'''
-mejoras='<script src="reporte-mejoras-v2.js?v=20260817-2315"></script>'
+mejoras='<script src="reporte-mejoras-v2.js?v=20260817-2320"></script>'
 if '</body>' in s:
     s=s.replace('</body>',addon+mejoras+'</body>',1)
 p.write_text(s,encoding='utf-8')
