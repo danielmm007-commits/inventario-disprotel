@@ -7,6 +7,7 @@ hitos='<script src="gps-hitos-tecnico-v1.js?v=20260818-0635"></script>'
 activos='<script src="trabajos-vista-activos-v1.js?v=20260818-1048"></script>'
 prepaint='<style id="preSessionCss">html.preSession body{visibility:hidden!important}</style><script id="preSessionJs">(()=>{try{const s=JSON.parse(sessionStorage.getItem("disprotel_trabajos_test")||"null");if(s?.usuario&&s?.pin)document.documentElement.classList.add("preSession")}catch{}})();</script>'
 flex='<script src="domicilio-flujo-flex-v1.js?v=20260818-1103"></script>'
+correo='<script src="correo-tld-v1.js?v=20260818-1146"></script>'
 docdom='<script src="domicilio-documento-v1.js?v=20260818-0818"></script>'
 contacto='<script src="domicilio-contacto-final-v1.js?v=20260818-0824"></script>'
 nav='<script src="flujo-navegacion-v1.js?v=20260818-1031"></script>'
@@ -31,10 +32,11 @@ for p in Path('.').glob('*.html'):
             s=s.replace('</body>',gps+hitos+'</body>',1)
     if p.name=='instalacion-domicilio.html':
         s=re.sub(r'<script src="domicilio-flujo-flex-v1\.js\?v=[^"]+\"></script>','',s)
+        s=re.sub(r'<script src="correo-tld-v1\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="domicilio-documento-v1\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="domicilio-contacto-final-v1\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="flujo-navegacion-v1\.js\?v=[^"]+\"></script>','',s)
-        if '</body>' in s:s=s.replace('</body>',flex+docdom+contacto+nav+'</body>',1)
+        if '</body>' in s:s=s.replace('</body>',flex+correo+docdom+contacto+nav+'</body>',1)
     if p.name=='instalacion-ejecucion.html':
         s=re.sub(r'<script src="plan-catalogo-v1\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="cedula-miniaturas-v1\.js\?v=[^"]+\"></script>','',s)
