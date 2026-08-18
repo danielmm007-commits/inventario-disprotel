@@ -1,0 +1,1 @@
+Forzar publicación de trabajos-tecnicos.html con prebloqueo de sesión antes del primer render. Evita pestañeo del login al usar HOME.
