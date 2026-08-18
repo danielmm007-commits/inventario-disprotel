@@ -1,2 +1,3 @@
-Prueba de publicación GitHub Pages - 2026-08-17 13:57 Ecuador.
+Prueba de publicación GitHub Pages - 2026-08-17 20:28 Ecuador.
 Este archivo no modifica la lógica del sistema.
+Publicación solicitada para formulario persistente de cambio de IP.
