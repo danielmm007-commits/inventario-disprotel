@@ -12,7 +12,8 @@ correo='<script src="correo-tld-v1.js?v=20260818-1202"></script>'
 docdom='<script src="domicilio-documento-v1.js?v=20260818-0818"></script>'
 contacto='<script src="domicilio-contacto-final-v1.js?v=20260818-0824"></script>'
 nav='<script src="flujo-navegacion-v1.js?v=20260818-1031"></script>'
-plan='<script src="plan-catalogo-v1.js?v=20260818-0721"></script>'
+plan='<script src="plan-catalogo-v1.js?v=20260818-1504"></script>'
+ipcompact='<script src="ip-plan-compacto-v3.js?v=20260818-1504"></script>'
 cedula='<script src="cedula-miniaturas-v1.js?v=20260818-1443"></script>'
 ident='<script src="ejecucion-identificacion-v1.js?v=20260818-1105"></script>'
 equipos='<script src="equipos-guardado-fluido-v1.js?v=20260818-1237"></script>'
@@ -48,11 +49,12 @@ for p in Path('.').glob('*.html'):
         s=s.replace("show(`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`);await cargarInventario();await estadoArticulos(true)","show(`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`);const bl=$('guardarCambiosMasivos');if(bl){let ml=$('accionResultadoLocal');if(!ml){ml=document.createElement('div');ml.id='accionResultadoLocal';bl.insertAdjacentElement('afterend',ml)}ml.className='msg ok';ml.textContent=`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`}await cargarInventario();await estadoArticulos(true)")
         s=s.replace("catch(e){show(e.message,'err');actualizarConteoCambios()}","catch(e){show(e.message,'err');const bl=$('guardarCambiosMasivos');if(bl){let ml=$('accionResultadoLocal');if(!ml){ml=document.createElement('div');ml.id='accionResultadoLocal';bl.insertAdjacentElement('afterend',ml)}ml.className='msg err';ml.textContent='❌ '+e.message}actualizarConteoCambios()}",1)
         s=re.sub(r'<script src="plan-catalogo-v1\.js\?v=[^"]+\"></script>','',s)
+        s=re.sub(r'<script src="ip-plan-compacto-v3\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="cedula-miniaturas-v1\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="ejecucion-identificacion-v1\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="equipos-guardado-fluido-v1\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="onu-control-modelo-v1\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="items-eliminar-inline-v1\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="flujo-navegacion-v1\.js\?v=[^"]+\"></script>','',s)
-        if '</body>' in s:s=s.replace('</body>',plan+cedula+ident+equipos+onu+eliminar+nav+'</body>',1)
+        if '</body>' in s:s=s.replace('</body>',plan+ipcompact+cedula+ident+equipos+onu+eliminar+nav+'</body>',1)
     p.write_text(s,encoding='utf-8')
