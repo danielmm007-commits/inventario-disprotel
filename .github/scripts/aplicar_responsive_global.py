@@ -6,6 +6,7 @@ gps='<script src="gps-aceptacion-v1.js?v=20260818-2338"></script>'
 hitos='<script src="gps-hitos-tecnico-v1.js?v=20260818-0635"></script>'
 activos='<script src="trabajos-vista-activos-v1.js?v=20260818-1048"></script>'
 prepaint='<style id="preSessionCss">html.preSession body{visibility:hidden!important}</style><script id="preSessionJs">(()=>{try{const s=JSON.parse(sessionStorage.getItem("disprotel_trabajos_test")||"null");if(s?.usuario&&s?.pin)document.documentElement.classList.add("preSession")}catch{}})();</script>'
+execpre='<style id="execHeaderPrepaint">[data-contexto-ejecucion]:not([data-compacto="1"]){visibility:hidden!important}</style>'
 flex='<script src="domicilio-flujo-flex-v1.js?v=20260818-1103"></script>'
 correo='<script src="correo-tld-v1.js?v=20260818-1202"></script>'
 docdom='<script src="domicilio-documento-v1.js?v=20260818-0818"></script>'
@@ -41,6 +42,8 @@ for p in Path('.').glob('*.html'):
         s=re.sub(r'<script src="flujo-navegacion-v1\.js\?v=[^"]+\"></script>','',s)
         if '</body>' in s:s=s.replace('</body>',flex+correo+docdom+contacto+nav+'</body>',1)
     if p.name=='instalacion-ejecucion.html':
+        s=re.sub(r'<style id="execHeaderPrepaint">.*?</style>','',s,flags=re.S)
+        if '</head>' in s:s=s.replace('</head>',execpre+'</head>',1)
         s=s.replace("await post(B+'inventario-items-instalacion','batch-edit-items'","await post(API_DOM,'batch-edit-items'")
         s=s.replace("show(`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`);await cargarInventario();await estadoArticulos(true)","show(`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`);const bl=$('guardarCambiosMasivos');if(bl){let ml=$('accionResultadoLocal');if(!ml){ml=document.createElement('div');ml.id='accionResultadoLocal';bl.insertAdjacentElement('afterend',ml)}ml.className='msg ok';ml.textContent=`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`}await cargarInventario();await estadoArticulos(true)")
         s=s.replace("catch(e){show(e.message,'err');actualizarConteoCambios()}","catch(e){show(e.message,'err');const bl=$('guardarCambiosMasivos');if(bl){let ml=$('accionResultadoLocal');if(!ml){ml=document.createElement('div');ml.id='accionResultadoLocal';bl.insertAdjacentElement('afterend',ml)}ml.className='msg err';ml.textContent='❌ '+e.message}actualizarConteoCambios()}",1)
