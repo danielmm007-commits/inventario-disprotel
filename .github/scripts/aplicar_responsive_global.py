@@ -4,7 +4,8 @@ import re
 link='<link rel="stylesheet" href="responsive-global.css?v=20260818-2305">'
 gps='<script src="gps-aceptacion-v1.js?v=20260818-2338"></script>'
 hitos='<script src="gps-hitos-tecnico-v1.js?v=20260818-0635"></script>'
-activos='<script src="trabajos-vista-activos-v1.js?v=20260818-1031"></script>'
+activos='<script src="trabajos-vista-activos-v1.js?v=20260818-1038"></script>'
+prepaint='<style id="preSessionCss">html.preSession body{visibility:hidden!important}</style><script id="preSessionJs">(()=>{try{const v=new URLSearchParams(location.search).get("vista");if(!["home","activos"].includes(v))return;const s=JSON.parse(sessionStorage.getItem("disprotel_trabajos_test")||"null");if(s?.usuario&&s?.pin)document.documentElement.classList.add("preSession")}catch{}})();</script>'
 flex='<script src="domicilio-flujo-flex-v1.js?v=20260818-0904"></script>'
 docdom='<script src="domicilio-documento-v1.js?v=20260818-0818"></script>'
 contacto='<script src="domicilio-contacto-final-v1.js?v=20260818-0824"></script>'
@@ -21,8 +22,9 @@ for p in Path('.').glob('*.html'):
     elif '</head>' in s:
         s=s.replace('</head>',link+'</head>',1)
     if p.name=='trabajos-tecnicos.html':
+        s=re.sub(r'<style id="preSessionCss">.*?</style><script id="preSessionJs">.*?</script>','',s,flags=re.S)
         s=re.sub(r'<script src="trabajos-vista-activos-v1\.js\?v=[^"]+\"></script>','',s)
-        if '</head>' in s:s=s.replace('</head>',activos+'</head>',1)
+        if '</head>' in s:s=s.replace('</head>',prepaint+activos+'</head>',1)
         s=re.sub(r'<script src="gps-aceptacion-v1\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="gps-hitos-tecnico-v1\.js\?v=[^"]+\"></script>','',s)
         if '</body>' in s:
