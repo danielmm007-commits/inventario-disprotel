@@ -4,6 +4,8 @@ import re
 link='<link rel="stylesheet" href="responsive-global.css?v=20260818-2305">'
 gps='<script src="gps-aceptacion-v1.js?v=20260818-2338"></script>'
 hitos='<script src="gps-hitos-tecnico-v1.js?v=20260818-0635"></script>'
+flex='<script src="domicilio-flujo-flex-v1.js?v=20260818-0718"></script>'
+plan='<script src="plan-catalogo-v1.js?v=20260818-0718"></script>'
 for p in Path('.').glob('*.html'):
     if p.name=='reporte-trabajo.html':
         continue
@@ -17,4 +19,10 @@ for p in Path('.').glob('*.html'):
         s=re.sub(r'<script src="gps-hitos-tecnico-v1\.js\?v=[^"]+"></script>','',s)
         if '</body>' in s:
             s=s.replace('</body>',gps+hitos+'</body>',1)
+    if p.name=='instalacion-domicilio.html':
+        s=re.sub(r'<script src="domicilio-flujo-flex-v1\.js\?v=[^"]+"></script>','',s)
+        if '</body>' in s:s=s.replace('</body>',flex+'</body>',1)
+    if p.name=='instalacion-ejecucion.html':
+        s=re.sub(r'<script src="plan-catalogo-v1\.js\?v=[^"]+"></script>','',s)
+        if '</body>' in s:s=s.replace('</body>',plan+'</body>',1)
     p.write_text(s,encoding='utf-8')
