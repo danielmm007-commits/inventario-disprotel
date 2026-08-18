@@ -1,0 +1,12 @@
+from pathlib import Path
+p=Path('asignacion-ip.html')
+s=p.read_text(encoding='utf-8')
+s=s.replace("const o=s.orden||{},cs=s.candidatos||[];return `<div class=\"req\"><b>${esc(o.id_orden||'')} · ${esc(up(o.cliente_nombre||''))}</b><div class=\"muted\">Solicitud: ${esc(fmt(s.solicitado_at))}</div>","const o=s.orden||{},cs=s.candidatos||[],sol=s.solicitante||{};return `<div class=\"req\"><b>${esc(o.id_orden||'')} · ${esc(up(o.cliente_nombre||''))}</b><div class=\"row\" style=\"margin-top:9px\"><div><div class=\"label\">SOLICITADO POR</div><div class=\"value\">${esc(up(sol.nombre||'—'))}</div></div><div><div class=\"label\">GRUPO TÉCNICO</div><div class=\"value\">${esc(up(o.grupo_asignado||sol.unidad_grupo||'—'))}</div></div></div><div class=\"muted\" style=\"margin-top:7px\">Fecha / hora solicitud: ${esc(fmt(s.solicitado_at))}</div>")
+s=s.replace("<div class=\"meta\">Confirmada por ${esc(x.asignada_por||'—')} · ${esc(fmt(x.asignada_at))}</div><button", "<div class=\"meta\">Solicitada por ${esc(x.solicitado_por||'—')} · Grupo ${esc(x.grupo_asignado||'—')}</div><div class=\"meta\">Confirmada por ${esc(x.asignada_por||'—')} · ${esc(fmt(x.asignada_at))}</div><button")
+s=s.replace("<div class=\"meta\">${esc(x.id_orden)} · ${esc(up(x.cliente_nombre||''))} · ${esc(x.realizado_por||'—')} · ${esc(fmt(x.created_at))}</div>${d.motivo?", "<div class=\"meta\">${esc(x.id_orden)} · ${esc(up(x.cliente_nombre||''))} · Grupo ${esc(x.grupo_asignado||'—')} · Solicitó ${esc(x.solicitado_por||'—')}</div><div class=\"meta\">Realizado por ${esc(x.realizado_por||'—')} · ${esc(fmt(x.created_at))}</div>${d.motivo?")
+s=s.replace('✏️ CAMBIAR IP CONFIRMADA','🔁 REASIGNAR IP')
+s=s.replace('✏️ CAMBIAR IP CONFIRMADA','🔁 REASIGNAR IP')
+s=s.replace('✅ GUARDAR CAMBIO','✅ GUARDAR REASIGNACIÓN')
+s=s.replace('Motivo del cambio (obligatorio)','Motivo de reasignación (obligatorio)')
+s=s.replace('El motivo del cambio es obligatorio.','El motivo de reasignación es obligatorio.')
+p.write_text(s,encoding='utf-8')
