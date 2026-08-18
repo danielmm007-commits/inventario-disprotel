@@ -1,6 +1,6 @@
 (()=>{
   const CODIGOS_ONU=new Set(['ONU-BRIDGE','ONU-CATV']);
-  const API_ITEMS=B+'inventario-items-instalacion';
+  const API_ITEMS=API_DOM;
   const esOnu=x=>CODIGOS_ONU.has(String(x?.codigo||'').toUpperCase());
   const productoInv=id=>(INV?.materiales||[]).find(x=>x.id===id);
   const onuGuardada=()=> (SAVED_ITEMS||[]).find(esOnu)||null;
