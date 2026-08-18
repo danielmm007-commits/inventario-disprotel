@@ -8,6 +8,7 @@ s=s.replace('.sheet{width:210mm;min-height:297mm;', '.sheet{width:210mm;height:2
 s=re.sub(r'@media\(max-width:900px\)\{.*?\}@media print', '@media(max-width:900px){html,body{width:100%;max-width:100%;overflow-x:hidden}body{padding:8px;background:#dfe5ea}.toolbar{width:calc(100% - 4px);max-width:520px;grid-template-columns:1fr;gap:6px;margin:0 auto 10px}.toolbar button{font-size:13px;padding:10px 8px}.sheet{width:210mm!important;height:297mm!important;min-height:297mm!important;max-height:297mm!important;padding:9mm 10mm!important;margin:0!important}.header{grid-template-columns:72mm 1fr!important}.logo{width:66mm!important}.summary{grid-template-columns:repeat(4,1fr)!important}.service,.panels{grid-template-columns:1fr 1fr!important}.svcCol+.svcCol{border-left:1px solid #d7e2ea!important;border-top:0!important;padding-left:6mm!important;margin-top:0!important;padding-top:0!important}.evidenceGrid{grid-template-columns:repeat(5,1fr)!important}.evImg,.evMissing{height:31mm!important}.a4-stage{position:relative;overflow:hidden;margin:0 auto 14px!important}}@media print', s, flags=re.S)
 # Quitar parche previo para regenerarlo sin duplicados.
 s=re.sub(r'<style id="a4PreviewPatch">.*?</script>', '', s, flags=re.S)
+s=re.sub(r'<script src="reporte-mejoras-v2\.js\?v=[^"]+"></script>', '', s)
 addon='''<style id="a4PreviewPatch">
 .a4-stage{position:relative;margin:0 auto 18px;overflow:hidden}.sheet{transform-origin:top left}.preview-note{max-width:210mm;margin:0 auto 8px;text-align:center;color:#667985;font-size:12px}
 @media print{
@@ -34,6 +35,7 @@ window.addEventListener('load',()=>setTimeout(ajustarHojaA4,250));
 const _obs=new MutationObserver(()=>setTimeout(ajustarHojaA4,30));
 window.addEventListener('DOMContentLoaded',()=>{const c=document.getElementById('contenido');if(c)_obs.observe(c,{childList:true,subtree:true})});
 </script>'''
+mejoras='<script src="reporte-mejoras-v2.js?v=20260817-2315"></script>'
 if '</body>' in s:
-    s=s.replace('</body>',addon+'</body>',1)
+    s=s.replace('</body>',addon+mejoras+'</body>',1)
 p.write_text(s,encoding='utf-8')
