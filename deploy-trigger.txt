@@ -1,0 +1,3 @@
+Forzar republicacion GitHub Pages
+2026-08-18 09:15 -05:00
+Motivo: cambios visuales no reflejados despues de commits del workflow.
