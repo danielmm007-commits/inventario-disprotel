@@ -15,7 +15,7 @@ plan='<script src="plan-catalogo-v1.js?v=20260818-0721"></script>'
 cedula='<script src="cedula-miniaturas-v1.js?v=20260818-0758"></script>'
 ident='<script src="ejecucion-identificacion-v1.js?v=20260818-1105"></script>'
 equipos='<script src="equipos-guardado-fluido-v1.js?v=20260818-1237"></script>'
-onu='<script src="onu-control-modelo-v1.js?v=20260818-1302"></script>'
+onu='<script src="onu-control-modelo-v1.js?v=20260818-1305"></script>'
 for p in Path('.').glob('*.html'):
     if p.name=='reporte-trabajo.html':
         continue
@@ -40,6 +40,9 @@ for p in Path('.').glob('*.html'):
         s=re.sub(r'<script src="flujo-navegacion-v1\.js\?v=[^"]+\"></script>','',s)
         if '</body>' in s:s=s.replace('</body>',flex+correo+docdom+contacto+nav+'</body>',1)
     if p.name=='instalacion-ejecucion.html':
+        s=s.replace("await post(API_DOM,'batch-edit-items'","await post(B+'inventario-items-instalacion','batch-edit-items'")
+        s=s.replace("show(`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`);await cargarInventario();await estadoArticulos(true)","show(`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`);const bl=$('guardarCambiosMasivos');if(bl){let ml=$('accionResultadoLocal');if(!ml){ml=document.createElement('div');ml.id='accionResultadoLocal';bl.insertAdjacentElement('afterend',ml)}ml.className='msg ok';ml.textContent=`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`}await cargarInventario();await estadoArticulos(true)")
+        s=s.replace("catch(e){show(e.message,'err');actualizarConteoCambios()}","catch(e){show(e.message,'err');const bl=$('guardarCambiosMasivos');if(bl){let ml=$('accionResultadoLocal');if(!ml){ml=document.createElement('div');ml.id='accionResultadoLocal';bl.insertAdjacentElement('afterend',ml)}ml.className='msg err';ml.textContent='❌ '+e.message}actualizarConteoCambios()}",1)
         s=re.sub(r'<script src="plan-catalogo-v1\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="cedula-miniaturas-v1\.js\?v=[^"]+\"></script>','',s)
         s=re.sub(r'<script src="ejecucion-identificacion-v1\.js\?v=[^"]+\"></script>','',s)
