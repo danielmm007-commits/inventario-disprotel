@@ -1,7 +1,7 @@
 (()=>{
   function orden(){return new URLSearchParams(location.search).get('orden')||''}
   function destinoActivos(){return 'trabajos-tecnicos.html?vista=activos'}
-  function destinoHome(){return 'trabajos-tecnicos.html'}
+  function destinoHome(){return 'trabajos-tecnicos.html?vista=home'}
   function btn(texto,href,id){const a=document.createElement('a');a.id=id;a.className='btn secondary flujoVolver';a.href=href;a.textContent=texto;return a}
   function css(){if(document.getElementById('flujoNavCss'))return;const s=document.createElement('style');s.id='flujoNavCss';s.textContent='.flujoVolver{margin-top:10px!important}.flujoNavTop{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 10px}.flujoNavTop .flujoVolver{margin-top:0!important}@media(max-width:620px){.flujoVolver{font-size:14px!important;padding:12px!important}.flujoNavTop{grid-template-columns:1fr}}';document.head.appendChild(s)}
   function irActivos(ev){if(ev){ev.preventDefault();ev.stopImmediatePropagation()}location.href=destinoActivos()}
