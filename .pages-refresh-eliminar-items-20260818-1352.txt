@@ -1,0 +1,1 @@
+Forzar publicacion del editor de articulos con boton eliminar por item.
