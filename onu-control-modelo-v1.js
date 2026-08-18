@@ -1,6 +1,7 @@
 (()=>{
   const CODIGOS_ONU=new Set(['ONU-BRIDGE','ONU-CATV']);
   const API_ITEMS=API_DOM;
+  const ELIMINADOS=new Set();
   const esOnu=x=>CODIGOS_ONU.has(String(x?.codigo||'').toUpperCase());
   const productoInv=id=>(INV?.materiales||[]).find(x=>x.id===id);
   const onuGuardada=()=> (SAVED_ITEMS||[]).find(esOnu)||null;
@@ -18,6 +19,16 @@
     box.textContent=texto;
     box.scrollIntoView({behavior:'smooth',block:'nearest'});
   }
+
+  function botonEliminar(x){
+    const marcado=ELIMINADOS.has(x.id);
+    return `<button type="button" class="secondary" style="margin-top:9px" onclick="alternarEliminarItem('${x.id}')">${marcado?'↩️ DESHACER ELIMINACIÓN':'🗑️ ELIMINAR ÍTEM'}</button>${marcado?'<div class="msg warn" style="margin-top:7px">⚠️ Se eliminará al guardar. El artículo volverá a la minibodega.</div>':''}`;
+  }
+
+  window.alternarEliminarItem=function(id){
+    if(ELIMINADOS.has(id))ELIMINADOS.delete(id);else ELIMINADOS.add(id);
+    renderEditarGuardado();
+  };
 
   const agregarOnuBase=window.agregarOnu;
   window.agregarOnu=async function(){
@@ -42,23 +53,28 @@
     const disponibles=(INV?.seriales||[]).filter(s=>s.estado==='DISPONIBLE');
     const onus=(INV?.materiales||[]).filter(esOnu);
     const lineas=(SAVED_ITEMS||[]).map(x=>{
+      const bloqueadoEliminar=ELIMINADOS.has(x.id);
       if(x.serial){
         const ops=disponibles.map(s=>`<option value="${s.id}">${esc(up(s.producto))} · ${esc(s.serial)}</option>`).join('');
-        return `<div class="editItem"><b>${esc(up(x.producto))}</b><div class="muted">Actual: SERIAL ${esc(x.serial)}</div><div class="editRow"><span>Reemplazar por</span><select id="rep_${x.id}" onchange="actualizarConteoCambios()"><option value="">-- SIN CAMBIO --</option>${ops}</select></div></div>`;
+        return `<div class="editItem" style="${bloqueadoEliminar?'opacity:.65':''}"><b>${esc(up(x.producto))}</b><div class="muted">Actual: SERIAL ${esc(x.serial)}</div><div class="editRow"><span>Reemplazar por</span><select id="rep_${x.id}" onchange="actualizarConteoCambios()" ${bloqueadoEliminar?'disabled':''}><option value="">-- SIN CAMBIO --</option>${ops}</select></div>${botonEliminar(x)}</div>`;
       }
       if(esOnu(x)){
         const ops=onus.map(o=>`<option value="${o.id}" ${o.codigo===x.codigo?'selected':''}>${esc(up(o.producto))} · ${Number(o.disponible||0)} disp.</option>`).join('');
-        return `<div class="editItem"><b>${esc(up(x.producto))}</b><div class="muted">Equipo controlado por modelo · cantidad fija 1</div><div class="editRow"><span>Reemplazar modelo</span><select id="onu_${x.id}" onchange="actualizarConteoCambios()">${ops}</select></div></div>`;
+        return `<div class="editItem" style="${bloqueadoEliminar?'opacity:.65':''}"><b>${esc(up(x.producto))}</b><div class="muted">Equipo controlado por modelo · cantidad fija 1</div><div class="editRow"><span>Reemplazar modelo</span><select id="onu_${x.id}" onchange="actualizarConteoCambios()" ${bloqueadoEliminar?'disabled':''}>${ops}</select></div>${botonEliminar(x)}</div>`;
       }
-      return `<div class="editItem"><b>${esc(up(x.producto))}</b><div class="muted">Cantidad actual: ${x.cantidad} ${esc(x.unidad||'UNIDAD')}</div><div class="editRow"><span>Nueva cantidad</span><input id="aj_${x.id}" type="number" min="1" value="${x.cantidad}" oninput="actualizarConteoCambios()"></div></div>`;
+      return `<div class="editItem" style="${bloqueadoEliminar?'opacity:.65':''}"><b>${esc(up(x.producto))}</b><div class="muted">Cantidad actual: ${x.cantidad} ${esc(x.unidad||'UNIDAD')}</div><div class="editRow"><span>Nueva cantidad</span><input id="aj_${x.id}" type="number" min="1" value="${x.cantidad}" oninput="actualizarConteoCambios()" ${bloqueadoEliminar?'disabled':''}></div>${botonEliminar(x)}</div>`;
     }).join('');
-    $('resumenGuardado').innerHTML=`<div class="modeHead"><b>✏️ MODIFICAR ARTÍCULOS GUARDADOS</b><div class="muted">La ONU se reemplaza por modelo y siempre mantiene cantidad 1. Los materiales como rosetas sí pueden cambiar de cantidad.</div></div><div class="pickBox">${lineas}</div><div id="conteoCambios" class="muted" style="margin-top:10px">0 cambios pendientes</div><button id="guardarCambiosMasivos" type="button" onclick="guardarModificacionesMasivas()" disabled>✅ GUARDAR TODAS LAS MODIFICACIONES</button><div id="accionResultadoLocal"></div><button type="button" class="secondary" onclick="volverResumen()">← CANCELAR / VOLVER AL RESUMEN</button>`;
+    $('resumenGuardado').innerHTML=`<div class="modeHead"><b>✏️ MODIFICAR ARTÍCULOS GUARDADOS</b><div class="muted">Puedes cambiar cantidades, reemplazar equipos o marcar un ítem para eliminarlo. Nada se mueve en inventario hasta pulsar GUARDAR TODAS LAS MODIFICACIONES.</div></div><div class="pickBox">${lineas}</div><div id="conteoCambios" class="muted" style="margin-top:10px">0 cambios pendientes</div><button id="guardarCambiosMasivos" type="button" onclick="guardarModificacionesMasivas()" disabled>✅ GUARDAR TODAS LAS MODIFICACIONES</button><div id="accionResultadoLocal"></div><button type="button" class="secondary" onclick="volverResumen()">← CANCELAR / VOLVER AL RESUMEN</button>`;
     actualizarConteoCambios();
   };
 
   window.cambiosPendientes=function(){
     const cambios=[],seriales=new Set();
     for(const x of (SAVED_ITEMS||[])){
+      if(ELIMINADOS.has(x.id)){
+        cambios.push({tipo:'ELIMINAR',item_id:x.id});
+        continue;
+      }
       if(x.serial){
         const sid=$('rep_'+x.id)?.value||'';
         if(sid){
@@ -89,7 +105,9 @@
     let cambios;
     try{cambios=cambiosPendientes()}catch(e){show(e.message,'warn');resultadoLocal(e.message,'warn');return}
     if(!cambios.length){show('No has realizado ningún cambio.','warn');resultadoLocal('No has realizado ningún cambio.','warn');return}
-    if(!confirm(`¿Guardar ${cambios.length} modificación(es)? Todos los cambios se aplicarán juntos.`))return;
+    const eliminaciones=cambios.filter(c=>c.tipo==='ELIMINAR').length;
+    const pregunta=eliminaciones?`¿Guardar ${cambios.length} modificación(es)? ${eliminaciones} ítem(s) serán eliminados y devueltos a la minibodega.`:`¿Guardar ${cambios.length} modificación(es)? Todos los cambios se aplicarán juntos.`;
+    if(!confirm(pregunta))return;
     const b=$('guardarCambiosMasivos');if(b){b.disabled=true;b.textContent='GUARDANDO...'}
     resultadoLocal('⏳ Guardando modificaciones...','warn');
     try{
@@ -105,6 +123,7 @@
           renderModalidad?.();
         }
       }
+      ELIMINADOS.clear();
       EDITING=false;
       const ok=`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`;
       show(ok);resultadoLocal(ok,'ok');
