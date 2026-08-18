@@ -1,0 +1,1 @@
+Forzar republicación de GitHub Pages después de navegación HOME y vista de trabajos activos.
