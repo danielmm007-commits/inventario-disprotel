@@ -1,1 +1,1 @@
-Forzar publicación para mantener Documento de identidad abierto tras reemplazar foto y permitir confirmación visual. 2026-08-18 14:43 -05:00
+Forzar publicación del numeral 4 compacto: plan solicitado, plan detectado, plan final editable y una sola IP tentativa. 2026-08-18 15:04 -05:00
