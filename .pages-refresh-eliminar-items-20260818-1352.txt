@@ -1,1 +1,1 @@
-Forzar publicacion del editor de articulos con boton eliminar por item.
+Forzar publicación del módulo independiente de eliminación inline en Modificar artículos. 2026-08-18 14:01 -05:00
