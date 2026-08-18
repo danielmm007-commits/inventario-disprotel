@@ -1,10 +1,20 @@
 (()=>{
  const API_DOM='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-instalacion-domicilio';
- const $=id=>document.getElementById(id);
  function listo(){try{return typeof O!=='undefined'&&O&&typeof post==='function'&&typeof ordenId==='function'}catch{return false}}
- async function cargarPlanes(){try{const d=await post(API_DOM,'get',{orden_id:ordenId()});const planes=d.planes||[];if(d.orden){O.plan_final=d.orden.plan_final??O.plan_final;O.plan_solicitado=d.orden.plan_solicitado??O.plan_solicitado;sessionStorage.setItem(INSTKEY,JSON.stringify(O))}return planes}catch{return []}}
- function marcarManual(){const s=$('planCatalogo');if(s)s.dataset.manual='1'}
- async function montar(){if(!listo())return;const box=$('ipEstado');if(!box||document.getElementById('planCatalogoBox'))return;const planes=await cargarPlanes();if(!planes.length)return;const actual=String(O?.plan_final||O?.plan_solicitado||'');const wrap=document.createElement('div');wrap.id='planCatalogoBox';wrap.className='candidate';wrap.style.marginTop='12px';wrap.innerHTML=`<div style="font-size:16px;font-weight:900">📶 PLAN DEL SERVICIO</div><div class="row" style="margin-top:10px"><div class="item"><div class="label">PLAN SOLICITADO</div><div class="value" id="planSolicitadoVista">${esc(up(O?.plan_solicitado||'—'))}</div></div><div class="item"><div class="label">PLAN DETECTADO POR SCANNER</div><div class="value" id="planDetectadoVista">⏳ PENDIENTE</div></div></div><div id="planComparacionVista" class="muted" style="margin-top:8px">El scanner servirá como referencia para comparar el plan.</div><div class="label" style="margin-top:12px">PLAN FINAL · EDITABLE</div><select id="planCatalogo" style="width:100%;padding:12px;border:1px solid #cbd8de;border-radius:10px;font-size:16px;background:#fff;margin-top:6px">${planes.map(p=>`<option value="${esc(p.codigo)}" ${p.codigo===actual?'selected':''}>${esc(up(p.codigo))} · ${esc(up(p.descripcion||''))}</option>`).join('')}</select><button id="guardarPlanCatalogo" type="button" class="secondary">💾 GUARDAR PLAN FINAL</button><div id="planResultadoLocal" class="muted" style="margin-top:7px">El plan puede ajustarse sin modificar la IP definitiva.</div>`;box.insertAdjacentElement('afterend',wrap);$('planCatalogo').addEventListener('change',marcarManual);$('guardarPlanCatalogo').onclick=async()=>{const plan=$('planCatalogo').value;if(!plan)return;const b=$('guardarPlanCatalogo'),r=$('planResultadoLocal');try{b.disabled=true;if(r){r.className='muted';r.textContent='⏳ Guardando plan...'}const d=await post(API_DOM,'service-plan',{orden_id:ordenId(),plan_final:plan,motivo:'AJUSTE DE PLAN EN EJECUCIÓN TÉCNICA'});O.plan_final=d.plan_final||plan;sessionStorage.setItem(INSTKEY,JSON.stringify(O));if(r){r.className='msg ok';r.textContent='✅ Plan final guardado.'}if(typeof window.estadoIp==='function')await window.estadoIp()}catch(e){if(r){r.className='msg err';r.textContent='❌ '+e.message}else show(e.message,'err')}finally{b.disabled=false}};window.dispatchEvent(new CustomEvent('plan-catalogo-listo',{detail:{planes:planes.map(p=>p.codigo)}}))}
- function boot(){let n=0;const t=setInterval(()=>{n++;if(listo()&&$('ipEstado')){montar();if(n>20)clearInterval(t)}if(n>50)clearInterval(t)},250)}
+ async function sincronizar(){
+   if(!listo())return;
+   try{
+     const d=await post(API_DOM,'get',{orden_id:ordenId()});
+     if(d.orden){
+       O.plan_final=d.orden.plan_final??O.plan_final;
+       O.plan_solicitado=d.orden.plan_solicitado??O.plan_solicitado;
+       sessionStorage.setItem(INSTKEY,JSON.stringify(O));
+     }
+     const viejo=document.getElementById('planCatalogoBox');
+     if(viejo)viejo.remove();
+     window.dispatchEvent(new CustomEvent('plan-catalogo-listo'));
+   }catch{}
+ }
+ function boot(){let n=0;const t=setInterval(()=>{n++;if(listo()){sincronizar();clearInterval(t)}if(n>40)clearInterval(t)},250)}
  document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot):boot();
 })();
