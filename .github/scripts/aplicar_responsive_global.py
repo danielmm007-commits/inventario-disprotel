@@ -4,7 +4,7 @@ import re
 link='<link rel="stylesheet" href="responsive-global.css?v=20260818-2305">'
 gps='<script src="gps-aceptacion-v1.js?v=20260818-2338"></script>'
 hitos='<script src="gps-hitos-tecnico-v1.js?v=20260818-0635"></script>'
-flex='<script src="domicilio-flujo-flex-v1.js?v=20260818-0721"></script>'
+flex='<script src="domicilio-flujo-flex-v1.js?v=20260818-0743"></script>'
 plan='<script src="plan-catalogo-v1.js?v=20260818-0721"></script>'
 for p in Path('.').glob('*.html'):
     if p.name=='reporte-trabajo.html':
