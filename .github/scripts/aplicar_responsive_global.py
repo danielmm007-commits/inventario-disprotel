@@ -16,7 +16,7 @@ cedula='<script src="cedula-miniaturas-v1.js?v=20260818-0758"></script>'
 ident='<script src="ejecucion-identificacion-v1.js?v=20260818-1105"></script>'
 equipos='<script src="equipos-guardado-fluido-v1.js?v=20260818-1237"></script>'
 onu='<script src="onu-control-modelo-v1.js?v=20260818-1350"></script>'
-eliminar='<script src="items-eliminar-inline-v1.js?v=20260818-1407"></script>'
+eliminar='<script src="items-eliminar-inline-v1.js?v=20260818-1426"></script>'
 for p in Path('.').glob('*.html'):
     if p.name=='reporte-trabajo.html':
         continue
