@@ -1,0 +1,1 @@
+Forzar publicación de trabajos generales sin pestañeo de login tras refrescar con sesión activa.
