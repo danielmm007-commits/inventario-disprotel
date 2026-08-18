@@ -1,22 +1,35 @@
 (()=>{
   const CODIGOS_ONU=new Set(['ONU-BRIDGE','ONU-CATV']);
+  const API_ITEMS=B+'inventario-items-instalacion';
   const esOnu=x=>CODIGOS_ONU.has(String(x?.codigo||'').toUpperCase());
   const productoInv=id=>(INV?.materiales||[]).find(x=>x.id===id);
   const onuGuardada=()=> (SAVED_ITEMS||[]).find(esOnu)||null;
   const onuEnCanasta=()=> Object.values(CART||{}).find(esOnu)||null;
 
+  function resultadoLocal(texto,tipo='ok'){
+    let box=$('accionResultadoLocal');
+    if(!box){
+      box=document.createElement('div');
+      box.id='accionResultadoLocal';
+      const ref=$('guardarCambiosMasivos')||$('confirmarUso')||$('resumenGuardado');
+      if(ref?.parentNode)ref.parentNode.insertBefore(box,ref.nextSibling);
+    }
+    box.className='msg '+tipo;
+    box.textContent=texto;
+    box.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
   const agregarOnuBase=window.agregarOnu;
   window.agregarOnu=async function(){
     if(typeof bloqueado==='function'&&bloqueado())return;
-    const codigo=$('onuTipo')?.value;
     const actual=onuGuardada();
     if(actual){
-      show(`Ya existe ${up(actual.producto||actual.codigo||'una ONU')} en esta instalación. Usa MODIFICAR ARTÍCULOS para reemplazarla.`,'warn');
-      return;
+      const t=`Ya existe ${up(actual.producto||actual.codigo||'una ONU')} en esta instalación. Usa MODIFICAR ARTÍCULOS para reemplazarla.`;
+      show(t,'warn');resultadoLocal(t,'warn');return;
     }
     if(onuEnCanasta()){
-      show('Ya tienes una ONU en la canasta. Quita esa ONU si deseas elegir otro modelo.','warn');
-      return;
+      const t='Ya tienes una ONU en la canasta. Quita esa ONU si deseas elegir otro modelo.';
+      show(t,'warn');resultadoLocal(t,'warn');return;
     }
     return agregarOnuBase?.call(this);
   };
@@ -39,7 +52,7 @@
       }
       return `<div class="editItem"><b>${esc(up(x.producto))}</b><div class="muted">Cantidad actual: ${x.cantidad} ${esc(x.unidad||'UNIDAD')}</div><div class="editRow"><span>Nueva cantidad</span><input id="aj_${x.id}" type="number" min="1" value="${x.cantidad}" oninput="actualizarConteoCambios()"></div></div>`;
     }).join('');
-    $('resumenGuardado').innerHTML=`<div class="modeHead"><b>✏️ MODIFICAR ARTÍCULOS GUARDADOS</b><div class="muted">La ONU se reemplaza por modelo y siempre mantiene cantidad 1. Los materiales como rosetas sí pueden cambiar de cantidad.</div></div><div class="pickBox">${lineas}</div><div id="conteoCambios" class="muted" style="margin-top:10px">0 cambios pendientes</div><button id="guardarCambiosMasivos" type="button" onclick="guardarModificacionesMasivas()" disabled>✅ GUARDAR TODAS LAS MODIFICACIONES</button><button type="button" class="secondary" onclick="volverResumen()">← CANCELAR / VOLVER AL RESUMEN</button>`;
+    $('resumenGuardado').innerHTML=`<div class="modeHead"><b>✏️ MODIFICAR ARTÍCULOS GUARDADOS</b><div class="muted">La ONU se reemplaza por modelo y siempre mantiene cantidad 1. Los materiales como rosetas sí pueden cambiar de cantidad.</div></div><div class="pickBox">${lineas}</div><div id="conteoCambios" class="muted" style="margin-top:10px">0 cambios pendientes</div><button id="guardarCambiosMasivos" type="button" onclick="guardarModificacionesMasivas()" disabled>✅ GUARDAR TODAS LAS MODIFICACIONES</button><div id="accionResultadoLocal"></div><button type="button" class="secondary" onclick="volverResumen()">← CANCELAR / VOLVER AL RESUMEN</button>`;
     actualizarConteoCambios();
   };
 
@@ -74,12 +87,13 @@
 
   window.guardarModificacionesMasivas=async function(){
     let cambios;
-    try{cambios=cambiosPendientes()}catch(e){show(e.message,'warn');return}
-    if(!cambios.length){show('No has realizado ningún cambio.','warn');return}
+    try{cambios=cambiosPendientes()}catch(e){show(e.message,'warn');resultadoLocal(e.message,'warn');return}
+    if(!cambios.length){show('No has realizado ningún cambio.','warn');resultadoLocal('No has realizado ningún cambio.','warn');return}
     if(!confirm(`¿Guardar ${cambios.length} modificación(es)? Todos los cambios se aplicarán juntos.`))return;
-    const b=$('guardarCambiosMasivos');if(b)b.disabled=true;
+    const b=$('guardarCambiosMasivos');if(b){b.disabled=true;b.textContent='GUARDANDO...'}
+    resultadoLocal('⏳ Guardando modificaciones...','warn');
     try{
-      await post(API_DOM,'batch-edit-items',{orden_id:ordenId(),cambios});
+      await post(API_ITEMS,'batch-edit-items',{orden_id:ordenId(),cambios});
       const cOnu=cambios.find(c=>c.tipo==='MODELO_ONU');
       if(cOnu){
         const p=productoInv(cOnu.producto_nuevo_id);
@@ -92,9 +106,14 @@
         }
       }
       EDITING=false;
-      show(`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`);
+      const ok=`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`;
+      show(ok);resultadoLocal(ok,'ok');
       await estadoArticulos(true);
       Promise.resolve().then(()=>cargarInventario()).catch(()=>{});
-    }catch(e){show(e.message,'err');actualizarConteoCambios()}
+    }catch(e){
+      const t=e.message||'No se pudo guardar la modificación.';
+      show(t,'err');resultadoLocal('❌ '+t,'err');actualizarConteoCambios();
+      if(b){b.disabled=false;b.textContent='✅ GUARDAR TODAS LAS MODIFICACIONES'}
+    }
   };
 })();
