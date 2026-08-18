@@ -15,7 +15,7 @@ plan='<script src="plan-catalogo-v1.js?v=20260818-0721"></script>'
 cedula='<script src="cedula-miniaturas-v1.js?v=20260818-0758"></script>'
 ident='<script src="ejecucion-identificacion-v1.js?v=20260818-1105"></script>'
 equipos='<script src="equipos-guardado-fluido-v1.js?v=20260818-1237"></script>'
-onu='<script src="onu-control-modelo-v1.js?v=20260818-1254"></script>'
+onu='<script src="onu-control-modelo-v1.js?v=20260818-1302"></script>'
 for p in Path('.').glob('*.html'):
     if p.name=='reporte-trabajo.html':
         continue
