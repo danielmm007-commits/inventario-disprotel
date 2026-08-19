@@ -1,7 +1,7 @@
 (()=>{
  const $=id=>document.getElementById(id);
  const API_ROUTER=B+'inventario-router-cobertura';
- let ROUTERS=[],ROUTER_ACTUAL=null;
+ let ROUTERS=[],ROUTER_ACTUAL=null,actualizando=false;
  function limpiar(v){return up(String(v||'').replace(/\/[0-9]+$/,'').trim())}
  function fmt(v){if(!v)return '—';try{return new Date(v).toLocaleString('es-EC')}catch{return String(v)}}
  function mejor(cs){return Array.isArray(cs)&&cs.length?cs[0]:null}
@@ -23,6 +23,8 @@
    return `<div class="pickBox" style="margin-top:12px"><b>📡 ROUTER DE COBERTURA</b><div class="muted" style="margin-top:5px">Elige el router que atiende esta instalación. Este dato indica al scanner qué MikroTik debe revisar.</div><select id="routerCoberturaIp" style="width:100%;padding:12px;border:1px solid #cbd8de;border-radius:10px;font-size:16px;background:#fff;margin-top:9px"><option value="">-- ELIGE ROUTER DE COBERTURA --</option>${ops}</select></div>`;
  }
  const compactEstado=async function(){
+   if(actualizando)return;
+   actualizando=true;
    try{
      const d=await post(API_IP,'status',{orden_id:ordenId()}),q=d.solicitud,cs=d.candidatos||[],c=mejor(cs);
      if(d.orden){O.plan_final=d.orden.plan_final??O.plan_final;O.plan_solicitado=d.orden.plan_solicitado??O.plan_solicitado;O.tv_final=d.orden.tv_final??O.tv_final;sessionStorage.setItem(INSTKEY,JSON.stringify(O))}
@@ -39,13 +41,14 @@
      if(sol)sol.classList.add('hidden');
      if(q.estado==='ASIGNADA'){
        if(act)act.classList.add('hidden');
-       estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><span class="badge okb" style="margin-top:9px">✅ IP DEFINITIVA</span><div class="ip">${esc(q.ip_asignada||'—')}</div><div class="muted" style="margin-top:8px">Asignada por el responsable autorizado.</div>${avisoPlan(c)}`;
+       estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><span class="badge okb" style="margin-top:9px">✅ IP DEFINITIVA</span><div class="ip">${esc(q.ip_asignada||'—')}</div><div class="muted" style="margin-top:8px">Asignada por el responsable autorizado. Si Fernando la reasigna, esta pantalla se actualiza automáticamente.</div>${avisoPlan(c)}`;
        $('stIp').textContent='✅ IP DEFINITIVA · '+String(q.ip_asignada||'');return;
      }
      if(act){act.classList.remove('hidden');act.textContent='🔄 ACTUALIZAR ESTADO'}
      estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><span class="badge wait" style="margin-top:9px">⏳ SOLICITUD ENVIADA</span><div class="muted" style="margin-top:8px">Solicitud: ${esc(fmt(q.solicitado_at))}. Pendiente de asignación por el responsable de IP.</div>${avisoPlan(c)}`;
      $('stIp').textContent='⏳ ESPERANDO IP';
    }catch(e){show(e.message,'err')}
+   finally{actualizando=false}
  };
  const compactSolicitar=async function(){
    const b=$('solicitar'),sel=$('routerCoberturaIp');
@@ -74,4 +77,5 @@
  document.readyState==='loading'?document.addEventListener('DOMContentLoaded',()=>setTimeout(enlazar,0)):setTimeout(enlazar,0);
  [100,300,700,1200,2200,4000].forEach(ms=>setTimeout(()=>{tomarControl();compactEstado()},ms));
  setInterval(()=>{if(window.estadoIp!==compactEstado||window.solicitarIp!==compactSolicitar)tomarControl();const viejo=$('planCatalogoBox');if(viejo)viejo.remove()},1000);
+ setInterval(()=>{if(document.visibilityState==='visible')compactEstado()},6000);
 })();
