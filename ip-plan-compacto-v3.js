@@ -45,8 +45,13 @@
        $('stIp').textContent='✅ IP DEFINITIVA · '+String(q.ip_asignada||'');return;
      }
      if(act){act.classList.remove('hidden');act.textContent='🔄 ACTUALIZAR ESTADO'}
-     estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><span class="badge wait" style="margin-top:9px">⏳ SOLICITUD ENVIADA</span><div class="muted" style="margin-top:8px">Solicitud: ${esc(fmt(q.solicitado_at))}. Pendiente de asignación por el responsable de IP.</div>${avisoPlan(c)}`;
-     $('stIp').textContent='⏳ ESPERANDO IP';
+     if(c?.address){
+       estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><span class="badge wait" style="margin-top:9px">🟡 IP TENTATIVA DETECTADA</span><div class="ip">${esc(c.address)}</div><div class="muted" style="margin-top:8px"><b>Puedes adelantar la configuración del equipo con esta IP.</b> Todavía está pendiente de confirmación por Fernando y puede cambiar antes de quedar definitiva.</div><div class="muted" style="margin-top:7px">Solicitud enviada: ${esc(fmt(q.solicitado_at))}</div>${avisoPlan(c)}`;
+       $('stIp').textContent='🟡 IP TENTATIVA · '+String(c.address||'');
+     }else{
+       estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><span class="badge wait" style="margin-top:9px">⏳ SOLICITUD ENVIADA</span><div class="muted" style="margin-top:8px">Solicitud: ${esc(fmt(q.solicitado_at))}. El scanner está buscando una IP tentativa. Pendiente de confirmación por Fernando.</div>${avisoPlan(c)}`;
+       $('stIp').textContent='⏳ ESPERANDO IP';
+     }
    }catch(e){show(e.message,'err')}
    finally{actualizando=false}
  };
