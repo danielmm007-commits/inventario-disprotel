@@ -8,8 +8,8 @@ function abrir(src,titulo='Evidencia fotográfica'){if(!src)return;const v=ensur
 function cerrar(after=null){const v=document.getElementById('visorEvidencias');if(!v?.classList.contains('abierto'))return;pendingClose=after;if(historyActive&&history.state?.__visorEvidenciasV1){history.back();return}limpiar()}
 function titulo(img){return img.alt||img.closest('.evCard')?.querySelector('.evCap')?.textContent||img.closest('[data-evidencia-titulo]')?.dataset.evidenciaTitulo||'Evidencia fotográfica'}
 function aplicar(root=document){const sel='.evImg,.idCard img,#fotoAccesoRemoto img,#listaAR img,.estadoARip img,.photoBox img,.evidencia-item img,.evidencePreview img,.cedThumb,.docThumb,[data-foto-miniatura]';root.querySelectorAll(sel).forEach(img=>{if(img.dataset.visorEvidencia==='1')return;img.dataset.visorEvidencia='1';img.classList.add('visorAbrible');img.title='Clic para ver foto en grande';img.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();abrir(img.currentSrc||img.src,titulo(img))},true)})}
-window.addEventListener('popstate',()=>{const v=document.getElementById('visorEvidencias');if(v?.classList.contains('abierto'))limpiar()});
-document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const v=document.getElementById('visorEvidencias');if(v?.classList.contains('abierto')){e.preventDefault();e.stopPropagation();cerrar()}},true);
+window.addEventListener('popstate',e=>{const v=document.getElementById('visorEvidencias');if(!v?.classList.contains('abierto'))return;e.stopImmediatePropagation();e.stopPropagation();limpiar()},true);
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const v=document.getElementById('visorEvidencias');if(v?.classList.contains('abierto')){e.preventDefault();e.stopImmediatePropagation();cerrar()}},true);
 window.VisorEvidencias={abrir,cerrar,aplicar};
 const iniciar=()=>{ensure();aplicar();const ob=new MutationObserver(()=>aplicar());ob.observe(document.body,{childList:true,subtree:true})};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});else iniciar();
