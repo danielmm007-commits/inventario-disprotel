@@ -1,5 +1,6 @@
 (()=>{
-  let modal=null, imagen=null;
+  if(window.__evidenciasModalV1)return;window.__evidenciasModalV1=true;
+  let modal=null,imagen=null,historyActive=false;
   function crear(){
     if(modal)return;
     modal=document.createElement('div');
@@ -10,10 +11,13 @@
     imagen=document.getElementById('visorEvidenciaImg');
     document.getElementById('visorEvidenciaCerrar').onclick=cerrar;
     modal.addEventListener('click',e=>{if(e.target===modal)cerrar()});
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.style.display!=='none')cerrar()});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&abierto()){e.preventDefault();e.stopImmediatePropagation();cerrar()}},true);
   }
-  function abrir(src){crear();imagen.src=src;modal.style.display='flex';document.body.style.overflow='hidden'}
-  function cerrar(){if(!modal)return;modal.style.display='none';if(imagen)imagen.src='';document.body.style.overflow=''}
+  function abierto(){return !!modal&&modal.style.display!=='none'}
+  function limpiar(){if(!modal)return;modal.style.display='none';if(imagen)imagen.src='';document.body.style.overflow='';historyActive=false}
+  function abrir(src){crear();if(!src)return;imagen.src=src;modal.style.display='flex';document.body.style.overflow='hidden';if(!historyActive){history.pushState({...history.state,__evidenciaModalV1:true},'',location.href);historyActive=true}}
+  function cerrar(){if(!abierto())return;if(historyActive&&history.state?.__evidenciaModalV1){history.back();return}limpiar()}
+  window.addEventListener('popstate',e=>{if(!abierto())return;e.stopImmediatePropagation();e.stopPropagation();limpiar()},true);
   function preparar(){
     document.querySelectorAll('#accEvidencias img[alt="Evidencia"]').forEach(img=>{
       img.style.cursor='zoom-in';
@@ -26,7 +30,7 @@
   document.addEventListener('click',e=>{
     const img=e.target?.closest?.('#accEvidencias img[alt="Evidencia"]');
     if(!img)return;
-    e.preventDefault();e.stopPropagation();
+    e.preventDefault();e.stopImmediatePropagation();
     if(img.src)abrir(img.src);
   },true);
   window.addEventListener('DOMContentLoaded',()=>{
