@@ -105,6 +105,30 @@
     }catch(e){inlineMsg(card,'❌ '+e.message,'err');show(e.message,'err')}
   };
 
+  const esAsignacion=x=>/IP_TENTATIVA_CONFIRMADA|IP_CONFIRMADA_MANUAL_AUTORIZADO|IP_REASIGNADA_MANUAL|IP_MODIFICADA_AUTORIZADO/i.test(String(x?.evento||''));
+  const etiquetaEvento=e=>{
+    e=String(e||'');
+    if(/REASIGNADA|MODIFICADA/i.test(e))return '🔁 IP REASIGNADA';
+    if(/CONFIRMADA/i.test(e))return '✅ IP ASIGNADA';
+    return '📡 MOVIMIENTO DE IP';
+  };
+  const fechaClave=v=>{try{return new Date(v).toLocaleDateString('es-EC')}catch{return 'Sin fecha'}};
+  const cardHist=x=>{const d=x.detalle||{},txt=d.ip_nueva?`${d.ip_anterior||'—'} → ${d.ip_nueva}`:(d.ip||'');return `<div class="hist"><b>${esc(etiquetaEvento(x.evento))}</b><div>${esc(txt)}</div><div class="meta">${esc(x.id_orden||'')} · ${esc(up(x.cliente_nombre||''))}</div><div class="meta">Realizado por ${esc(x.realizado_por||'—')} · ${esc(fmt(x.created_at))}</div>${d.motivo?`<div class="muted">Motivo: ${esc(d.motivo)}</div>`:''}</div>`};
+  const historialPorFecha=h=>{
+    const grupos={};
+    for(const x of h){const f=fechaClave(x.created_at);(grupos[f]||(grupos[f]=[])).push(x)}
+    return Object.entries(grupos).map(([f,arr])=>`<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:800">📅 ${esc(f)} · ${arr.length} evento${arr.length===1?'':'s'}</summary>${arr.map(cardHist).join('')}</details>`).join('');
+  };
+
+  window.buscarHist=async()=>{
+    try{
+      const d=await api('ip-history',{busqueda:(document.getElementById('buscar')?.value||'').trim()});
+      const a=d.asignadas||[],h=d.historial||[],asig=h.filter(esAsignacion);
+      document.getElementById('asignadas').innerHTML='<h3>IP actualmente asignadas</h3>'+ (a.map(x=>`<div class="hist"><span class="badge okb">✅ IP ACTUAL</span><div class="ip">${esc(x.ip_asignada||'—')}</div><b>${esc(x.id_orden)} · ${esc(up(x.cliente_nombre||''))}</b><div class="meta">Solicitada por ${esc(x.solicitado_por||'—')} · Grupo ${esc(x.grupo_asignado||'—')}</div><div class="meta">Confirmada por ${esc(x.asignada_por||'—')} · ${esc(fmt(x.asignada_at))}</div><button onclick="mostrarCambioIp('${x.orden_id}','${esc(x.ip_asignada||'')}')">🔁 REASIGNAR IP</button><div id="cambio-${x.orden_id}"></div></div>`).join('')||'<div class="muted">No hay IP actuales con ese criterio.</div>');
+      document.getElementById('historial').innerHTML=`<h3>Historial de asignaciones</h3>${asig.map(cardHist).join('')||'<div class="muted">No hay asignaciones con ese criterio.</div>'}<details style="margin-top:14px"><summary style="cursor:pointer;font-weight:800">🗂️ HISTORIAL COMPLETO</summary><div class="muted" style="margin-top:6px">Eventos técnicos de IP agrupados por fecha.</div>${historialPorFecha(h)||'<div class="muted">No hay eventos.</div>'}</details>`;
+    }catch(e){show(e.message,'err')}
+  };
+
   const obs=new MutationObserver(()=>requestAnimationFrame(aplicar));
   const iniciar=()=>{const lista=document.getElementById('lista');if(lista)obs.observe(lista,{childList:true,subtree:true});aplicar();setInterval(refrescarEstados,8000);setTimeout(refrescarEstados,500)};
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',iniciar):iniciar();
