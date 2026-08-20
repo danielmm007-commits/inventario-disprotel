@@ -57,18 +57,18 @@
         <div class="chip">DISPROTEL INTERNO</div>
       </div>
       <div id="loginNormal">
-        <div class="sub">Ingresa con tu usuario y PIN. El sistema te enviará automáticamente al módulo correspondiente según tu perfil.</div>
+        <div class="sub">Ingresa con tu usuario y contraseña. El sistema te enviará automáticamente al módulo correspondiente según tu perfil.</div>
         <label for="usuario">Usuario</label>
         <input id="usuario" autocomplete="username" autocapitalize="none" placeholder="Ej. rubi, fernando, luis">
-        <label for="pin">PIN</label>
-        <div class="pin"><input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password" placeholder="••••"><button id="eye" class="eye" type="button" aria-label="Mostrar PIN">👁️</button></div>
+        <label for="pin">Contraseña</label>
+        <div class="pin"><input id="pin" type="password" maxlength="64" autocomplete="current-password" placeholder="Ingresa tu contraseña"><button id="eye" class="eye" type="button" aria-label="Mostrar contraseña">👁️</button></div>
         <button id="go" class="go" type="button">INGRESAR AL SISTEMA →</button>
-        <button id="forgot" class="forgot" type="button">¿Olvidaste tu PIN?</button>
+        <button id="forgot" class="forgot" type="button">¿Olvidaste tu contraseña?</button>
         <div class="quick"><div>📦 Inventario y OT</div><div>🌐 IP y acceso remoto</div></div>
       </div>
       <div id="recovery" class="recovery">
         <h3>Crear nuevo PIN</h3>
-        <p>El enlace del correo fue validado. Escribe un PIN nuevo de 4 a 8 dígitos.</p>
+        <p>El enlace del correo fue validado. Por ahora, la recuperación de prueba de Rubi continúa usando un PIN de 4 a 8 dígitos.</p>
         <label for="newPin">Nuevo PIN</label>
         <input id="newPin" type="password" inputmode="numeric" maxlength="8" placeholder="••••">
         <label for="newPin2">Repetir PIN</label>
@@ -76,7 +76,7 @@
         <button id="savePin" class="go" type="button">GUARDAR NUEVO PIN →</button>
       </div>
       <div id="msg" class="msg"></div>
-      <div class="note"><b>Ingreso por perfil.</b><br>Las credenciales se validan con los usuarios activos de DISPROTEL. La recuperación por correo está habilitada únicamente para la prueba del usuario Rubi.</div>
+      <div class="note"><b>Ingreso por perfil.</b><br>Las credenciales se validan con los usuarios activos de DISPROTEL. El ingreso principal ya admite contraseñas con letras, números y caracteres especiales. La recuperación por correo continúa temporalmente en modo PIN únicamente para la prueba del usuario Rubi.</div>
       <div class="preview">DISPROTEL · acceso interno</div>
     </div>
   </section>
@@ -106,7 +106,7 @@ function destino(me){
 }
 async function entrar(){
   const usuario=u.value.trim().toLowerCase(),pin=p.value.trim();
-  if(!usuario||!pin){show('Escribe usuario y PIN para continuar.');return}
+  if(!usuario||!pin){show('Escribe usuario y contraseña para continuar.');return}
   go.disabled=true;go.textContent='VALIDANDO…';show('Validando credenciales…','ok');
   try{
     const r=await fetch(LOGIN_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario,pin})});
@@ -114,11 +114,11 @@ async function entrar(){
     if(!r.ok||!d?.ok)throw new Error(d?.error||'No se pudo iniciar sesión');
     const me=d.usuario||{};prepararSesiones(me,usuario,pin);show('Bienvenido, '+(me.nombre||usuario)+'. Abriendo tu área…','ok');
     setTimeout(()=>location.href=destino(me),250);
-  }catch(e){show(e.message||'Usuario o PIN incorrecto.');go.disabled=false;go.textContent='INGRESAR AL SISTEMA →';p.focus();p.select()}
+  }catch(e){show(e.message||'Usuario o contraseña incorrectos.');go.disabled=false;go.textContent='INGRESAR AL SISTEMA →';p.focus();p.select()}
 }
 async function solicitarRecuperacion(){
   const usuario=u.value.trim().toLowerCase();
-  if(!usuario){show('Escribe primero tu usuario y luego toca “¿Olvidaste tu PIN?”.');u.focus();return}
+  if(!usuario){show('Escribe primero tu usuario y luego toca “¿Olvidaste tu contraseña?”.');u.focus();return}
   const b=document.getElementById('forgot');b.disabled=true;b.textContent='ENVIANDO CORREO…';show('Solicitando enlace de recuperación…','ok');
   try{
     const r=await fetch(RECOVERY_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'request',usuario})});
@@ -126,7 +126,7 @@ async function solicitarRecuperacion(){
     if(!r.ok)throw new Error(d.error||'No se pudo enviar el correo');
     show(d.message||'Si el usuario tiene recuperación habilitada, recibirá un correo.','ok');
   }catch(e){show(e.message||'No se pudo enviar el correo.');}
-  finally{b.disabled=false;b.textContent='¿Olvidaste tu PIN?'}
+  finally{b.disabled=false;b.textContent='¿Olvidaste tu contraseña?'}
 }
 async function guardarNuevoPin(){
   const a=document.getElementById('newPin').value.trim(),b=document.getElementById('newPin2').value.trim();
