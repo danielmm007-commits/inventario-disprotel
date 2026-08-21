@@ -1,0 +1,1 @@
+(()=>{const map={"Administración de usuarios":"admin-usuarios-visual.html","Perfiles y módulos":"perfiles-modulos-visual.html","Grupos y minibodegas":"grupos-minibodegas-visual.html"};const old=window.pendiente;window.pendiente=function(nombre){if(map[nombre]){location.href=map[nombre];return}if(typeof old==='function')return old(nombre)};})();
