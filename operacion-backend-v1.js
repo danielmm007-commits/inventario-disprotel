@@ -6,7 +6,7 @@
   const session=(()=>{try{return JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'null')}catch{return null}})();
   let ready=false,applying=false,syncing=false,timer=null,lastSig='';
   const clean=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-  const headers=()=>({'Content-Type':'application/json','x-user':session?.usuario||'','x-pin':session?.pin||''});
+  const headers=()=>({'Content-Type':'application/json','x-user':session?.usuario||'','x-pin':session?.pin||'','x-session':session?.session_token||''});
   async function call(body){const r=await fetch(API,{method:'POST',headers:headers(),body:JSON.stringify(body)});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok||d?.error)throw new Error(d?.error||'No se pudo sincronizar Operación');return d}
   function openDB(){return new Promise((resolve,reject)=>{const q=indexedDB.open(DB,DB_VERSION);q.onupgradeneeded=()=>{const d=q.result;if(!d.objectStoreNames.contains(STORE_LOC))d.createObjectStore(STORE_LOC,{keyPath:'id'});if(!d.objectStoreNames.contains(STORE_GRP))d.createObjectStore(STORE_GRP,{keyPath:'id'})};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
   async function replaceStore(store,rows){try{const d=await openDB();await new Promise((resolve,reject)=>{const tx=d.transaction(store,'readwrite'),os=tx.objectStore(store);os.clear();rows.forEach(x=>os.put(x));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});d.close()}catch(e){console.warn('Persistencia Operación:',e)}}
@@ -40,10 +40,10 @@
     return {groups,locations};
   }
   function signature(){return JSON.stringify(payload())}
-  async function sync(){if(!ready||applying||syncing||!session?.usuario||!session?.pin)return;const sig=signature();if(sig===lastSig)return;syncing=true;try{const p=payload(),d=await call({action:'sync',...p});lastSig=sig;await applyBackend(d);lastSig=signature()}catch(e){console.error('Operación backend:',e)}finally{syncing=false}}
+  async function sync(){if(!ready||applying||syncing||!session?.usuario||(!session?.session_token&&!session?.pin))return;const sig=signature();if(sig===lastSig)return;syncing=true;try{const p=payload(),d=await call({action:'sync',...p});lastSig=sig;await applyBackend(d);lastSig=signature()}catch(e){console.error('Operación backend:',e)}finally{syncing=false}}
   function schedule(){clearTimeout(timer);timer=setTimeout(sync,650)}
   async function init(){
-    if(!window.state||!session?.usuario||!session?.pin)return;
+    if(!window.state||!session?.usuario||(!session?.session_token&&!session?.pin))return;
     try{const d=await call({action:'list'});await applyBackend(d);ready=true;lastSig=signature()}catch(e){ready=true;console.error('Operación backend:',e)}
   }
   const previous=window.save;if(typeof previous==='function')window.save=function(...args){const r=previous.apply(this,args);if(ready&&!applying)schedule();return r};
