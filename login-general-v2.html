@@ -59,7 +59,7 @@
       <div id="loginNormal">
         <div class="sub">Ingresa con tu número de cédula o correo institucional y contraseña. El sistema te enviará automáticamente al módulo correspondiente según tu perfil.</div>
         <label for="usuario">Cédula o correo</label>
-        <input id="usuario" autocomplete="username" autocapitalize="none" placeholder="Ej. 0502659378 o nombre@disprotel.com">
+        <input id="usuario" autocomplete="username" autocapitalize="none" placeholder="Ingresa tu cédula de 10 dígitos o correo">
         <label for="pin">Contraseña</label>
         <div class="pin"><input id="pin" type="password" maxlength="64" autocomplete="current-password" placeholder="Ingresa tu contraseña"><button id="eye" class="eye" type="button" aria-label="Mostrar contraseña">👁️</button></div>
         <button id="go" class="go" type="button">INGRESAR AL SISTEMA →</button>
@@ -71,7 +71,7 @@
     </div>
   </section>
 </main>
-<div id="recoverOverlay" class="recoverOverlay" role="dialog" aria-modal="true" aria-labelledby="recoverTitle"><div class="recoverBox"><h3 id="recoverTitle">Recuperar contraseña</h3><p>Ingresa la cédula o el correo institucional registrado en tu ficha de usuario.</p><label for="recoverLogin">Cédula o correo</label><input id="recoverLogin" autocomplete="username" placeholder="0502659378 o nombre@disprotel.com"><div id="recoverError" class="recoverError"></div><div class="recoverActions"><button id="recoverCancel" class="recoverCancel" type="button">CANCELAR</button><button id="recoverSend" class="recoverSend" type="button">ENVIAR ENLACE</button></div></div></div>
+<div id="recoverOverlay" class="recoverOverlay" role="dialog" aria-modal="true" aria-labelledby="recoverTitle"><div class="recoverBox"><h3 id="recoverTitle">Recuperar contraseña</h3><p>Ingresa la cédula o el correo institucional registrado en tu ficha de usuario.</p><label for="recoverLogin">Cédula o correo</label><input id="recoverLogin" autocomplete="username" placeholder="Cédula de 10 dígitos o correo institucional"><div id="recoverError" class="recoverError"></div><div class="recoverActions"><button id="recoverCancel" class="recoverCancel" type="button">CANCELAR</button><button id="recoverSend" class="recoverSend" type="button">ENVIAR ENLACE</button></div></div></div>
 <script>
 const AUTH_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-auth-login';
 const LEGACY_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-login';
