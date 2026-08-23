@@ -242,6 +242,9 @@
   window.renderOps=function(...args){const r=originalRender(...args);setTimeout(decorate,0);return r;};
 
   (async()=>{
+    if(window.operacionBackendReady){
+      try{await window.operacionBackendReady}catch(e){console.warn('Operación backend:',e)}
+    }
     [savedLoc,savedGrp]=await Promise.all([readStore(STORE_LOC,FALLBACK_LOC),readStore(STORE_GRP,FALLBACK_GRP)]);
     decorate();
   })();
