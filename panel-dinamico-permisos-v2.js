@@ -15,7 +15,7 @@
     'Compras e ingresos':['compras.ver','compras.crear','seriales.ingresar'],
     'Transferencias':['transferencias.ver','transferencias.solicitar','transferencias.recibir'],
     'Área técnica':['trabajos.ver','trabajos.aceptar','trabajos.cargar_evidencias'],
-    'Solicitudes':['solicitudes.ver','instalaciones.solicitar','soportes.solicitar'],
+    'Solicitudes':['instalaciones.solicitar','soportes.solicitar','solicitudes.asignar','solicitudes.editar'],
     'IP y acceso remoto':['ip.ver','ip.solicitar','ip.asignar','remoto.solicitar']
   };
   const rootRules=[
@@ -31,6 +31,12 @@
       const name=card.querySelector('h3')?.textContent?.trim()||'';
       card.style.display=canAny(allowed,moduleRules[name]||[])?'flex':'none';
     });
+    const ipCard=[...document.querySelectorAll('.module')].find(card=>card.querySelector('h3')?.textContent?.trim()==='IP y acceso remoto');
+    if(ipCard&&ipCard.style.display!=='none'&&!canAny(allowed,['ip.asignar','ip.liberar','ip.reasignar','remoto.confirmar'])){
+      const title=ipCard.querySelector('h3');if(title)title.textContent='Solicitud de IP y acceso remoto';
+      const description=ipCard.querySelector('p');if(description)description.textContent='Solicitar IP y validación de acceso remoto para los trabajos asignados.';
+      const button=ipCard.querySelector('.btn');if(button)button.textContent='Solicitar IP / remoto →';
+    }
     const cards=[...document.querySelectorAll('#rootArea .rootCard')];
     cards.forEach((card,index)=>card.style.display=canAny(allowed,rootRules[index]||[])?'flex':'none');
     const root=document.getElementById('rootArea');
@@ -48,6 +54,9 @@
     const summaries=document.querySelectorAll('.summaryPanel');
     if(summaries[0])summaries[0].style.display=techAllowed?'block':'none';
     if(summaries[1])summaries[1].style.display=adminAllowed?'block':'none';
+    const adminStats=summaries[1]?.querySelectorAll('.stat')||[];
+    const adminStatRules=[['compras.ver','compras.crear'],['transferencias.ver','transferencias.recibir'],['seriales.ingresar','compras.completar_seriales']];
+    adminStats.forEach((card,index)=>card.style.display=canAny(allowed,adminStatRules[index]||[])?'block':'none');
     const wrap=document.querySelector('.summaryWrap');
     if(wrap){const visible=[...summaries].filter(item=>item.style.display!=='none').length;wrap.style.gridTemplateColumns=visible===1?'1fr':''}
     const profileName=profile?.nombre||me.rol||'USUARIO';
