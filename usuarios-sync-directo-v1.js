@@ -4,10 +4,10 @@
   if(!window.state||!Array.isArray(state.users))return;
   const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-usuarios-config';
   const session=(()=>{try{return JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'null')}catch{return null}})();
-  if(!session?.usuario||!session?.pin)return;
+  if(!session?.usuario||(!session?.session_token&&!session?.pin))return;
   let syncing=false,ready=false,lastSig='';
   const meta=u=>{if(!u[4]||typeof u[4]!=='object')u[4]={historyCount:0,active:true};return u[4]};
-  const headers=()=>({'Content-Type':'application/json','x-user':session.usuario,'x-pin':session.pin});
+  const headers=()=>({'Content-Type':'application/json','x-user':session.usuario,'x-pin':session.pin||'','x-session':session.session_token||''});
   async function call(body){const r=await fetch(API,{method:'POST',headers:headers(),body:JSON.stringify(body)});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok||d?.error)throw new Error(d?.error||'No se pudo sincronizar usuarios');return d}
   function payload(){return state.users.map(u=>{const m=meta(u);if(!m.perfil_uid)m.perfil_uid=String(m.cedula||m.id||crypto.randomUUID());return {perfil_uid:m.perfil_uid,nombre:String(u[0]||'').trim(),rol:String(u[1]||'Administrador'),area:String(m.area??u[2]??'').trim(),cedula:String(m.cedula||m.id||'').trim(),correo:String(m.correo||'').trim(),telefono:String(m.telefono||'').trim(),cargo:String(m.cargo||'').trim(),sucursal:String(m.sucursal||'').trim(),bodega_asociada:String(m.bodega_asociada||'').trim(),grupo_operativo:String(m.grupo_operativo||'').trim(),activo:m.active!==false,perfil_extras:{importado_excel:!!m.importado_excel,avatar_style:String(m.avatar_style||'')}}}).filter(x=>x.nombre)}
   const sig=()=>JSON.stringify(payload());
