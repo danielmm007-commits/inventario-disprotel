@@ -111,11 +111,11 @@ async function entrar(){
   }catch(e){show(e.message||'Usuario o contraseña incorrectos.');go.disabled=false;go.textContent='INGRESAR AL SISTEMA →';p.focus();p.select()}
 }
 const recoverOverlay=document.getElementById('recoverOverlay'),recoverLogin=document.getElementById('recoverLogin'),recoverError=document.getElementById('recoverError'),recoverSend=document.getElementById('recoverSend');
-function abrirRecuperacion(){recoverLogin.value=/^(\\d{10}|[^\\s@]+@[^\\s@]+\\.[^\\s@]+)$/.test(u.value.trim())?u.value.trim():'';recoverError.textContent='';recoverOverlay.classList.add('show');setTimeout(()=>recoverLogin.focus(),50)}
+function abrirRecuperacion(){recoverLogin.value=/^(\d{10}|[^\s@]+@[^\s@]+\.[^\s@]+)$/.test(u.value.trim())?u.value.trim():'';recoverError.textContent='';recoverOverlay.classList.add('show');setTimeout(()=>recoverLogin.focus(),50)}
 function cerrarRecuperacion(){recoverOverlay.classList.remove('show')}
 async function solicitarRecuperacion(){
   const login=recoverLogin.value.trim().toLowerCase();
-  if(!/^(\\d{10}|[^\\s@]+@[^\\s@]+\\.[^\\s@]+)$/.test(login)){recoverError.textContent='Ingresa una cédula de 10 dígitos o un correo válido.';recoverLogin.focus();return}
+  if(!/^(\d{10}|[^\s@]+@[^\s@]+\.[^\s@]+)$/.test(login)){recoverError.textContent='Ingresa una cédula de 10 dígitos o un correo válido.';recoverLogin.focus();return}
   recoverSend.disabled=true;recoverSend.textContent='ENVIANDO…';recoverError.textContent='';
   try{const x=await jsonPost(PASSWORD_API,{action:'self_recovery',login});cerrarRecuperacion();show(x.d.message||'Si los datos corresponden a una cuenta activa, recibirás un correo.','ok')}catch{cerrarRecuperacion();show('Si los datos corresponden a una cuenta activa, recibirás un correo.','ok')}finally{recoverSend.disabled=false;recoverSend.textContent='ENVIAR ENLACE'}
 }
