@@ -66,91 +66,55 @@
         <button id="forgot" class="forgot" type="button">¿Olvidaste tu contraseña?</button>
         <div class="quick"><div>📦 Inventario y OT</div><div>🌐 IP y acceso remoto</div></div>
       </div>
-      <div id="recovery" class="recovery">
-        <h3>Crear nuevo PIN</h3>
-        <p>El enlace del correo fue validado. Por ahora, la recuperación de prueba de Rubi continúa usando un PIN de 4 a 8 dígitos.</p>
-        <label for="newPin">Nuevo PIN</label>
-        <input id="newPin" type="password" inputmode="numeric" maxlength="8" placeholder="••••">
-        <label for="newPin2">Repetir PIN</label>
-        <input id="newPin2" type="password" inputmode="numeric" maxlength="8" placeholder="••••">
-        <button id="savePin" class="go" type="button">GUARDAR NUEVO PIN →</button>
-      </div>
       <div id="msg" class="msg"></div>
-      <div class="note"><b>Ingreso por perfil.</b><br>Las credenciales se validan con los usuarios activos de DISPROTEL. El ingreso principal ya admite contraseñas con letras, números y caracteres especiales. La recuperación por correo continúa temporalmente en modo PIN únicamente para la prueba del usuario Rubi.</div>
-      <div class="preview">DISPROTEL · acceso interno</div>
+      <div class="note"><b>Acceso seguro por perfil.</b><br>Las contraseñas se validan con Supabase Auth y nunca se guardan en los módulos del sistema. El PIN se conserva temporalmente solo como respaldo durante la migración.</div>\n      <div class="preview">DISPROTEL · acceso interno</div>
     </div>
   </section>
 </main>
 <script>
-const LOGIN_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-login';
-const RECOVERY_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-recuperar-pin';
+const AUTH_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-auth-login';
+const LEGACY_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-login';
+const PASSWORD_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-password-admin';
 const u=document.getElementById('usuario'),p=document.getElementById('pin'),msg=document.getElementById('msg'),go=document.getElementById('go');
-const loginNormal=document.getElementById('loginNormal'),recovery=document.getElementById('recovery'),savePin=document.getElementById('savePin');
-let recoveryToken='';
 document.getElementById('eye').onclick=()=>{p.type=p.type==='password'?'text':'password'};
 function show(text,type='err'){msg.className='msg show '+type;msg.textContent=text}
-function prepararSesiones(me,usuario,pin){
-  const base={usuario,pin,nombre:me.nombre||'',unidad_grupo:me.unidad_grupo||''};
-  sessionStorage.setItem('disprotel_login_general_v2',JSON.stringify({...base,rol:me.rol||'',id:me.id||''}));
+function prepararSesiones(me,usuario,credentials={}){
+  const base={usuario,nombre:me.nombre||'',unidad_grupo:me.unidad_grupo||'',rol:me.rol||'',id:me.id||'',es_admin_principal:!!me.es_admin_principal,puede_asignar_ip:!!me.puede_asignar_ip,...credentials};
+  sessionStorage.setItem('disprotel_login_general_v2',JSON.stringify(base));
   if(me.rol==='TÉCNICO')sessionStorage.setItem('disprotel_trabajos_test',JSON.stringify(base));
-  if(me.rol==='ADMINISTRADOR'||me.es_admin_principal)sessionStorage.setItem('disprotel_ordenes_oficina_test',JSON.stringify({usuario,pin}));
-  if(me.rol==='RESPONSABLE IP'||me.puede_asignar_ip)sessionStorage.setItem('disprotel_ip_test',JSON.stringify({usuario,pin}));
+  if(me.rol==='ADMINISTRADOR'||me.es_admin_principal)sessionStorage.setItem('disprotel_ordenes_oficina_test',JSON.stringify(base));
+  if(me.rol==='RESPONSABLE IP'||me.puede_asignar_ip)sessionStorage.setItem('disprotel_ip_test',JSON.stringify(base));
 }
-function destino(me){
-  if(me.rol==='TÉCNICO')return 'trabajos-tecnicos.html';
-  if(me.rol==='RESPONSABLE IP')return 'asignacion-ip.html';
-  if(me.rol==='ADMINISTRADOR'||me.es_admin_principal)return 'principal.html';
-  if(me.rol==='BODEGA')return 'principal.html';
-  if(me.puede_asignar_ip)return 'asignacion-ip.html';
-  return 'principal.html';
-}
+function destino(me){if(me.rol==='TÉCNICO')return 'trabajos-tecnicos.html';if(me.rol==='RESPONSABLE IP'||me.puede_asignar_ip)return 'asignacion-ip.html';return 'principal.html'}
+async function jsonPost(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),d=await r.json().catch(()=>({error:'Respuesta inválida del servidor'}));return{r,d}}
 async function entrar(){
-  const usuario=u.value.trim().toLowerCase(),pin=p.value.trim();
-  if(!usuario||!pin){show('Escribe usuario y contraseña para continuar.');return}
+  const usuario=u.value.trim().toLowerCase(),password=p.value;
+  if(!usuario||!password){show('Escribe usuario y contraseña para continuar.');return}
   go.disabled=true;go.textContent='VALIDANDO…';show('Validando credenciales…','ok');
   try{
-    const r=await fetch(LOGIN_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario,pin})});
-    const d=await r.json().catch(()=>({error:'Respuesta inválida del servidor'}));
-    if(!r.ok||!d?.ok)throw new Error(d?.error||'No se pudo iniciar sesión');
-    const me=d.usuario||{};prepararSesiones(me,usuario,pin);show('Bienvenido, '+(me.nombre||usuario)+'. Abriendo tu área…','ok');
-    setTimeout(()=>location.href=destino(me),250);
+    const auth=await jsonPost(AUTH_API,{login:usuario,password});
+    if(auth.r.ok&&auth.d?.ok){
+      const me=auth.d.usuario||{};
+      if(auth.d.change_required){
+        if(!auth.d.auth_session?.access_token)throw new Error('No se pudo preparar el cambio obligatorio');
+        sessionStorage.setItem('disprotel_auth_pending',JSON.stringify(auth.d.auth_session));
+        p.value='';location.replace('cambiar-contrasena-obligatoria.html');return;
+      }
+      prepararSesiones(me,usuario,{session_token:auth.d.session_token,expires_at:auth.d.expires_at,auth_mode:true});
+      p.value='';show('Bienvenido, '+(me.nombre||usuario)+'. Abriendo tu área…','ok');setTimeout(()=>location.href=destino(me),250);return;
+    }
+    const legacy=await jsonPost(LEGACY_API,{usuario,pin:password});
+    if(!legacy.r.ok||!legacy.d?.ok)throw new Error('Usuario o contraseña incorrectos');
+    const me=legacy.d.usuario||{};prepararSesiones(me,usuario,{pin:password,auth_mode:false});
+    p.value='';show('Bienvenido, '+(me.nombre||usuario)+'. Abriendo tu área…','ok');setTimeout(()=>location.href=destino(me),250);
   }catch(e){show(e.message||'Usuario o contraseña incorrectos.');go.disabled=false;go.textContent='INGRESAR AL SISTEMA →';p.focus();p.select()}
 }
 async function solicitarRecuperacion(){
-  const usuario=u.value.trim().toLowerCase();
-  if(!usuario){show('Escribe primero tu usuario y luego toca “¿Olvidaste tu contraseña?”.');u.focus();return}
+  const login=u.value.trim().toLowerCase();if(!login){show('Escribe primero tu usuario, cédula o correo.');u.focus();return}
   const b=document.getElementById('forgot');b.disabled=true;b.textContent='ENVIANDO CORREO…';show('Solicitando enlace de recuperación…','ok');
-  try{
-    const r=await fetch(RECOVERY_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'request',usuario})});
-    const d=await r.json().catch(()=>({error:'Respuesta inválida del servidor'}));
-    if(!r.ok)throw new Error(d.error||'No se pudo enviar el correo');
-    show(d.message||'Si el usuario tiene recuperación habilitada, recibirá un correo.','ok');
-  }catch(e){show(e.message||'No se pudo enviar el correo.');}
-  finally{b.disabled=false;b.textContent='¿Olvidaste tu contraseña?'}
+  try{const x=await jsonPost(PASSWORD_API,{action:'self_recovery',login});show(x.d.message||'Si los datos corresponden a una cuenta activa, recibirás un correo.','ok')}catch{show('Si los datos corresponden a una cuenta activa, recibirás un correo.','ok')}finally{b.disabled=false;b.textContent='¿Olvidaste tu contraseña?'}
 }
-async function guardarNuevoPin(){
-  const a=document.getElementById('newPin').value.trim(),b=document.getElementById('newPin2').value.trim();
-  if(!/^\d{4,8}$/.test(a)){show('El nuevo PIN debe tener entre 4 y 8 dígitos.');return}
-  if(a!==b){show('Los dos PIN no coinciden.');return}
-  if(!recoveryToken){show('El enlace de recuperación ya no es válido. Solicita uno nuevo.');return}
-  savePin.disabled=true;savePin.textContent='GUARDANDO…';
-  try{
-    const r=await fetch(RECOVERY_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+recoveryToken},body:JSON.stringify({action:'reset',pin:a})});
-    const d=await r.json().catch(()=>({error:'Respuesta inválida del servidor'}));
-    if(!r.ok)throw new Error(d.error||'No se pudo cambiar el PIN');
-    recoveryToken='';history.replaceState(null,'',location.pathname+location.search);recovery.classList.remove('show');loginNormal.classList.remove('hiddenLogin');u.value='rubi';p.value='';document.getElementById('newPin').value='';document.getElementById('newPin2').value='';show(d.message||'PIN actualizado correctamente.','ok');p.focus();
-  }catch(e){show(e.message||'No se pudo cambiar el PIN.');savePin.disabled=false;savePin.textContent='GUARDAR NUEVO PIN →'}
-}
-function revisarEnlaceRecuperacion(){
-  const h=new URLSearchParams(location.hash.replace(/^#/,''));
-  const err=h.get('error_description');
-  if(err){show(decodeURIComponent(err));return}
-  const token=h.get('access_token');
-  if(token){recoveryToken=token;loginNormal.classList.add('hiddenLogin');recovery.classList.add('show');show('Correo verificado. Ahora crea tu nuevo PIN.','ok');document.getElementById('newPin').focus()}
-}
-go.onclick=entrar;document.getElementById('forgot').onclick=solicitarRecuperacion;savePin.onclick=guardarNuevoPin;
-p.addEventListener('keydown',e=>{if(e.key==='Enter')entrar()});u.addEventListener('keydown',e=>{if(e.key==='Enter')p.focus()});document.getElementById('newPin2').addEventListener('keydown',e=>{if(e.key==='Enter')guardarNuevoPin()});
-revisarEnlaceRecuperacion();
+go.onclick=entrar;document.getElementById('forgot').onclick=solicitarRecuperacion;p.addEventListener('keydown',e=>{if(e.key==='Enter')entrar()});u.addEventListener('keydown',e=>{if(e.key==='Enter')p.focus()});
 (async()=>{const img=document.getElementById('brandLogo'),fallback=document.getElementById('logoFallback');try{const r=await fetch('reporte-trabajo.html?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('logo');const t=await r.text();const m=t.match(/const LOGO='([^']+)'/);if(!m?.[1])throw new Error('logo');img.src=m[1];img.onload=()=>{img.style.display='block';fallback.style.display='none'};img.onerror=()=>{img.style.display='none';fallback.style.display='block'}}catch{img.style.display='none';fallback.style.display='block'}})();
 </script>
 </body>
