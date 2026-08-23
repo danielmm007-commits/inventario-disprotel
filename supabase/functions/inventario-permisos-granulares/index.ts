@@ -91,12 +91,44 @@ Deno.serve(async (req) => {
     const s = database();
     const me = await sessionUser(s, req);
     if (!me) return reply({ error: 'Sesión no válida' }, 401);
+    const body = await req.json().catch(() => ({}));
+    const action = String(body?.action || '');
+
+    if (action === 'resolve_self') {
+      const inherited = me.perfil_config_id
+        ? await profilePermissions(s, me.perfil_config_id)
+        : [];
+      const overrides = await s.from('usuario_permisos')
+        .select('permiso_clave,estado')
+        .eq('responsable_id', me.id);
+      if (overrides.error) throw overrides.error;
+      const effective = new Map(
+        inherited.map((row: any) => [row.permiso_clave, Boolean(row.permitido)]),
+      );
+      for (const row of overrides.data || []) {
+        effective.set(row.permiso_clave, row.estado === 'PERMITIDO');
+      }
+      let profile: any = null;
+      if (me.perfil_config_id) {
+        const result = await s.from('perfiles_config')
+          .select('id,nombre,perfil_base')
+          .eq('id', me.perfil_config_id)
+          .maybeSingle();
+        if (result.error) throw result.error;
+        profile = result.data;
+      }
+      return reply({
+        ok: true,
+        perfil: profile || { nombre: me.rol, perfil_base: me.rol },
+        permisos: [...effective.entries()]
+          .filter(([, allowed]) => allowed)
+          .map(([key]) => key),
+      });
+    }
+
     if (!canManage(me)) {
       return reply({ error: 'Solo un Administrador Supremo puede gestionar permisos' }, 403);
     }
-
-    const body = await req.json().catch(() => ({}));
-    const action = String(body?.action || '');
 
     if (action === 'bootstrap') {
       const [catalog, profiles, users] = await Promise.all([
