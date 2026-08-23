@@ -2,9 +2,9 @@
   if(!window.state||!Array.isArray(state.users))return;
   const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-usuarios-config';
   const session=(()=>{try{return JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'null')}catch{return null}})();
-  if(!session?.usuario||!session?.pin)return;
+  if(!session?.usuario||(!session?.session_token&&!session?.pin))return;
   let ready=false,syncing=false,timer=null,lastSig='';
-  function headers(){return {'Content-Type':'application/json','x-user':session.usuario,'x-pin':session.pin}}
+  function headers(){return {'Content-Type':'application/json','x-user':session.usuario,'x-pin':session.pin||'','x-session':session.session_token||''}}
   async function call(body){const r=await fetch(API,{method:'POST',headers:headers(),body:JSON.stringify(body)});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok||d?.error)throw new Error(d?.error||'No se pudo sincronizar usuarios');return d}
   function uiRole(r){const x=String(r||'').toUpperCase();if(x.includes('SUPREMO'))return'Administrador Supremo';if(x.includes('SUPERVISOR'))return'Supervisor Técnico';if(x.includes('PASANTE')||x.includes('AYUDANTE'))return'Pasante / Ayudante';if(x.includes('TÉCNICO')||x.includes('TECNICO'))return'Técnico';return'Administrador'}
   function meta(u){if(!u[4]||typeof u[4]!=='object')u[4]={historyCount:0,active:true};return u[4]}
