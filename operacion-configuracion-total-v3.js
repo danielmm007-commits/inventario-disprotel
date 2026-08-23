@@ -208,14 +208,7 @@
       const actions=card.querySelector('.opActions');actions?card.insertBefore(box,actions):card.appendChild(box);
     }
 
-    for(const group of (state.groups||[])){
-      const card=locateGroupCard(group);if(!card)continue;
-      card.querySelector('.grpCfg')?.remove();
-      const row=currentGroup(group);const edit=editingGrp.has(group);
-      const box=document.createElement('div');box.className='grpCfg'+(edit?' editing':'');
-      box.innerHTML=`<div class="cfgTop"><b style="font-size:8px;color:#16436f">PERSONAS DEL GRUPO</b><span class="cfgStatus ${row.confirmed?'ok':'warn'}">${row.confirmed?'✓ GUARDADO':row.inferred?'DETECTADO DEL PASO 3':'POR DEFINIR'}</span></div>${edit?groupEdit(group,row):groupView(group,row)}`;
-      const actions=card.querySelector('.opActions');actions?card.insertBefore(box,actions):card.appendChild(box);
-    }
+    document.querySelectorAll('.grpCfg').forEach(x=>x.remove());
     bind();
   }
 
