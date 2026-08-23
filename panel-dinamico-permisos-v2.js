@@ -61,9 +61,9 @@
   async function init(){
     const role=me.es_admin_principal?'ADMINISTRADOR SUPREMO':normalize(me.rol);
     apply({nombre:me.rol||role},fallback[role]||fallback['PASANTE / AYUDANTE']);
-    if(!me.pin)return;
+    if(!me.session_token&&!me.pin)return;
     try{
-      const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-user':me.usuario,'x-pin':me.pin},body:JSON.stringify({action:'resolve_self'})});
+      const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-user':me.usuario,'x-pin':me.pin||'','x-session':me.session_token||''},body:JSON.stringify({action:'resolve_self'})});
       const data=await response.json();
       if(!response.ok||data?.error)throw new Error(data?.error||'No se pudieron cargar permisos');
       apply(data.perfil,data.permisos||[]);
