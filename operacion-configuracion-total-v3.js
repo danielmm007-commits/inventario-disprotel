@@ -18,7 +18,7 @@
   function users(){
     return (state.users||[]).map((u,i)=>{
       if(Array.isArray(u)){
-        const meta=u[3]&&typeof u[3]==='object'?u[3]:{};
+        const meta=u[4]&&typeof u[4]==='object'?u[4]:{};
         return {id:String(meta.id||meta.userId||meta.usuario||u[0]||i),name:String(u[0]||''),role:String(u[1]||''),group:String(u[2]||''),raw:u,index:i};
       }
       return {id:String(u.id||u.user_id||u.usuario||u.nombre||u.name||i),name:String(u.nombre||u.name||u.usuario||''),role:String(u.rol||u.role||''),group:String(u.grupo_operativo||u.group||u.grupo||''),raw:u,index:i};
@@ -139,9 +139,24 @@
   }
 
   function peopleEditor(prefix,row){
-    const us=users();
-    if(!us.length)return '<div class="cfgHint">Primero crea usuarios en el Paso 3.</div>';
-    return `<div class="cfgPeople">${us.map(u=>{const on=(row.people||[]).map(String).includes(String(u.id));return `<label class="cfgPerson ${on?'on':''}"><input type="checkbox" data-person="${esc(prefix)}" value="${esc(u.id)}" ${on?'checked':''}><span><b>${esc(u.name)}</b>${u.role?` · ${esc(u.role)}`:''}</span></label>`}).join('')}</div>`;
+    const current=new Set((row.people||[]).map(String));
+    const used=new Set();
+    if(String(prefix).startsWith('GRUPO::')){
+      for(const group of (state.groups||[])){
+        const other=currentGroup(group);
+        if(other.id===row.id)continue;
+        (other.people||[]).forEach(id=>used.add(String(id)));
+      }
+    }else{
+      for(const loc of locations()){
+        const other=currentLoc(loc);
+        if(other.id===row.id)continue;
+        (other.people||[]).forEach(id=>used.add(String(id)));
+      }
+    }
+    const us=users().filter(u=>current.has(String(u.id))||!used.has(String(u.id)));
+    if(!us.length)return '<div class="cfgHint">No hay usuarios disponibles: los demás ya están asignados.</div>';
+    return `<div class="cfgPeople">${us.map(u=>{const on=current.has(String(u.id));return `<label class="cfgPerson ${on?'on':''}"><input type="checkbox" data-person="${esc(prefix)}" value="${esc(u.id)}" ${on?'checked':''}><span><b>${esc(u.name)}</b>${u.role?` · ${esc(u.role)}`:''}</span></label>`}).join('')}</div>`;
   }
 
   function locateCard(loc){
