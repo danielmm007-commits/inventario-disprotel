@@ -2,10 +2,10 @@
   const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-configuracion';
   const session=(()=>{try{return JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'null')}catch{return null}})();
   const status=document.getElementById('saveState');
-  if(!session?.usuario||!session?.pin){if(status)status.textContent='SESIÓN ADMIN REQUERIDA';return;}
+  if(!session?.usuario||(!session?.session_token&&!session?.pin)){if(status)status.textContent='SESIÓN ADMIN REQUERIDA';return;}
   const $b=k=>document.querySelector(`[data-bind="${k}"]`);
   let loading=false,timer=null,last='',serverState='CONECTANDO SUPABASE…',serverOk=true,painting=false;
-  function authHeaders(){return {'Content-Type':'application/json','x-user':session.usuario,'x-pin':session.pin}}
+  function authHeaders(){return {'Content-Type':'application/json','x-user':session.usuario||'','x-pin':session.pin||'','x-session':session.session_token||''}}
   function paint(){if(!status)return;painting=true;status.textContent=serverState;status.style.background=serverOk?'rgba(255,255,255,.14)':'rgba(255,191,71,.18)';status.dataset.backendState='1';painting=false;}
   function setStatus(text,ok=true){serverState=text;serverOk=ok;paint()}
   if(status){new MutationObserver(()=>{if(!painting&&status.textContent!==serverState)queueMicrotask(paint)}).observe(status,{childList:true,characterData:true,subtree:true});}
