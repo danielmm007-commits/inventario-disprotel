@@ -1,5 +1,5 @@
 (()=>{
-if(window.__supOpV3)return;window.__supOpV3=true;
+if(window.__supervisorCommandV2||window.__supOpV3)return;window.__supervisorCommandV2=true;window.__supOpV3=true;
 const KEY='disprotel_login_general_v2',API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-novedades-operativas';let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
 const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();if(!norm(me.rol).includes('SUPERVISOR TECNICO'))return;const main=document.querySelector('.main');if(!main)return;
 const route=t=>[...document.querySelectorAll('.module')].find(x=>x.querySelector('h3')?.textContent?.trim()===t)?.querySelector('a.btn')?.getAttribute('href')||'';
