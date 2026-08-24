@@ -63,6 +63,7 @@
     const whoRole=document.getElementById('whoRole');if(whoRole)whoRole.textContent=profileName;
     const badge=document.getElementById('rootBadge');if(badge)badge.textContent='● '+profileName.toUpperCase();
     const hero=document.querySelector('.hero p');if(hero)hero.textContent='Panel adaptado a los permisos efectivos de '+profileName+'.';
+    const techCard=[...document.querySelectorAll('.module')].find(card=>card.querySelector('h3')?.textContent?.trim()==='Área técnica');if(techCard&&normalize(profileName).includes('SUPERVISOR')){const link=techCard.querySelector('a.btn');if(link){link.href='panel-general-supervisor-visual.html';link.textContent='Abrir supervisión técnica →'}}
     const title=[...document.querySelectorAll('.sectionTitle h2')].find(item=>item.textContent.trim()==='Módulos principales');
     if(title){const subtitle=title.parentElement?.querySelector('span');if(subtitle)subtitle.textContent='Vista dinámica según perfil y excepciones individuales'}
     document.querySelector('.modules')?.setAttribute('data-permissions-source','granular-v1');
