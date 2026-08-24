@@ -2,7 +2,7 @@
   if(!window.state||!Array.isArray(state.roles))return;
   const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-perfiles-config';
   const session=(()=>{try{return JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'null')}catch{return null}})();
-  if(!session?.usuario||!session?.pin)return;
+  if(!session?.usuario||(!session?.session_token&&!session?.pin))return;
   const BASE=new Set(['ADMINISTRADOR SUPREMO','ADMINISTRADOR','SUPERVISOR TÉCNICO','TÉCNICO','PASANTE / AYUDANTE']);
   let ready=false,syncing=false,timer=null,lastSig='';
   const norm=s=>String(s||'').trim().toUpperCase();
@@ -13,7 +13,7 @@
     'TÉCNICO':['inventario','transferencias','area_tecnica'],
     'PASANTE / AYUDANTE':['area_tecnica']
   }[norm(base)]||['area_tecnica']);
-  function headers(){return {'Content-Type':'application/json','x-user':session.usuario,'x-pin':session.pin}}
+  function headers(){return {'Content-Type':'application/json','x-user':session.usuario||'','x-pin':session.pin||'','x-session':session.session_token||''}}
   async function call(body){const r=await fetch(API,{method:'POST',headers:headers(),body:JSON.stringify(body)});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok||d?.error)throw new Error(d?.error||'No se pudo sincronizar perfiles');return d}
   function payload(){return (state.roles||[]).map(r=>{const name=String(r?.[0]||'').trim();const base=BASE.has(norm(name))&&!r?.[2]?norm(name):norm(r?.[2]||'ADMINISTRADOR');return {nombre:name,perfil_base:base,activo:r?.[1]!==0,modulos:modulesFor(base)}}).filter(x=>x.nombre)}
   function signature(){return JSON.stringify(payload())}
