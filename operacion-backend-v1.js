@@ -40,7 +40,7 @@
     return {groups,locations};
   }
   function signature(){return JSON.stringify(payload())}
-  async function sync(){if(!ready||applying||syncing||!session?.usuario||(!session?.session_token&&!session?.pin))return;const sig=signature();if(sig===lastSig)return;syncing=true;try{const p=payload(),d=await call({action:'sync',...p});lastSig=sig;await applyBackend(d);lastSig=signature()}catch(e){console.error('Operación backend:',e)}finally{syncing=false}}
+  async function sync(){if(!ready||applying||syncing||!session?.usuario||(!session?.session_token&&!session?.pin))return;const sig=signature();if(sig===lastSig)return;syncing=true;try{const p=payload(),d=await call({action:'sync',...p});lastSig=sig;await applyBackend(d);lastSig=signature();window.disprotelSyncStatus?.('saved','✅ GUARDADO EN SUPABASE',new Intl.DateTimeFormat('es-EC',{timeZone:'America/Guayaquil',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date()))}catch(e){window.disprotelSyncStatus?.('error','🔴 NO SE PUDO GUARDAR',e.message||'Error de operación');console.error('Operación backend:',e)}finally{syncing=false}}
   function schedule(){clearTimeout(timer);timer=setTimeout(sync,650)}
   async function init(){
     if(!window.state||!session?.usuario||(!session?.session_token&&!session?.pin))return;
