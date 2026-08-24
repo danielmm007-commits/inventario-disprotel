@@ -33,9 +33,8 @@ let items=[];
 async function load(){
  if(!SESSION?.session_token){location.replace('login-general-v2.html?return='+encodeURIComponent('mi-inventario-tecnico.html'));return}
  try{
-  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-session':SESSION.session_token},body:JSON.stringify({action:'bootstrap',carrito_token:crypto.randomUUID()})});
+  const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-session':SESSION.session_token},body:JSON.stringify({action:'my-inventory',carrito_token:crypto.randomUUID()})});
   const d=await r.json();if(!r.ok||d.error)throw new Error(d.error||'No fue posible consultar el inventario');
-  if(!d.is_technician){location.replace('index.html?v=20260824-7');return}
   const own=d.assigned_locations||[];if(!own.length)throw new Error('No tienes una bodega operativa vigente asignada');
   const ownSet=new Set(own),locs=d.locations.filter(x=>ownSet.has(x.id));
   $('welcome').textContent='Inventario de '+(d.me?.nombre||'técnico');
