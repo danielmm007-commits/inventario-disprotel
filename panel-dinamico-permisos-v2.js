@@ -60,6 +60,11 @@
     const wrap=document.querySelector('.summaryWrap');
     if(wrap){const visible=[...summaries].filter(item=>item.style.display!=='none').length;wrap.style.gridTemplateColumns=visible===1?'1fr':''}
     const profileName=profile?.nombre||me.rol||'USUARIO';
+    const inventoryCard=[...document.querySelectorAll('.module')].find(card=>card.querySelector('h3')?.textContent?.trim()==='Inventario');
+    if(inventoryCard&&normalize(profileName)==='TECNICO'){
+      const description=inventoryCard.querySelector('p');if(description)description.textContent='Consulta de solo lectura de los equipos y materiales disponibles en tu bodega operativa.';
+      const link=inventoryCard.querySelector('a.btn');if(link){link.href='mi-inventario-tecnico.html?v=107';link.textContent='Ver mi inventario →'}
+    }
     const whoRole=document.getElementById('whoRole');if(whoRole)whoRole.textContent=profileName;
     const badge=document.getElementById('rootBadge');if(badge)badge.textContent='● '+profileName.toUpperCase();
     const hero=document.querySelector('.hero p');if(hero)hero.textContent='Panel adaptado a los permisos efectivos de '+profileName+'.';
