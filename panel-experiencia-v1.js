@@ -24,7 +24,7 @@
   top.insertBefore(tools,logout);
   let prefs={panel_vista:me.panel_vista||localStorage.getItem('disprotel_panel_vista')||'AMPLIA',avatar_tipo:me.avatar_tipo||'NEUTRO'};
   const avatarEmoji={MASCULINO:'👨',FEMENINO:'👩',NEUTRO:'🧑'};
-  const menuPilot=norm(JSON.stringify(me)).includes('BRYAN');let menuShell=null,menuHome=null,menuFrame=null;
+  const menuPilot=role==='TECNICO'||role==='AYUDANTE';let menuShell=null,menuHome=null,menuFrame=null;
   function directModuleUrl(raw){try{const u=new URL(raw,location.href);if(u.pathname.endsWith('/modulo-integrado.html')){const src=u.searchParams.get('src');return src?src+(src.includes('?')?'&':'?')+'menu=1&v='+Date.now():raw}return u.pathname.split('/').pop()+u.search}catch{return raw}}
   function metricByLabel(label){const stat=[...document.querySelectorAll('.main .stat')].find(x=>norm(x.querySelector('.lbl')?.textContent).includes(norm(label)));return stat?.querySelector('.num')?.textContent?.trim()||'0'}
   function syncTechnicalMetrics(){const set=(id,v)=>{const x=document.getElementById(id);if(x)x.textContent=v||'0'};set('dashAvailable',metricByLabel('TRABAJOS POR ACEPTAR'));set('dashProcess',metricByLabel('TRABAJOS EN PROCESO'));set('dashDone',metricByLabel('TRABAJOS FINALIZADOS'));set('dashPending',metricByLabel('TRABAJOS POR ACEPTAR'))}
