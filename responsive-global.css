@@ -71,3 +71,32 @@ button:not(:disabled):active,a.btn:not(.disabled):active,.btn:not(.disabled):act
 @media (prefers-reduced-motion:reduce){
   button,.btn,[role="button"],.online,.connected,.conectado,.status-connected,.connection-ok,.server-ok{animation:none!important;transition:none!important}
 }
+
+
+/* Controles oficiales de encabezado DISPROTEL v3 */
+.heroActions,.heroControls,.dashHeroActions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:10px!important;flex-wrap:wrap!important}
+.heroActions button,.heroControls button,.dashHeroActions button{
+  min-width:auto!important;
+  width:auto!important;
+  min-height:48px!important;
+  padding:0 17px!important;
+  border:1px solid #b5d8ec!important;
+  border-radius:11px!important;
+  background:linear-gradient(135deg,#fff,#d9efff)!important;
+  color:#082b5c!important;
+  font-size:16px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  letter-spacing:0!important;
+  box-shadow:0 7px 16px rgba(6,31,73,.20)!important;
+}
+.heroActions .online,.heroControls .status.ok,.heroControls .sync.ok,.dashHeroActions .panelConnected{
+  min-height:34px!important;
+  padding:0 12px!important;
+  border-radius:999px!important;
+  font-size:9px!important;
+  line-height:1!important;
+  font-weight:1000!important;
+  letter-spacing:0!important;
+  white-space:nowrap!important;
+}
