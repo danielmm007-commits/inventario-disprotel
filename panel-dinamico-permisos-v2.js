@@ -81,7 +81,7 @@
       const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-user':me.usuario,'x-pin':me.pin||'','x-session':me.session_token||''},body:JSON.stringify({action:'resolve_self'})});
       const data=await response.json();
       if(!response.ok||data?.error)throw new Error(data?.error||'No se pudieron cargar permisos');
-      apply(data.perfil,data.permisos||[]);
+      const permisos=data.permisos||[];apply(data.perfil,permisos);const accessContext={usuario:me.usuario,usuario_id:me.id||'',perfil:data.perfil||{nombre:me.rol||role},permisos,validado_en:new Date().toISOString(),session_token:me.session_token||''};sessionStorage.setItem('disprotel_access_context_v1',JSON.stringify(accessContext));sessionStorage.setItem('disprotel_login_general_v2',JSON.stringify({...me,perfil_efectivo:accessContext.perfil,permisos_efectivos:permisos,modulos_validados:true,permisos_validados_en:accessContext.validado_en}));window.dispatchEvent(new CustomEvent('disprotel:permissions-ready',{detail:accessContext}));
     }catch(error){console.warn('Panel granular: usando permisos de respaldo',error)}
   }
   init();
