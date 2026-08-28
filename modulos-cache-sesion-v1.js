@@ -74,13 +74,21 @@
     }catch{}
   }
 
+  function injectPurchaseDocumentReader(frame){
+    try{
+      const w=frame.contentWindow,d=frame.contentDocument,path=(w.location.pathname||'').toLowerCase();
+      if(!path.endsWith('/compras-ingresos.html')||d.getElementById('comprasDocumentoSerialesLoader'))return;
+      const s=d.createElement('script');s.id='comprasDocumentoSerialesLoader';s.src='compras-documento-seriales-v1.js?v=20260829-1';d.body.appendChild(s);
+    }catch{}
+  }
+
   function decorateFrame(frame,btn){
     frame.classList.add('moduleCachedFrame');frame.dataset.moduleKey=keyFor(btn);frame.title=btn.querySelector('span')?.textContent||'Módulo DISPROTEL';
     frame.addEventListener('load',()=>{
       try{
         const path=frame.contentWindow.location.pathname||'';
         if(/login-general-v2\.html/i.test(path)){top.location.href='login-general-v2.html';return}
-        injectNativeSerialCamera(frame);injectMultiScanner(frame);
+        injectNativeSerialCamera(frame);injectMultiScanner(frame);injectPurchaseDocumentReader(frame);
         const d=frame.contentDocument;
         if(!d||d.__disprotelBackHook)return;d.__disprotelBackHook=true;
         d.addEventListener('click',e=>{
