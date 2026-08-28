@@ -1,0 +1,52 @@
+/* Sidebar dinámico ERP DISPROTEL */
+.erpMenuToggle{margin-left:auto!important;width:32px!important;height:30px!important;min-height:30px!important;min-width:32px!important;padding:0!important;display:grid!important;place-items:center!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:7px!important;background:rgba(255,255,255,.08)!important;color:#fff!important;font-size:17px!important;line-height:1!important;cursor:pointer!important;flex:0 0 auto!important}
+.erpMenuToggle:hover{background:rgba(255,255,255,.14)!important;transform:none!important}
+.menuAside .sideTitle{position:relative}.menuAside .sideTitle{display:flex!important;align-items:flex-start!important;gap:8px!important;flex-wrap:wrap!important}.menuAside .sideTitle .navAvatar{flex:0 0 auto!important}.menuAside .sideTitle b,.menuAside .sideTitle small{width:auto!important}.menuAside .sideTitle .erpMenuToggle{position:absolute!important;right:4px!important;top:4px!important}
+
+@media(min-width:681px){
+  body.erpSidebarReady.panelMenu .menuShell{grid-template-columns:62px minmax(0,1fr)!important;transition:grid-template-columns .2s ease!important}
+  body.erpSidebarReady.panelMenu .menuAside{width:62px!important;overflow-x:hidden!important;transition:width .2s ease,box-shadow .2s ease!important;z-index:30!important}
+  body.erpSidebarReady.panelMenu .menuAside .sideTitle{min-height:46px!important;padding:4px!important;justify-content:center!important}
+  body.erpSidebarReady.panelMenu .menuAside .sideTitle .navAvatar{display:none!important}
+  body.erpSidebarReady.panelMenu .menuAside .sideTitle b,
+  body.erpSidebarReady.panelMenu .menuAside .sideTitle small,
+  body.erpSidebarReady.panelMenu .menuAside .navGroup,
+  body.erpSidebarReady.panelMenu .menuAside button:not(.erpMenuToggle) span{display:none!important}
+  body.erpSidebarReady.panelMenu .menuAside .erpMenuToggle{position:static!important;margin:0 auto!important}
+  body.erpSidebarReady.panelMenu .menuAside button:not(.erpMenuToggle){justify-content:center!important;padding:8px 5px!important;min-height:42px!important;font-size:18px!important;border-left:0!important}
+  body.erpSidebarReady.panelMenu .menuAside button:not(.erpMenuToggle):hover{transform:none!important}
+
+  body.erpSidebarReady.erpSidebarHover.panelMenu .menuShell,
+  body.erpSidebarReady.erpSidebarPinned.panelMenu .menuShell{grid-template-columns:220px minmax(0,1fr)!important}
+  body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside,
+  body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside{width:220px!important;box-shadow:8px 0 24px rgba(7,59,80,.16)!important}
+  body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside .sideTitle,
+  body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside .sideTitle{display:block!important;min-height:74px!important;padding:6px 7px 12px!important}
+  body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside .sideTitle .navAvatar,
+  body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside .sideTitle .navAvatar{display:grid!important}
+  body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside .sideTitle b,
+  body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside .sideTitle b,
+  body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside .sideTitle small,
+  body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside .sideTitle small,
+  body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside .navGroup,
+  body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside .navGroup,
+  body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside button:not(.erpMenuToggle) span,
+  body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside button:not(.erpMenuToggle) span{display:block!important}
+  body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside .erpMenuToggle,
+  body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside .erpMenuToggle{position:absolute!important;right:4px!important;top:4px!important;margin:0!important}
+  body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside button:not(.erpMenuToggle),
+  body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside button:not(.erpMenuToggle){justify-content:flex-start!important;padding:8px 9px!important;font-size:12px!important;border-left:3px solid transparent!important}
+}
+
+@media(max-width:680px){
+  body.erpSidebarReady.panelMenu .menuAside{display:none!important}
+  body.erpSidebarReady.erpMobileMenuOpen.panelMenu .menuAside{display:grid!important;position:fixed!important;left:0!important;top:56px!important;bottom:0!important;width:min(86vw,320px)!important;height:auto!important;z-index:150!important;grid-template-columns:1fr!important;align-content:start!important;padding:12px!important;box-shadow:18px 0 40px rgba(5,35,48,.32)!important;animation:erpSlideIn .18s ease both!important}
+  body.erpSidebarReady.erpMobileMenuOpen.panelMenu:after{content:'';position:fixed;inset:56px 0 0 0;background:rgba(4,24,34,.38);z-index:140}
+  body.erpSidebarReady.panelMenu .menuShell{display:block!important}
+  body.erpSidebarReady.panelMenu .menuStage{width:100%!important}
+  body.erpSidebarReady.panelMenu .menuAside .sideTitle{grid-column:auto!important;display:block!important;min-height:70px!important;padding:6px 7px 12px!important}
+  body.erpSidebarReady.panelMenu .menuAside .sideTitle .erpMenuToggle{display:grid!important}
+  body.erpSidebarReady.panelMenu .menuAside button:not(.erpMenuToggle){min-height:46px!important;flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;text-align:left!important;font-size:12px!important;padding:9px 10px!important}
+  body.erpSidebarReady.panelMenu .menuAside .navGroup{display:block!important}
+  @keyframes erpSlideIn{from{transform:translateX(-18px);opacity:0}to{transform:none;opacity:1}}
+}
