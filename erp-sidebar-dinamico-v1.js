@@ -53,24 +53,46 @@
 
   function compactFrame(frame){
     try{
-      const d=frame.contentDocument;if(!d||d.getElementById('erpCompactInjected'))return;
-      const s=d.createElement('style');s.id='erpCompactInjected';s.textContent=`
-        .hero{padding:12px 18px!important;min-height:0!important;border-radius:10px!important;margin-bottom:8px!important}
-        .hero h1{font-size:22px!important;margin:2px 0 3px!important}.hero p{font-size:11px!important;margin:0!important;line-height:1.3!important}.eyebrow{font-size:8px!important;margin-bottom:2px!important}
-        .statusBar,.connectionBar,.onlineBar,.supabaseStatus{min-height:28px!important;padding:5px 10px!important;margin-bottom:6px!important;font-size:8px!important;border-radius:7px!important}
-        .pageHeader,.moduleHeader,.innerHeader{padding-top:7px!important;padding-bottom:7px!important;min-height:0!important}
-        .tabs,.tabbar,.subnav,.toolbar{margin-top:6px!important;margin-bottom:6px!important;gap:6px!important}.tabs button,.tabbar button,.subnav button,.toolbar button{min-height:34px!important;padding:7px 10px!important;font-size:10px!important;border-radius:7px!important}
-        .main,.content,.container{padding-top:8px!important}.sectionTitle{margin-top:12px!important}
-        body.erpInventoryCompact .hero{display:none!important}
-        body.erpInventoryCompact .tabs,body.erpInventoryCompact .tabbar,body.erpInventoryCompact .subnav,body.erpInventoryCompact .toolbar{margin-top:4px!important}
-        @media(max-width:680px){.hero{padding:10px 12px!important}.hero h1{font-size:18px!important}.hero p{font-size:10px!important}}
-      `;d.head.appendChild(s);
-      const hero=d.querySelector('.hero');
-      const heroText=(hero?.textContent||'').toLowerCase();
-      if(heroText.includes('centro de inventario')||heroText.includes('control central de existencias'))d.body.classList.add('erpInventoryCompact');
+      const d=frame.contentDocument;if(!d)return;
+      if(!d.getElementById('erpCompactInjected')){
+        const s=d.createElement('style');s.id='erpCompactInjected';s.textContent=`
+          .hero{padding:12px 18px!important;min-height:0!important;border-radius:10px!important;margin-bottom:8px!important}
+          .hero h1{font-size:22px!important;margin:2px 0 3px!important}.hero p{font-size:11px!important;margin:0!important;line-height:1.3!important}.eyebrow{font-size:8px!important;margin-bottom:2px!important}
+          .statusBar,.connectionBar,.onlineBar,.supabaseStatus{min-height:28px!important;padding:5px 10px!important;margin-bottom:6px!important;font-size:8px!important;border-radius:7px!important}
+          .pageHeader,.moduleHeader,.innerHeader{padding-top:7px!important;padding-bottom:7px!important;min-height:0!important}
+          .tabs,.tabbar,.subnav,.toolbar{margin-top:6px!important;margin-bottom:6px!important;gap:6px!important}.tabs button,.tabbar button,.subnav button,.toolbar button{min-height:34px!important;padding:7px 10px!important;font-size:10px!important;border-radius:7px!important}
+          .main,.content,.container{padding-top:8px!important}.sectionTitle{margin-top:12px!important}
+          body.erpInventoryCompact .hero{display:none!important}
+          body.erpInventoryCompact .tabs,body.erpInventoryCompact .tabbar,body.erpInventoryCompact .subnav,body.erpInventoryCompact .toolbar{margin-top:4px!important}
+          @media(max-width:680px){.hero{padding:10px 12px!important}.hero h1{font-size:18px!important}.hero p{font-size:10px!important}}
+        `;d.head.appendChild(s);
+      }
+      const markInventory=()=>{
+        const candidates=[...d.querySelectorAll('section,header,div')];
+        const hit=candidates.find(el=>{
+          const txt=(el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+          return txt.includes('centro de inventario')&&txt.includes('control central de existencias');
+        });
+        if(hit){
+          let target=hit;
+          while(target.parentElement&&target.parentElement!==d.body){
+            const t=(target.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+            if(t.includes('centro de inventario')&&t.includes('control central de existencias')&&t.length<500) target=target.parentElement;
+            else break;
+          }
+          target.style.setProperty('display','none','important');
+          d.body.classList.add('erpInventoryCompact');
+          return true;
+        }
+        return false;
+      };
+      if(!markInventory()){
+        let tries=0;const timer=setInterval(()=>{if(markInventory()||++tries>20)clearInterval(timer)},150);
+      }
     }catch(e){}
   }
-  const obs=new MutationObserver(()=>document.querySelectorAll('iframe.menuFrame').forEach(f=>{f.addEventListener('load',()=>compactFrame(f),{once:false});compactFrame(f)}));
+  const hookFrame=f=>{f.addEventListener('load',()=>compactFrame(f));compactFrame(f)};
+  const obs=new MutationObserver(()=>document.querySelectorAll('iframe.menuFrame').forEach(hookFrame));
   obs.observe(document.documentElement,{childList:true,subtree:true});
-  setTimeout(()=>document.querySelectorAll('iframe.menuFrame').forEach(f=>{f.addEventListener('load',()=>compactFrame(f));compactFrame(f)}),800);
+  setTimeout(()=>document.querySelectorAll('iframe.menuFrame').forEach(hookFrame),800);
 })();
