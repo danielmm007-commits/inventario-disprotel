@@ -61,8 +61,13 @@
         .pageHeader,.moduleHeader,.innerHeader{padding-top:7px!important;padding-bottom:7px!important;min-height:0!important}
         .tabs,.tabbar,.subnav,.toolbar{margin-top:6px!important;margin-bottom:6px!important;gap:6px!important}.tabs button,.tabbar button,.subnav button,.toolbar button{min-height:34px!important;padding:7px 10px!important;font-size:10px!important;border-radius:7px!important}
         .main,.content,.container{padding-top:8px!important}.sectionTitle{margin-top:12px!important}
+        body.erpInventoryCompact .hero{display:none!important}
+        body.erpInventoryCompact .tabs,body.erpInventoryCompact .tabbar,body.erpInventoryCompact .subnav,body.erpInventoryCompact .toolbar{margin-top:4px!important}
         @media(max-width:680px){.hero{padding:10px 12px!important}.hero h1{font-size:18px!important}.hero p{font-size:10px!important}}
       `;d.head.appendChild(s);
+      const hero=d.querySelector('.hero');
+      const heroText=(hero?.textContent||'').toLowerCase();
+      if(heroText.includes('centro de inventario')||heroText.includes('control central de existencias'))d.body.classList.add('erpInventoryCompact');
     }catch(e){}
   }
   const obs=new MutationObserver(()=>document.querySelectorAll('iframe.menuFrame').forEach(f=>{f.addEventListener('load',()=>compactFrame(f),{once:false});compactFrame(f)}));
