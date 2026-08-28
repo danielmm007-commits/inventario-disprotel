@@ -79,37 +79,33 @@
           body.erpInventoryCompact .hero{
             display:block!important;
             min-height:0!important;
-            padding:9px 16px!important;
-            margin:6px 0 7px!important;
+            padding:7px 14px!important;
+            margin:5px 0 6px!important;
             border-radius:9px!important;
             box-shadow:0 4px 12px rgba(7,59,80,.08)!important;
           }
           body.erpInventoryCompact .hero .heroTop{align-items:center!important}
           body.erpInventoryCompact .hero h1{
-            font-size:18px!important;
-            line-height:1.12!important;
-            margin:1px 0 2px!important;
+            font-size:17px!important;
+            line-height:1.08!important;
+            margin:0 0 2px!important;
           }
           body.erpInventoryCompact .hero p{
-            font-size:10px!important;
-            line-height:1.2!important;
+            font-size:9.5px!important;
+            line-height:1.15!important;
             margin:0!important;
           }
-          body.erpInventoryCompact .hero .eyebrow{
-            font-size:7px!important;
-            margin:0 0 1px!important;
-            letter-spacing:.12em!important;
-          }
-          body.erpInventoryCompact .hero .badge{padding:6px 9px!important;font-size:8px!important}
+          body.erpInventoryCompact .hero .eyebrow{display:none!important}
+          body.erpInventoryCompact .hero .badge{padding:5px 8px!important;font-size:8px!important}
           body.erpInventoryCompact .tabs,
           body.erpInventoryCompact .tabbar,
           body.erpInventoryCompact .subnav,
-          body.erpInventoryCompact .toolbar{margin-top:4px!important}
+          body.erpInventoryCompact .toolbar{margin-top:3px!important}
 
           @media(max-width:680px){
             .hero{padding:10px 12px!important}.hero h1{font-size:18px!important}.hero p{font-size:10px!important}
-            body.erpInventoryCompact .hero{padding:8px 11px!important;margin:4px 0 6px!important;border-radius:8px!important}
-            body.erpInventoryCompact .hero h1{font-size:16px!important}
+            body.erpInventoryCompact .hero{padding:7px 10px!important;margin:4px 0 5px!important;border-radius:8px!important}
+            body.erpInventoryCompact .hero h1{font-size:15px!important}
             body.erpInventoryCompact .hero p{font-size:9px!important}
           }
         `;
