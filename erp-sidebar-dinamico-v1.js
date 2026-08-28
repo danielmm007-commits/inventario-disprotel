@@ -82,6 +82,7 @@
       const d=frame.contentDocument,w=frame.contentWindow;if(!d||!w)return;
       const path=(w.location.pathname||'').toLowerCase();
       const isFinalInventory=path.endsWith('/index.html')||path.endsWith('/index');
+      const isTech=path.endsWith('/trabajos-tecnicos.html');
       if(!d.getElementById('erpCompactInjected')){
         const s=d.createElement('style');s.id='erpCompactInjected';s.textContent=`
           .hero{padding:12px 18px!important;min-height:0!important;border-radius:10px!important;margin-bottom:8px!important}
@@ -93,10 +94,12 @@
           body.erpInventoryFinal .invHero{min-height:0!important;padding:10px 18px!important;margin:6px 0 7px!important;border-radius:10px!important;box-shadow:0 4px 12px rgba(7,59,80,.08)!important}
           body.erpInventoryFinal .invHero>small{display:none!important}body.erpInventoryFinal .invHero h1{font-size:20px!important;line-height:1.1!important;margin:0 0 3px!important}body.erpInventoryFinal .invHero p{font-size:11px!important;line-height:1.2!important;margin:0!important}
           body.erpInventoryFinal .tabs{margin:7px 0!important;gap:7px!important}body.erpInventoryFinal .tab{min-width:130px!important;padding:10px 11px!important;font-size:11px!important;border-radius:9px!important}
+          body.erpTechFromGeneral #login{display:none!important}
           @media(max-width:680px){.hero{padding:10px 12px!important}.hero h1{font-size:18px!important}.hero p{font-size:10px!important}body.erpInventoryFinal .invHero{padding:8px 11px!important;margin:4px 0 6px!important;border-radius:8px!important}body.erpInventoryFinal .invHero h1{font-size:17px!important}body.erpInventoryFinal .invHero p{font-size:9.5px!important}body.erpInventoryFinal .tabs{margin:5px 0!important;gap:5px!important}body.erpInventoryFinal .tab{min-width:120px!important;padding:8px 7px!important;font-size:10px!important}}
         `;d.head.appendChild(s);
       }
       if(isFinalInventory){d.body?.classList.add('erpInventoryFinal');const firstLine=d.querySelector('.invHero>small');if(firstLine)firstLine.style.setProperty('display','none','important')}
+      if(isTech){try{const general=JSON.parse(w.sessionStorage.getItem('disprotel_login_general_v2')||'null');if(general?.session_token)d.body?.classList.add('erpTechFromGeneral')}catch{}}
     }catch(e){}
   }
 
@@ -115,6 +118,7 @@
           if(visible===lastVisible)stable++;else{lastVisible=visible;stable=0}
           if(syncDone&&finalNodes&&stable>=2){compactFrame(frame);setFrameLoading(frame,false);return}
         }else if(path.endsWith('/trabajos-tecnicos.html')){
+          compactFrame(frame);
           const app=d.getElementById('app');
           const login=d.getElementById('login');
           const ready=app&&!app.classList.contains('hidden');
