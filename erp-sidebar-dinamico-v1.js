@@ -60,7 +60,12 @@
 
   function compactFrame(frame){
     try{
-      const d=frame.contentDocument;if(!d)return;
+      const d=frame.contentDocument;
+      const w=frame.contentWindow;
+      if(!d||!w)return;
+      const path=(w.location.pathname||'').toLowerCase();
+      const isFinalInventory=path.endsWith('/index.html')||path.endsWith('/index');
+
       if(!d.getElementById('erpCompactInjected')){
         const s=d.createElement('style');
         s.id='erpCompactInjected';
@@ -76,52 +81,51 @@
           .main,.content,.container{padding-top:8px!important}
           .sectionTitle{margin-top:12px!important}
 
-          body.erpInventoryCompact .hero{
-            display:block!important;
+          body.erpInventoryFinal .invHero{
             min-height:0!important;
-            padding:7px 14px!important;
-            margin:5px 0 6px!important;
-            border-radius:9px!important;
+            padding:10px 18px!important;
+            margin:6px 0 7px!important;
+            border-radius:10px!important;
             box-shadow:0 4px 12px rgba(7,59,80,.08)!important;
           }
-          body.erpInventoryCompact .hero .heroTop{align-items:center!important}
-          body.erpInventoryCompact .hero h1{
-            font-size:17px!important;
-            line-height:1.08!important;
-            margin:0 0 2px!important;
+          body.erpInventoryFinal .invHero>small{display:none!important}
+          body.erpInventoryFinal .invHero h1{
+            font-size:20px!important;
+            line-height:1.1!important;
+            margin:0 0 3px!important;
           }
-          body.erpInventoryCompact .hero p{
-            font-size:9.5px!important;
-            line-height:1.15!important;
+          body.erpInventoryFinal .invHero p{
+            font-size:11px!important;
+            line-height:1.2!important;
             margin:0!important;
           }
-          body.erpInventoryCompact .hero .eyebrow{display:none!important}
-          body.erpInventoryCompact .hero .badge{padding:5px 8px!important;font-size:8px!important}
-          body.erpInventoryCompact .tabs,
-          body.erpInventoryCompact .tabbar,
-          body.erpInventoryCompact .subnav,
-          body.erpInventoryCompact .toolbar{margin-top:3px!important}
+          body.erpInventoryFinal .tabs{
+            margin:7px 0!important;
+            gap:7px!important;
+          }
+          body.erpInventoryFinal .tab{
+            min-width:130px!important;
+            padding:10px 11px!important;
+            font-size:11px!important;
+            border-radius:9px!important;
+          }
 
           @media(max-width:680px){
             .hero{padding:10px 12px!important}.hero h1{font-size:18px!important}.hero p{font-size:10px!important}
-            body.erpInventoryCompact .hero{padding:7px 10px!important;margin:4px 0 5px!important;border-radius:8px!important}
-            body.erpInventoryCompact .hero h1{font-size:15px!important}
-            body.erpInventoryCompact .hero p{font-size:9px!important}
+            body.erpInventoryFinal .invHero{padding:8px 11px!important;margin:4px 0 6px!important;border-radius:8px!important}
+            body.erpInventoryFinal .invHero h1{font-size:17px!important}
+            body.erpInventoryFinal .invHero p{font-size:9.5px!important}
+            body.erpInventoryFinal .tabs{margin:5px 0!important;gap:5px!important}
+            body.erpInventoryFinal .tab{min-width:120px!important;padding:8px 7px!important;font-size:10px!important}
           }
         `;
         d.head.appendChild(s);
       }
 
-      const markInventory=()=>{
-        const txt=(d.body?.innerText||'').toLowerCase();
-        const isInventory=txt.includes('centro de inventario')&&txt.includes('control central de existencias');
-        if(isInventory){d.body.classList.add('erpInventoryCompact');return true;}
-        return false;
-      };
-
-      if(!markInventory()){
-        let tries=0;
-        const timer=setInterval(()=>{if(markInventory()||++tries>25)clearInterval(timer)},150);
+      if(isFinalInventory){
+        d.body?.classList.add('erpInventoryFinal');
+        const firstLine=d.querySelector('.invHero>small');
+        if(firstLine)firstLine.style.setProperty('display','none','important');
       }
     }catch(e){}
   }
