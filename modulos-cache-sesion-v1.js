@@ -41,13 +41,46 @@
     }catch{}
   }
 
+  function injectMultiScanner(frame){
+    if(!isMobile())return;
+    try{
+      const w=frame.contentWindow,d=frame.contentDocument,path=(w.location.pathname||'').toLowerCase();
+      if(!(path.endsWith('/index.html')||path.endsWith('/index'))||d.__disprotelMultiScanner)return;
+      const btn=d.getElementById('btnEscanear'),modal=d.getElementById('scannerModal'),video=d.getElementById('scannerVideo'),closeBtn=d.getElementById('btnCerrarScanner'),serial=d.getElementById('serial'),msg=d.getElementById('appMsg');
+      if(!btn||!modal||!video||!serial)return;
+      d.__disprotelMultiScanner=true;
+      const box=modal.querySelector('.modalbox');
+      const panel=d.createElement('div');panel.id='multiScanPanel';panel.style.cssText='margin-top:12px;padding:12px;border:1px solid #d7e4ec;border-radius:12px;background:#f8fbfd;display:none';
+      panel.innerHTML='<b style="display:block;color:#0b2a5c;margin-bottom:6px">Códigos encontrados</b><div style="font-size:11px;color:#607583;margin-bottom:8px">Apunta a la etiqueta unos segundos y elige el código correcto.</div><div id="multiScanList" style="display:grid;gap:8px"></div>';
+      box?.insertBefore(panel,closeBtn||null);
+      let controls=null,reader=null,finishTimer=null,candidates=[];
+      const stop=()=>{try{controls?.stop()}catch{}controls=null;clearTimeout(finishTimer)};
+      const labelFor=v=>/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/i.test(v)?'MAC':`Código ${candidates.indexOf(v)+1}`;
+      const render=()=>{const list=d.getElementById('multiScanList');if(!list)return;panel.style.display=candidates.length?'block':'none';list.innerHTML='';candidates.forEach(v=>{const b=d.createElement('button');b.type='button';b.className='secondary';b.style.cssText='margin:0;text-align:left;padding:11px 12px';b.innerHTML='<b>'+labelFor(v)+'</b><br><span style="font-size:12px">'+v.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))+'</span>';b.onclick=()=>{serial.value=v.toUpperCase();stop();modal.classList.add('hidden');if(msg){msg.className='msg ok';msg.textContent='Código seleccionado: '+v}};list.appendChild(b)})};
+      const start=async()=>{
+        if(serial.disabled)return;
+        candidates=[];render();modal.classList.remove('hidden');
+        try{
+          reader=new w.ZXingBrowser.BrowserMultiFormatReader();
+          controls=await reader.decodeFromConstraints({video:{facingMode:{ideal:'environment'}}},video,(res)=>{
+            if(!res)return;const v=String(res.getText?res.getText():res.text||'').trim();if(!v||candidates.includes(v))return;
+            candidates.push(v);render();clearTimeout(finishTimer);finishTimer=setTimeout(()=>{stop();if(!candidates.length&&msg){msg.className='msg err';msg.textContent='No se detectaron códigos'}} ,3500);
+          });
+          finishTimer=setTimeout(()=>{stop();if(!candidates.length&&msg){msg.className='msg err';msg.textContent='No se detectaron códigos'}} ,7000);
+        }catch(e){stop();modal.classList.add('hidden');if(msg){msg.className='msg err';msg.textContent='No se pudo abrir la cámara'}}
+      };
+      btn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();start()},true);
+      closeBtn?.addEventListener('click',()=>stop(),true);
+    }catch{}
+  }
+
   function decorateFrame(frame,btn){
     frame.classList.add('moduleCachedFrame');frame.dataset.moduleKey=keyFor(btn);frame.title=btn.querySelector('span')?.textContent||'Módulo DISPROTEL';
     frame.addEventListener('load',()=>{
       try{
         const path=frame.contentWindow.location.pathname||'';
         if(/login-general-v2\.html/i.test(path)){top.location.href='login-general-v2.html';return}
-        injectNativeSerialCamera(frame);
+        injectNativeSerialCamera(frame);injectMultiScanner(frame);
         const d=frame.contentDocument;
         if(!d||d.__disprotelBackHook)return;d.__disprotelBackHook=true;
         d.addEventListener('click',e=>{
