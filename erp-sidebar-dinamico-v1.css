@@ -1,6 +1,6 @@
 /* Sidebar dinámico ERP DISPROTEL */
-.erpMenuToggle{margin-left:auto!important;width:32px!important;height:30px!important;min-height:30px!important;min-width:32px!important;padding:0!important;display:grid!important;place-items:center!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:7px!important;background:rgba(255,255,255,.08)!important;color:#fff!important;font-size:17px!important;line-height:1!important;cursor:pointer!important;flex:0 0 auto!important}
-.erpMenuToggle:hover{background:rgba(255,255,255,.14)!important;transform:none!important}
+.erpMenuToggle{margin-left:auto!important;width:44px!important;height:34px!important;min-height:34px!important;min-width:44px!important;padding:3px 4px!important;display:grid!important;grid-template-rows:16px 8px!important;place-items:center!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:8px!important;background:rgba(255,255,255,.08)!important;color:#fff!important;line-height:1!important;cursor:pointer!important;flex:0 0 auto!important;transition:.16s ease!important}
+.erpMenuToggle:hover{background:rgba(255,255,255,.14)!important;transform:none!important}.erpMenuToggle .erpToggleIcon{font-size:16px!important;line-height:1!important}.erpMenuToggle .erpToggleState{font-size:6.5px!important;line-height:1!important;letter-spacing:.08em!important;font-weight:800!important;color:#bcd8e1!important}.erpMenuToggle.isActive{background:linear-gradient(145deg,#19a878,#0d7e66)!important;border-color:#5ce0b5!important;box-shadow:0 0 0 2px rgba(80,222,177,.13)!important}.erpMenuToggle.isActive .erpToggleState{color:#fff!important}
 .menuAside .sideTitle{position:relative}.menuAside .sideTitle{display:flex!important;align-items:flex-start!important;gap:8px!important;flex-wrap:wrap!important}.menuAside .sideTitle .navAvatar{flex:0 0 auto!important}.menuAside .sideTitle b,.menuAside .sideTitle small{width:auto!important}.menuAside .sideTitle .erpMenuToggle{position:absolute!important;right:4px!important;top:4px!important}
 
 @media(min-width:681px){
@@ -12,7 +12,7 @@
   body.erpSidebarReady.panelMenu .menuAside .sideTitle small,
   body.erpSidebarReady.panelMenu .menuAside .navGroup,
   body.erpSidebarReady.panelMenu .menuAside button:not(.erpMenuToggle) span{display:none!important}
-  body.erpSidebarReady.panelMenu .menuAside .erpMenuToggle{position:static!important;margin:0 auto!important}
+  body.erpSidebarReady.panelMenu .menuAside .erpMenuToggle{position:static!important;margin:0 auto!important;width:42px!important;min-width:42px!important}
   body.erpSidebarReady.panelMenu .menuAside button:not(.erpMenuToggle){justify-content:center!important;padding:8px 5px!important;min-height:42px!important;font-size:18px!important;border-left:0!important}
   body.erpSidebarReady.panelMenu .menuAside button:not(.erpMenuToggle):hover{transform:none!important}
 
