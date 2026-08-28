@@ -70,6 +70,9 @@
     paintToggle(btn);
     aside.addEventListener('mouseenter',()=>{if(!mq.matches)document.body.classList.add('erpSidebarHover')});
     aside.addEventListener('mouseleave',()=>document.body.classList.remove('erpSidebarHover'));
+    aside.addEventListener('click',e=>{
+      if(e.target.closest('button:not(.erpMenuToggle)'))document.querySelectorAll('iframe.menuFrame').forEach(f=>setFrameLoading(f,true));
+    },true);
     aside.querySelectorAll('button:not(.erpMenuToggle)').forEach(b=>b.addEventListener('click',()=>{if(mq.matches){document.body.classList.remove('erpMobileMenuOpen');paintToggle(btn)}}));
     return true;
   }
@@ -114,7 +117,7 @@
           const sync=d.getElementById('inventorySync');
           const syncDone=sync&&(sync.dataset.state==='online'||sync.dataset.state==='error');
           const finalNodes=!!d.getElementById('tabCatalogo')&&!!d.getElementById('tabCostos');
-          const visible=[...d.querySelectorAll('.tabs .tab')].filter(x=>!x.classList.contains('hidden')&&getComputedStyle(x).display!=='none').length;
+          const visible=[...d.querySelectorAll('.tabs .tab')].filter(x=>!x.classList.contains('hidden')&&w.getComputedStyle(x).display!=='none').length;
           if(visible===lastVisible)stable++;else{lastVisible=visible;stable=0}
           if(syncDone&&finalNodes&&stable>=2){compactFrame(frame);setFrameLoading(frame,false);return}
         }else if(path.endsWith('/trabajos-tecnicos.html')){
@@ -124,6 +127,12 @@
           const ready=app&&!app.classList.contains('hidden');
           const error=login&&login.querySelector('.err')?.textContent?.trim();
           if(ready||error){setFrameLoading(frame,false);return}
+        }else if(path.endsWith('/solicitudes-transferencias.html')){
+          const sync=d.getElementById('sync');
+          const actions=d.getElementById('actionPanel');
+          const syncReady=sync&&(sync.classList.contains('ok')||!/VALIDANDO|GUARDANDO/i.test(sync.textContent||''));
+          const finalReady=actions&&!actions.classList.contains('hidden');
+          if(syncReady&&finalReady){compactFrame(frame);setFrameLoading(frame,false);return}
         }else{
           compactFrame(frame);setFrameLoading(frame,false);return;
         }
