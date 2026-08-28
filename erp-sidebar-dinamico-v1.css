@@ -39,14 +39,14 @@
 }
 
 @media(max-width:680px){
-  body.erpSidebarReady.panelMenu .menuAside{display:none!important}
-  body.erpSidebarReady.erpMobileMenuOpen.panelMenu .menuAside{display:grid!important;position:fixed!important;left:0!important;top:56px!important;bottom:0!important;width:min(86vw,320px)!important;height:auto!important;z-index:150!important;grid-template-columns:1fr!important;align-content:start!important;padding:12px!important;box-shadow:18px 0 40px rgba(5,35,48,.32)!important;animation:erpSlideIn .18s ease both!important}
-  body.erpSidebarReady.erpMobileMenuOpen.panelMenu:after{content:'';position:fixed;inset:56px 0 0 0;background:rgba(4,24,34,.38);z-index:140}
+  /* En móvil el panel principal ya usa la navegación en tarjetas de panel-experiencia.
+     Debe permanecer visible mientras no haya un módulo abierto. */
+  body.erpSidebarReady.panelMenu:not(.moduleOpen) .menuAside{display:grid!important}
+  body.erpSidebarReady.panelMenu.moduleOpen .menuAside{display:none!important}
   body.erpSidebarReady.panelMenu .menuShell{display:block!important}
   body.erpSidebarReady.panelMenu .menuStage{width:100%!important}
   body.erpSidebarReady.panelMenu .menuAside .sideTitle{grid-column:auto!important;display:block!important;min-height:70px!important;padding:6px 7px 12px!important}
-  body.erpSidebarReady.panelMenu .menuAside .sideTitle .erpMenuToggle{display:grid!important}
+  body.erpSidebarReady.panelMenu .menuAside .sideTitle .erpMenuToggle{display:none!important}
   body.erpSidebarReady.panelMenu .menuAside button:not(.erpMenuToggle){min-height:46px!important;flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;text-align:left!important;font-size:12px!important;padding:9px 10px!important}
   body.erpSidebarReady.panelMenu .menuAside .navGroup{display:block!important}
-  @keyframes erpSlideIn{from{transform:translateX(-18px);opacity:0}to{transform:none;opacity:1}}
 }
