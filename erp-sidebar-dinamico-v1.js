@@ -101,16 +101,19 @@
   }
 
   function revealWhenReady(frame){
-    let tries=0;
+    let tries=0,lastVisible=-1,stable=0;
     const check=()=>{
       try{
         const d=frame.contentDocument,w=frame.contentWindow;if(!d||!w)throw 0;
         const path=(w.location.pathname||'').toLowerCase();
         if(path==='about:blank'||path.endsWith('/principal.html')){setFrameLoading(frame,false);return}
         if(path.endsWith('/index.html')||path.endsWith('/index')){
-          const tabs=d.querySelectorAll('.tabs .tab');
-          const hasFinalTabs=!!d.getElementById('tabCatalogo')&&!!d.getElementById('tabCostos')&&tabs.length>=6;
-          if(hasFinalTabs){compactFrame(frame);setFrameLoading(frame,false);return}
+          const sync=d.getElementById('inventorySync');
+          const syncDone=sync&&(sync.dataset.state==='online'||sync.dataset.state==='error');
+          const finalNodes=!!d.getElementById('tabCatalogo')&&!!d.getElementById('tabCostos');
+          const visible=[...d.querySelectorAll('.tabs .tab')].filter(x=>!x.classList.contains('hidden')&&getComputedStyle(x).display!=='none').length;
+          if(visible===lastVisible)stable++;else{lastVisible=visible;stable=0}
+          if(syncDone&&finalNodes&&stable>=2){compactFrame(frame);setFrameLoading(frame,false);return}
         }else if(path.endsWith('/trabajos-tecnicos.html')){
           const app=d.getElementById('app');
           const login=d.getElementById('login');
@@ -121,7 +124,7 @@
           compactFrame(frame);setFrameLoading(frame,false);return;
         }
       }catch(e){}
-      if(++tries<80)setTimeout(check,100);else setFrameLoading(frame,false);
+      if(++tries<120)setTimeout(check,100);else setFrameLoading(frame,false);
     };
     check();
   }
