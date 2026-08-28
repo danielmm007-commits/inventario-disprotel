@@ -1,16 +1,33 @@
 (()=>{
   if(window.__disprotelErpSidebarV1)return;window.__disprotelErpSidebarV1=true;
-  const root=document.documentElement;
   const mq=window.matchMedia('(max-width:680px)');
+  function paintToggle(btn){
+    if(!btn)return;
+    if(mq.matches){
+      const open=document.body.classList.contains('erpMobileMenuOpen');
+      btn.classList.toggle('isActive',open);
+      btn.setAttribute('aria-pressed',open?'true':'false');
+      btn.title=open?'Cerrar navegación':'Abrir navegación';
+      const s=btn.querySelector('.erpToggleState');if(s)s.textContent=open?'ABIERTO':'MENÚ';
+      return;
+    }
+    const pinned=document.body.classList.contains('erpSidebarPinned');
+    btn.classList.toggle('isActive',pinned);
+    btn.setAttribute('aria-pressed',pinned?'true':'false');
+    btn.title=pinned?'Menú fijado · clic para modo automático':'Modo automático · clic para fijar menú';
+    const s=btn.querySelector('.erpToggleState');if(s)s.textContent=pinned?'FIJO':'AUTO';
+  }
   function install(){
     const aside=document.querySelector('.menuAside');
     const shell=document.querySelector('.menuShell');
     if(!aside||!shell)return false;
     document.body.classList.add('erpSidebarReady');
     let title=aside.querySelector('.sideTitle');
-    if(title&&!title.querySelector('.erpMenuToggle')){
-      const btn=document.createElement('button');
-      btn.type='button';btn.className='erpMenuToggle';btn.setAttribute('aria-label','Abrir o compactar navegación');btn.title='Abrir / compactar menú';btn.innerHTML='<span>☰</span>';
+    let btn=title&&title.querySelector('.erpMenuToggle');
+    if(title&&!btn){
+      btn=document.createElement('button');
+      btn.type='button';btn.className='erpMenuToggle';btn.setAttribute('aria-label','Abrir o compactar navegación');
+      btn.innerHTML='<span class="erpToggleIcon">☰</span><small class="erpToggleState">AUTO</small>';
       title.appendChild(btn);
       btn.addEventListener('click',e=>{e.stopPropagation();
         if(mq.matches){document.body.classList.toggle('erpMobileMenuOpen');}
@@ -18,16 +35,21 @@
           const pinned=document.body.classList.toggle('erpSidebarPinned');
           localStorage.setItem('disprotel_sidebar_pinned',pinned?'1':'0');
         }
+        paintToggle(btn);
       });
     }
     if(!mq.matches&&localStorage.getItem('disprotel_sidebar_pinned')==='1')document.body.classList.add('erpSidebarPinned');
+    paintToggle(btn);
     aside.addEventListener('mouseenter',()=>{if(!mq.matches)document.body.classList.add('erpSidebarHover')});
     aside.addEventListener('mouseleave',()=>document.body.classList.remove('erpSidebarHover'));
-    aside.querySelectorAll('button:not(.erpMenuToggle)').forEach(b=>b.addEventListener('click',()=>{if(mq.matches)document.body.classList.remove('erpMobileMenuOpen')}));
+    aside.querySelectorAll('button:not(.erpMenuToggle)').forEach(b=>b.addEventListener('click',()=>{if(mq.matches){document.body.classList.remove('erpMobileMenuOpen');paintToggle(btn)}}));
     return true;
   }
   let n=0;const t=setInterval(()=>{if(install()||++n>40)clearInterval(t)},150);
-  window.addEventListener('resize',()=>{if(!mq.matches)document.body.classList.remove('erpMobileMenuOpen')});
+  window.addEventListener('resize',()=>{
+    if(!mq.matches)document.body.classList.remove('erpMobileMenuOpen');
+    const btn=document.querySelector('.erpMenuToggle');paintToggle(btn);
+  });
 
   function compactFrame(frame){
     try{
