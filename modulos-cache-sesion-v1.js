@@ -1,0 +1,70 @@
+(()=>{
+  if(window.__disprotelModuleCacheV1)return;window.__disprotelModuleCacheV1=true;
+  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+  const frames=new Map();let activeFrame=null,ready=false;
+  const css=document.createElement('style');css.textContent=`
+    .moduleCachedFrame{display:none!important;width:100%!important;border:0!important;background:#eef5f8}
+    .moduleCachedFrame.moduleCacheActive{display:block!important}
+    @media(min-width:681px){body.panelMenu.moduleOpen .moduleCachedFrame{height:calc(100vh - 88px)!important;border-radius:20px!important}}
+    @media(max-width:680px){body.panelMenu.moduleOpen .moduleCachedFrame{height:calc(100dvh - 48px)!important;border-radius:0!important}}
+  `;document.head.appendChild(css);
+
+  function directUrl(raw){
+    try{
+      const u=new URL(raw,location.href);
+      if(u.pathname.endsWith('/modulo-integrado.html')){
+        const src=u.searchParams.get('src');
+        if(src){const su=new URL(src,location.href);su.searchParams.set('menu','1');return su.pathname.split('/').pop()+su.search}
+      }
+      return u.pathname.split('/').pop()+u.search;
+    }catch{return raw}
+  }
+  function keyFor(btn){return directUrl(btn.dataset.href||'').replace(/([?&])v=\d+/g,'$1v=session')}
+  function decorateFrame(frame,btn){
+    frame.classList.add('moduleCachedFrame');frame.dataset.moduleKey=keyFor(btn);frame.title=btn.querySelector('span')?.textContent||'Módulo DISPROTEL';
+    frame.addEventListener('load',()=>{
+      try{
+        const path=frame.contentWindow.location.pathname||'';
+        if(/login-general-v2\.html/i.test(path)){top.location.href='login-general-v2.html';return}
+        const d=frame.contentDocument;
+        if(!d||d.__disprotelBackHook)return;d.__disprotelBackHook=true;
+        d.addEventListener('click',e=>{
+          const c=e.target.closest('button,a');
+          if(c&&norm(c.textContent).includes('ATRAS')){
+            e.preventDefault();e.stopImmediatePropagation();goHome();
+          }
+        },true);
+      }catch{}
+    });
+    return frame;
+  }
+  function hideAll(){frames.forEach(f=>f.classList.remove('moduleCacheActive'))}
+  function show(btn){
+    const stage=document.querySelector('.menuStage');if(!stage)return;
+    const key=keyFor(btn);let frame=frames.get(key);
+    if(!frame){
+      frame=document.createElement('iframe');frame.className='menuFrame';decorateFrame(frame,btn);frames.set(key,frame);stage.appendChild(frame);frame.src=directUrl(btn.dataset.href);
+    }
+    hideAll();frame.classList.add('moduleCacheActive');activeFrame=frame;
+    const title=document.querySelector('.mobileModuleTitle');if(title)title.textContent=btn.querySelector('span')?.textContent||'Módulo';
+    document.body.classList.add('moduleOpen');
+    document.querySelectorAll('.menuAside button[data-href]').forEach(x=>x.classList.toggle('on',x===btn));
+  }
+  function goHome(){
+    const aside=document.querySelector('.menuAside');
+    if(matchMedia('(max-width:680px)').matches){document.body.classList.remove('moduleOpen');aside?.querySelectorAll('button').forEach(x=>x.classList.remove('on'));return}
+    const first=aside?.querySelector('button[data-href]');if(first)show(first);else document.body.classList.remove('moduleOpen');
+  }
+  function install(){
+    if(ready)return true;
+    const shell=document.querySelector('.menuShell'),aside=document.querySelector('.menuAside'),stage=document.querySelector('.menuStage'),old=document.querySelector('iframe.menuFrame');
+    if(!shell||!aside||!stage||!old)return false;
+    const activeBtn=aside.querySelector('button[data-href].on')||aside.querySelector('button[data-href]');
+    if(activeBtn){decorateFrame(old,activeBtn);frames.set(keyFor(activeBtn),old);if(old.src&&old.src!=='about:blank'){old.classList.add('moduleCacheActive');activeFrame=old}}
+    aside.addEventListener('click',e=>{const btn=e.target.closest('button[data-href]');if(!btn)return;e.preventDefault();e.stopImmediatePropagation();show(btn)},true);
+    const back=document.querySelector('.mobileModuleBack');if(back)back.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();goHome()},true);
+    window.disprotelModuleCache={frames,openByTitle:t=>{const b=[...aside.querySelectorAll('button[data-href]')].find(x=>norm(x.textContent).includes(norm(t)));if(b)show(b)},refreshActive:()=>{if(activeFrame)activeFrame.contentWindow.location.reload()}};
+    ready=true;return true;
+  }
+  let tries=0;const timer=setInterval(()=>{if(install()||++tries>80)clearInterval(timer)},100);
+})();
