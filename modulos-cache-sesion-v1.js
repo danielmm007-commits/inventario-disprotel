@@ -10,19 +10,11 @@
     try{
       const w=frame.contentWindow,d=frame.contentDocument,path=(w.location.pathname||'').toLowerCase();
       if(!path.endsWith('/solicitudes-transferencias.html'))return;
-      if(d.getElementById('solicitudesTecnicoV1Loader')||d.getElementById('solicitudesFlujoV2Loader')||d.__solicitudesPerfilResolviendo)return;
-      d.__solicitudesPerfilResolviendo=true;
-      let tries=0;
-      const wait=setInterval(()=>{
-        try{
-          if(!w.D){if(++tries<100)return;clearInterval(wait);d.__solicitudesPerfilResolviendo=false;return}
-          clearInterval(wait);d.__solicitudesPerfilResolviendo=false;
-          const tech=!!w.D.is_technician,s=d.createElement('script');
-          s.id=tech?'solicitudesTecnicoV1Loader':'solicitudesFlujoV2Loader';
-          s.src=tech?'solicitudes-transferencias-tecnico-v1.js?v=20260831-4':'solicitudes-transferencias-flujo-v2.js?v=20260830-3';
-          d.body.appendChild(s);
-        }catch(e){clearInterval(wait);d.__solicitudesPerfilResolviendo=false}
-      },50);
+      if(d.getElementById('solicitudesFlujoV2Loader'))return;
+      const s=d.createElement('script');
+      s.id='solicitudesFlujoV2Loader';
+      s.src='solicitudes-transferencias-flujo-v2.js?v=20260830-4';
+      d.body.appendChild(s);
     }catch{}
   }
   function injectNativeSerialCamera(frame){if(!isMobile())return;try{const w=frame.contentWindow,d=frame.contentDocument,path=(w.location.pathname||'').toLowerCase();if(!(path.endsWith('/index.html')||path.endsWith('/index'))||d.getElementById('btnCamaraNativa'))return;const fotoBtn=d.getElementById('btnFoto'),serial=d.getElementById('serial'),msg=d.getElementById('appMsg');if(!fotoBtn||!serial)return;const camBtn=d.createElement('button');camBtn.type='button';camBtn.id='btnCamaraNativa';camBtn.className='photo';camBtn.textContent='📸 Tomar foto del serial';camBtn.style.background='linear-gradient(135deg,#7b4ca3,#a661c2)';const camInput=d.createElement('input');camInput.id='camaraNativaInput';camInput.type='file';camInput.accept='image/*';camInput.setAttribute('capture','environment');camInput.className='hidden';fotoBtn.insertAdjacentElement('afterend',camBtn);camBtn.insertAdjacentElement('afterend',camInput);camBtn.onclick=()=>{if(serial.disabled)return;camInput.value='';camInput.click()};camInput.onchange=e=>{const file=e.target.files?.[0];if(file&&typeof w.prepararFoto==='function')w.prepararFoto(file,'serial',msg)}}catch{}}
