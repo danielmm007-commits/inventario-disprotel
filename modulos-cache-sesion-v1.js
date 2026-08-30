@@ -19,7 +19,7 @@
           clearInterval(wait);d.__solicitudesPerfilResolviendo=false;
           const tech=!!w.D.is_technician,s=d.createElement('script');
           s.id=tech?'solicitudesTecnicoV1Loader':'solicitudesFlujoV2Loader';
-          s.src=tech?'solicitudes-transferencias-tecnico-v1.js?v=20260831-3':'solicitudes-transferencias-flujo-v2.js?v=20260830-3';
+          s.src=tech?'solicitudes-transferencias-tecnico-v1.js?v=20260831-4':'solicitudes-transferencias-flujo-v2.js?v=20260830-3';
           d.body.appendChild(s);
         }catch(e){clearInterval(wait);d.__solicitudesPerfilResolviendo=false}
       },50);
