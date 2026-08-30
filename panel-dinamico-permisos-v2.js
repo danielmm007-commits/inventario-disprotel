@@ -27,9 +27,13 @@
   function canAny(allowed,keys){return allowed.has('*')||keys.some(key=>allowed.has(key))}
   function apply(profile,keys){
     const allowed=new Set(keys||[]);
+    const profileName=profile?.nombre||me.rol||'USUARIO';
+    const normalizedProfile=normalize(profileName);
     document.querySelectorAll('.module').forEach(card=>{
       const name=card.querySelector('h3')?.textContent?.trim()||'';
-      card.style.display=canAny(allowed,moduleRules[name]||[])?'flex':'none';
+      let visible=canAny(allowed,moduleRules[name]||[]);
+      if(normalizedProfile==='TECNICO'&&name==='Transferencias')visible=false;
+      card.style.display=visible?'flex':'none';
     });
     const ipCard=[...document.querySelectorAll('.module')].find(card=>card.querySelector('h3')?.textContent?.trim()==='IP y acceso remoto');
     if(ipCard&&ipCard.style.display!=='none'&&!canAny(allowed,['ip.asignar','ip.liberar','ip.reasignar','remoto.confirmar'])){
@@ -59,16 +63,15 @@
     adminStats.forEach((card,index)=>card.style.display=canAny(allowed,adminStatRules[index]||[])?'block':'none');
     const wrap=document.querySelector('.summaryWrap');
     if(wrap){const visible=[...summaries].filter(item=>item.style.display!=='none').length;wrap.style.gridTemplateColumns=visible===1?'1fr':''}
-    const profileName=profile?.nombre||me.rol||'USUARIO';
     const inventoryCard=[...document.querySelectorAll('.module')].find(card=>card.querySelector('h3')?.textContent?.trim()==='Inventario');
-    if(inventoryCard&&normalize(profileName)==='TECNICO'){
+    if(inventoryCard&&normalizedProfile==='TECNICO'){
       const description=inventoryCard.querySelector('p');if(description)description.textContent='Consulta de solo lectura de los equipos y materiales disponibles en tu bodega operativa.';
       const link=inventoryCard.querySelector('a.btn');if(link){link.href='mi-inventario-tecnico.html?v=107';link.textContent='Ver mi inventario →'}
     }
     const whoRole=document.getElementById('whoRole');if(whoRole)whoRole.textContent=profileName;
     const badge=document.getElementById('rootBadge');if(badge)badge.textContent='● '+profileName.toUpperCase();
     const hero=document.querySelector('.hero p');if(hero)hero.textContent='Panel adaptado a los permisos efectivos de '+profileName+'.';
-    const techCard=[...document.querySelectorAll('.module')].find(card=>card.querySelector('h3')?.textContent?.trim()==='Área técnica');if(techCard&&normalize(profileName).includes('SUPERVISOR')){const link=techCard.querySelector('a.btn');if(link){link.href='panel-general-supervisor-visual.html';link.textContent='Abrir supervisión técnica →'}}
+    const techCard=[...document.querySelectorAll('.module')].find(card=>card.querySelector('h3')?.textContent?.trim()==='Área técnica');if(techCard&&normalizedProfile.includes('SUPERVISOR')){const link=techCard.querySelector('a.btn');if(link){link.href='panel-general-supervisor-visual.html';link.textContent='Abrir supervisión técnica →'}}
     const title=[...document.querySelectorAll('.sectionTitle h2')].find(item=>item.textContent.trim()==='Módulos principales');
     if(title){const subtitle=title.parentElement?.querySelector('span');if(subtitle)subtitle.textContent='Vista dinámica según perfil y excepciones individuales'}
     document.querySelector('.modules')?.setAttribute('data-permissions-source','granular-v1');
