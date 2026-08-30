@@ -31,9 +31,60 @@
       try{
         const w=frame.contentWindow,d=frame.contentDocument;
         if(!w||!d||!(w.location.pathname||'').toLowerCase().endsWith('/solicitudes-transferencias.html'))return;
-        const hide=()=>{const baja=d.getElementById('bajaAction');if(baja)baja.style.setProperty('display','none','important')};
-        hide();setTimeout(hide,300);setTimeout(hide,1000);
-      }catch{}
+        const applyTechRules=()=>{
+          const supply=d.getElementById('supplyAction'),direct=d.getElementById('directAction'),baja=d.getElementById('bajaAction');
+          if(!supply||!direct||!baja)return;
+          supply.style.removeProperty('display');direct.style.removeProperty('display');baja.style.removeProperty('display');
+          const stock=d.getElementById('stockPanel');if(stock)stock.style.setProperty('display','none','important');
+          const active=d.querySelector('#actionPanel .action.on');
+          const activeId=active?.id||'supplyAction';
+          const incoming=d.getElementById('incomingPanel'),req=d.getElementById('reqPanel'),hist=d.getElementById('transferHistory')?.closest('.panel');
+          const setPanel=(el,show)=>{if(el)el.style.setProperty('display',show?'block':'none','important')};
+          const setTitle=(panel,title,sub)=>{if(!panel)return;const h=panel.querySelector('h2'),s=panel.querySelector('.sub');if(h)h.textContent=title;if(s)s.textContent=sub};
+          const historyType=d.getElementById('historyType');if(historyType)historyType.style.setProperty('display','none','important');
+          const historyLoc=d.getElementById('historyLocation');
+          if(activeId==='supplyAction'){
+            supply.querySelector('strong').textContent='Abastecimientos y transferencias recibidas';
+            supply.querySelector('span').textContent='Registra lo retirado de Bodega Matriz y acepta transferencias que te envían.';
+            direct.querySelector('strong').textContent='Transferir desde mi bodega';
+            direct.querySelector('span').textContent='Envía equipos o materiales a otra bodega y revisa si ya fueron recibidos.';
+            baja.querySelector('strong').textContent='Solicitar baja de mi inventario';
+            baja.querySelector('span').textContent='Reporta artículos averiados, perdidos o que deban darse de baja.';
+            setPanel(incoming,true);setPanel(req,true);setPanel(hist,true);
+            setTitle(incoming,'📥 Transferencias recibidas pendientes de aceptar','Aquí aparecen únicamente transferencias enviadas hacia tu bodega.');
+            setTitle(req,'📋 Mis abastecimientos pendientes de confirmación','Solo abastecimientos que registraste y que Administración todavía no ha confirmado.');
+            setTitle(hist,'🧾 Historial de abastecimientos y transferencias recibidas','Abastecimientos que registraste y transferencias directas que recibiste.');
+            if(historyLoc?.options?.length)historyLoc.options[0].textContent='Todas las bodegas involucradas';
+            const origin=d.getElementById('origin');
+            if(origin){
+              const matriz=[...origin.options].find(o=>/UB-001/i.test(o.textContent||''))||[...(w.D?.locations||[])].map(x=>({value:x.id,textContent:(x.codigo||'')+' · '+(x.ubicacion||'')})).find(o=>/UB-001/i.test(o.textContent||''));
+              if(matriz){
+                const value=matriz.value,idText=matriz.textContent;
+                origin.innerHTML='';const opt=d.createElement('option');opt.value=value;opt.textContent=idText;origin.appendChild(opt);origin.value=value;origin.disabled=true;
+                const lab=origin.closest('.field')?.querySelector('label');if(lab)lab.textContent='BODEGA MATRIZ · ORIGEN DEL ABASTECIMIENTO';
+                origin.dispatchEvent(new Event('change',{bubbles:true}));
+              }
+            }
+          }else if(activeId==='directAction'){
+            const origin=d.getElementById('origin');if(origin)origin.disabled=true;
+            setPanel(incoming,false);setPanel(req,false);setPanel(hist,true);
+            setTitle(hist,'🧾 Transferencias enviadas desde mi bodega','Transferencias pendientes de recepción y ya finalizadas.');
+            if(historyLoc?.options?.length)historyLoc.options[0].textContent='Todas las bodegas destino';
+          }else if(activeId==='bajaAction'){
+            const origin=d.getElementById('origin');if(origin)origin.disabled=true;
+            setPanel(incoming,false);setPanel(req,true);setPanel(hist,true);
+            setTitle(req,'🗑️ Mis solicitudes de baja pendientes','Solicitudes de baja de tu inventario que todavía esperan resolución administrativa.');
+            setTitle(hist,'🧾 Historial de bajas','Tus solicitudes de baja pendientes, aprobadas o rechazadas.');
+            if(historyLoc?.options?.length)historyLoc.options[0].textContent='Mi bodega';
+          }
+        };
+        if(!d.__techSolicitudesFinal){
+          d.__techSolicitudesFinal=true;
+          d.getElementById('actionPanel')?.addEventListener('click',()=>{setTimeout(applyTechRules,60);setTimeout(applyTechRules,350)},true);
+          const obs=new MutationObserver(()=>applyTechRules());obs.observe(d.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});d.__techSolicitudesObserver=obs;
+        }
+        applyTechRules();setTimeout(applyTechRules,250);setTimeout(applyTechRules,900);
+      }catch(e){console.warn('Perfil técnico solicitudes:',e)}
     };
     document.querySelectorAll('iframe.menuFrame').forEach(f=>{applyToFrame(f);if(!f.__techTransferHook){f.__techTransferHook=true;f.addEventListener('load',()=>applyToFrame(f))}});
     if(!window.__techTransferObserver){window.__techTransferObserver=new MutationObserver(()=>document.querySelectorAll('iframe.menuFrame').forEach(f=>{applyToFrame(f);if(!f.__techTransferHook){f.__techTransferHook=true;f.addEventListener('load',()=>applyToFrame(f))}}));window.__techTransferObserver.observe(document.documentElement,{childList:true,subtree:true})}
