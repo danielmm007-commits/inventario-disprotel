@@ -54,11 +54,9 @@
       if(st.disprotelLevel===HOME||st.disprotelLevel===GUARD||!st.disprotelLevel){
         pushState({disprotelLevel:MODULE,moduleKey:key});
       }else if(st.disprotelLevel===MODULE){
-        // Cambiar de módulo NO crea otro nivel móvil. Solo cambia el módulo actual.
         if(st.moduleKey!==key)replaceState({...st,disprotelLevel:MODULE,moduleKey:key});
         else currentLevel=MODULE;
       }else if(st.disprotelLevel===LEVEL2){
-        // Si se cambia de módulo desde una vista interna, descartamos ese nivel interno.
         replaceState({disprotelLevel:MODULE,moduleKey:key});
       }
     }catch{}
@@ -87,6 +85,33 @@
     }catch{}
   }
 
+  // Los iframes forman parte del historial conjunto del navegador. panel-experiencia
+  // limpia el módulo con about:blank y Android puede caer primero en ese estado.
+  // Si eso ocurre mientras el módulo todavía figura abierto, lo tratamos como HOME.
+  function hookMenuFrame(frame){
+    if(!frame||frame.__disprotelMobileHistoryHooked)return;
+    frame.__disprotelMobileHistoryHooked=true;
+    frame.addEventListener('load',()=>{
+      if(!isMobile()||!document.body.classList.contains('moduleOpen'))return;
+      let blank=false;
+      try{
+        const href=String(frame.contentWindow?.location?.href||'');
+        blank=!href||href==='about:blank';
+      }catch{}
+      if(!blank)return;
+      handling=true;
+      closeModuleUI();
+      try{replaceState({disprotelLevel:HOME})}catch{currentLevel=HOME}
+      setTimeout(()=>{handling=false},0);
+    });
+  }
+
+  function installFrameGuard(){
+    document.querySelectorAll('iframe.menuFrame').forEach(hookMenuFrame);
+    const mo=new MutationObserver(()=>document.querySelectorAll('iframe.menuFrame').forEach(hookMenuFrame));
+    mo.observe(document.documentElement,{childList:true,subtree:true});
+  }
+
   window.DisprotelMobileNav={
     pushLevel2(name='level2'){
       if(!isMobile()||handling)return;
@@ -106,7 +131,6 @@
     const from=currentLevel;
     const to=st.disprotelLevel||null;
 
-    // La cámara personalizada vive dentro de su propio contexto y consume su Atrás primero.
     if(document.getElementById('icsOverlay')){
       currentLevel=to;
       window.__disprotelSerialCameraBackClose?.();
@@ -116,13 +140,10 @@
     handling=true;
 
     if(from===LEVEL2&&to===MODULE){
-      // Nivel 2 -> Nivel 1 del mismo módulo.
       currentLevel=MODULE;
       if(!document.body.classList.contains('moduleOpen'))document.body.classList.add('moduleOpen');
       restoreTab(st.returnTabId);
     }else if(from===MODULE){
-      // Regla móvil principal: desde cualquier módulo de nivel 1, Atrás SIEMPRE muestra el menú de módulos.
-      // Aunque el historial del navegador intente revivir Inventario u otro módulo anterior, lo descartamos.
       closeModuleUI();
       try{replaceState({disprotelLevel:HOME})}catch{currentLevel=HOME}
     }else if(to===HOME){
@@ -164,5 +185,6 @@
   });
   observer.observe(document.body,{attributes:true,attributeFilter:['class']});
 
+  installFrameGuard();
   initHistory();
 })();
