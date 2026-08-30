@@ -27,16 +27,54 @@
   function canAny(allowed,keys){return allowed.has('*')||keys.some(key=>allowed.has(key))}
   function hookTechnicianTransferFrame(){
     if(normalize(me.rol)!=='TECNICO'&&!String(me.perfil_efectivo?.nombre||'').toUpperCase().includes('TECNICO'))return;
-    const applyToFrame=frame=>{
+    const applyBlock1=frame=>{
       try{
         const w=frame.contentWindow,d=frame.contentDocument;
         if(!w||!d||!(w.location.pathname||'').toLowerCase().endsWith('/solicitudes-transferencias.html'))return;
-        const hide=()=>{const baja=d.getElementById('bajaAction');if(baja)baja.style.setProperty('display','none','important')};
-        hide();setTimeout(hide,300);setTimeout(hide,1000);
+        const supply=d.getElementById('supplyAction'),direct=d.getElementById('directAction'),baja=d.getElementById('bajaAction');
+        if(!supply||!direct||!baja)return;
+        baja.style.removeProperty('display');
+        const active=d.querySelector('#actionPanel .action.on');
+        if(active?.id!=='supplyAction')return;
+        const strong=supply.querySelector('strong'),span=supply.querySelector('span');
+        if(strong)strong.textContent='Abastecimientos y transferencias recibidas';
+        if(span)span.textContent='Registra lo retirado de Bodega Matriz y acepta transferencias que te envían.';
+        const stock=d.getElementById('stockPanel');if(stock)stock.style.setProperty('display','none','important');
+        const incoming=d.getElementById('incomingPanel'),req=d.getElementById('reqPanel'),hist=d.getElementById('transferHistory')?.closest('.panel');
+        [incoming,req,hist].forEach(x=>x?.style.removeProperty('display'));
+        incoming?.classList.remove('hidden');req?.classList.remove('hidden');hist?.classList.remove('hidden');
+        const setTitle=(panel,title,sub)=>{if(!panel)return;const h=panel.querySelector('h2'),s=panel.querySelector('.sub');if(h)h.textContent=title;if(s)s.textContent=sub};
+        setTitle(incoming,'📥 Transferencias recibidas pendientes de aceptar','Aquí aparecen únicamente transferencias que otro técnico envió hacia tu bodega.');
+        setTitle(req,'📋 Mis abastecimientos pendientes de confirmación','Solo tus abastecimientos que Administración todavía no ha confirmado.');
+        setTitle(hist,'🧾 Historial de abastecimientos y transferencias recibidas','Abastecimientos que registraste y transferencias que recibiste.');
+        const historyType=d.getElementById('historyType');if(historyType)historyType.style.setProperty('display','none','important');
+        const historyLoc=d.getElementById('historyLocation');if(historyLoc?.options?.length)historyLoc.options[0].textContent='Todas las bodegas involucradas';
+        const origin=d.getElementById('origin');
+        if(origin){
+          let matrixOpt=[...origin.options].find(o=>/UB-001/i.test(o.textContent||''));
+          if(!matrixOpt&&Array.isArray(w.D?.locations)){
+            const loc=w.D.locations.find(x=>String(x.codigo||'').toUpperCase()==='UB-001');
+            if(loc){matrixOpt=d.createElement('option');matrixOpt.value=loc.id;matrixOpt.textContent=(loc.codigo||'UB-001')+' · '+(loc.ubicacion||'BODEGA MATRIZ');}
+          }
+          if(matrixOpt){
+            const val=matrixOpt.value,txt=matrixOpt.textContent;
+            origin.innerHTML='';const only=d.createElement('option');only.value=val;only.textContent=txt;origin.appendChild(only);origin.value=val;origin.disabled=true;
+            const lab=origin.closest('.field')?.querySelector('label');if(lab)lab.textContent='BODEGA MATRIZ · ORIGEN DEL ABASTECIMIENTO';
+          }
+        }
+      }catch(e){console.warn('Bloque 1 técnico:',e)}
+    };
+    const installFrame=frame=>{
+      try{
+        if(frame.__techBlock1Hook)return;
+        frame.__techBlock1Hook=true;
+        frame.addEventListener('load',()=>{setTimeout(()=>applyBlock1(frame),80);setTimeout(()=>applyBlock1(frame),350);setTimeout(()=>applyBlock1(frame),900)});
+        const bindSupply=()=>{try{const d=frame.contentDocument,w=frame.contentWindow;if(!d||!w||!(w.location.pathname||'').toLowerCase().endsWith('/solicitudes-transferencias.html'))return;const supply=d.getElementById('supplyAction');if(supply&&!supply.__techBlock1Click){supply.__techBlock1Click=true;supply.addEventListener('click',()=>{setTimeout(()=>applyBlock1(frame),40);setTimeout(()=>applyBlock1(frame),220)})}}catch{}};
+        bindSupply();setTimeout(bindSupply,250);setTimeout(bindSupply,800);
+        setTimeout(()=>applyBlock1(frame),80);setTimeout(()=>applyBlock1(frame),350);setTimeout(()=>applyBlock1(frame),900);
       }catch{}
     };
-    document.querySelectorAll('iframe.menuFrame').forEach(f=>{applyToFrame(f);if(!f.__techTransferHook){f.__techTransferHook=true;f.addEventListener('load',()=>applyToFrame(f))}});
-    if(!window.__techTransferObserver){window.__techTransferObserver=new MutationObserver(()=>document.querySelectorAll('iframe.menuFrame').forEach(f=>{applyToFrame(f);if(!f.__techTransferHook){f.__techTransferHook=true;f.addEventListener('load',()=>applyToFrame(f))}}));window.__techTransferObserver.observe(document.documentElement,{childList:true,subtree:true})}
+    document.querySelectorAll('iframe.menuFrame').forEach(installFrame);
   }
   function apply(profile,keys){
     const allowed=new Set(keys||[]);
