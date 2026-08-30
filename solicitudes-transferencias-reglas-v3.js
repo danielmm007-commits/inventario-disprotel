@@ -9,6 +9,7 @@
       oldApply();
       if(!D?.is_technician)return;
       const stock=document.getElementById('stockPanel');if(stock)stock.classList.add('hidden');
+      const bajaCard=[...document.querySelectorAll('.actionCard')].find(x=>/BAJA/i.test(x.textContent||''));if(bajaCard)bajaCard.style.display='none';
       if(mode==='ABASTECIMIENTO'){
         const matriz=(D.locations||[]).find(x=>x.codigo==='UB-001'&&x.permite_stock);
         if(matriz){
