@@ -41,6 +41,9 @@
 
   window.addEventListener('popstate',()=>{
     if(!isMobile())return;
+    // La cámara de seriales administra su propio paso de historial.
+    // Si está abierta, Atrás debe cerrarla sin cerrar el módulo Inventario.
+    if(document.getElementById('icsOverlay'))return;
     handling=true;
     const lvl=history.state?.disprotelLevel;
     if(document.body.classList.contains('moduleOpen'))closeModuleUI();
