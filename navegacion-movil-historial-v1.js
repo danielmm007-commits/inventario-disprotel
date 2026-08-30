@@ -4,7 +4,7 @@
   if(!isMobile())return;
 
   const HOME='disprotel-home',GUARD='disprotel-guard',MODULE='disprotel-module',LEVEL2='disprotel-level2',CAMERA='disprotel-camera';
-  let handling=false,initialized=false;
+  let handling=false,initialized=false,currentLevel=null;
 
   function activeModuleKey(){
     const b=document.querySelector('.menuAside button[data-href].on');
@@ -14,6 +14,7 @@
   function closeModuleUI(){
     const aside=document.querySelector('.menuAside');
     document.body.classList.remove('moduleOpen');
+    document.body.classList.remove('erpMobileMenuOpen');
     aside?.querySelectorAll('button[data-href]').forEach(x=>x.classList.remove('on'));
   }
 
@@ -27,15 +28,21 @@
     }
   }
 
+  function replaceState(state){
+    history.replaceState(state,'',location.href);
+    currentLevel=state?.disprotelLevel||null;
+  }
+  function pushState(state){
+    history.pushState(state,'',location.href);
+    currentLevel=state?.disprotelLevel||null;
+  }
+
   function initHistory(){
     if(initialized)return;initialized=true;
     try{
-      history.replaceState({...history.state,disprotelLevel:GUARD},'',location.href);
-      if(document.body.classList.contains('moduleOpen')){
-        history.pushState({disprotelLevel:MODULE,moduleKey:activeModuleKey()},'',location.href);
-      }else{
-        history.pushState({disprotelLevel:HOME},'',location.href);
-      }
+      replaceState({...history.state,disprotelLevel:GUARD});
+      if(document.body.classList.contains('moduleOpen'))pushState({disprotelLevel:MODULE,moduleKey:activeModuleKey()});
+      else pushState({disprotelLevel:HOME});
     }catch{}
   }
 
@@ -45,11 +52,14 @@
       const key=activeModuleKey();
       const st=history.state||{};
       if(st.disprotelLevel===HOME||st.disprotelLevel===GUARD||!st.disprotelLevel){
-        history.pushState({disprotelLevel:MODULE,moduleKey:key},'',location.href);
+        pushState({disprotelLevel:MODULE,moduleKey:key});
       }else if(st.disprotelLevel===MODULE){
-        if(st.moduleKey!==key)history.replaceState({...st,disprotelLevel:MODULE,moduleKey:key},'',location.href);
+        // Cambiar de módulo NO crea otro nivel móvil. Solo cambia el módulo actual.
+        if(st.moduleKey!==key)replaceState({...st,disprotelLevel:MODULE,moduleKey:key});
+        else currentLevel=MODULE;
       }else if(st.disprotelLevel===LEVEL2){
-        if(st.moduleKey!==key)history.replaceState({disprotelLevel:MODULE,moduleKey:key},'',location.href);
+        // Si se cambia de módulo desde una vista interna, descartamos ese nivel interno.
+        replaceState({disprotelLevel:MODULE,moduleKey:key});
       }
     }catch{}
   }
@@ -58,7 +68,8 @@
     if(!isMobile()||handling)return;
     try{
       const st=history.state||{};
-      if(st.disprotelLevel!==HOME)history.replaceState({disprotelLevel:HOME},'',location.href);
+      if(st.disprotelLevel!==HOME)replaceState({disprotelLevel:HOME});
+      else currentLevel=HOME;
     }catch{}
   }
 
@@ -68,10 +79,10 @@
       const key=activeModuleKey();
       const st=history.state||{};
       if(st.disprotelLevel===MODULE){
-        history.replaceState({...st,returnTabId:previousTabId||st.returnTabId||null},'',location.href);
-        history.pushState({disprotelLevel:LEVEL2,moduleKey:key,tabId:tab.id||null},'',location.href);
+        replaceState({...st,returnTabId:previousTabId||st.returnTabId||null});
+        pushState({disprotelLevel:LEVEL2,moduleKey:key,tabId:tab.id||null});
       }else if(st.disprotelLevel===LEVEL2){
-        history.replaceState({...st,moduleKey:key,tabId:tab.id||st.tabId||null},'',location.href);
+        replaceState({...st,moduleKey:key,tabId:tab.id||st.tabId||null});
       }
     }catch{}
   }
@@ -81,8 +92,8 @@
       if(!isMobile()||handling)return;
       const st=history.state||{};
       try{
-        if(st.disprotelLevel===MODULE)history.pushState({disprotelLevel:LEVEL2,moduleKey:activeModuleKey(),name},'',location.href);
-        else if(st.disprotelLevel===LEVEL2)history.replaceState({...st,name},'',location.href);
+        if(st.disprotelLevel===MODULE)pushState({disprotelLevel:LEVEL2,moduleKey:activeModuleKey(),name});
+        else if(st.disprotelLevel===LEVEL2)replaceState({...st,name});
       }catch{}
     },
     back(){history.back()},
@@ -92,26 +103,38 @@
   window.addEventListener('popstate',()=>{
     if(!isMobile())return;
     const st=history.state||{};
+    const from=currentLevel;
+    const to=st.disprotelLevel||null;
 
-    // Un modal/cámara es el nivel superior: Atrás solo lo cierra.
+    // La cámara personalizada vive dentro de su propio contexto y consume su Atrás primero.
     if(document.getElementById('icsOverlay')){
+      currentLevel=to;
       window.__disprotelSerialCameraBackClose?.();
       return;
     }
 
     handling=true;
-    if(st.disprotelLevel===MODULE){
-      // Venimos de nivel 2: mantenemos el módulo y restauramos su vista previa.
+
+    if(from===LEVEL2&&to===MODULE){
+      // Nivel 2 -> Nivel 1 del mismo módulo.
+      currentLevel=MODULE;
       if(!document.body.classList.contains('moduleOpen'))document.body.classList.add('moduleOpen');
       restoreTab(st.returnTabId);
-    }else if(st.disprotelLevel===HOME){
-      // Venimos de un módulo de primer nivel: volvemos al menú principal.
+    }else if(from===MODULE){
+      // Regla móvil principal: desde cualquier módulo de nivel 1, Atrás SIEMPRE muestra el menú de módulos.
+      // Aunque el historial del navegador intente revivir Inventario u otro módulo anterior, lo descartamos.
+      closeModuleUI();
+      try{replaceState({disprotelLevel:HOME})}catch{currentLevel=HOME}
+    }else if(to===HOME){
+      currentLevel=HOME;
       if(document.body.classList.contains('moduleOpen'))closeModuleUI();
-    }else if(st.disprotelLevel===GUARD||!st.disprotelLevel){
-      // En el menú principal evitamos que un Atrás accidental saque del sistema.
+    }else if(to===GUARD||!to){
       if(document.body.classList.contains('moduleOpen'))closeModuleUI();
-      try{history.pushState({disprotelLevel:HOME},'',location.href)}catch{}
+      try{pushState({disprotelLevel:HOME})}catch{currentLevel=HOME}
+    }else{
+      currentLevel=to;
     }
+
     setTimeout(()=>{handling=false},0);
   });
 
