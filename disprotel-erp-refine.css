@@ -1,65 +1,23 @@
-/* Refinamiento visual ERP DISPROTEL */
+/* Refinamiento visual ERP DISPROTEL · estándar compacto */
 @media(min-width:681px){
   .topin{max-width:none!important;width:100%!important;padding:7px 18px!important;gap:10px!important}
   .logoBox{width:96px!important;height:46px!important;border-radius:8px!important}
-  .brand{min-width:245px!important}
-  .brand b{font-size:15px!important;font-weight:650!important;letter-spacing:-.01em!important}
-  .brand span{font-size:10px!important;color:#7b8d96!important}
-  .who{order:20!important;margin-left:auto!important;text-align:right!important;min-width:225px!important;padding-right:3px!important;line-height:1.1!important}
-  .who b{font-size:12px!important;font-weight:650!important;color:#17313d!important;white-space:nowrap!important}
-  .who span{margin-top:4px!important;padding:4px 8px!important;font-size:8px!important;font-weight:700!important;letter-spacing:.035em!important;border-radius:999px!important;background:#edf5f8!important;color:#176088!important}
-  .panelTools{order:21!important;margin-left:0!important;gap:7px!important}
-  .panelConnected{min-height:30px!important;padding:0 10px!important;font-size:8px!important;font-weight:750!important;white-space:nowrap!important}
-  .userAvatar{width:36px!important;height:36px!important;font-size:18px!important}
-  .logout{order:22!important;margin-left:0!important;min-height:34px!important;padding:0 12px!important;font-size:12px!important;font-weight:550!important;border-radius:8px!important}
+  .brand{min-width:245px!important}.brand b{font-size:15px!important;font-weight:650!important;letter-spacing:-.01em!important}.brand span{font-size:10px!important;color:#7b8d96!important}
+  .who{order:20!important;margin-left:auto!important;text-align:right!important;min-width:225px!important;padding-right:3px!important;line-height:1.1!important}.who b{font-size:12px!important;font-weight:650!important;color:#17313d!important;white-space:nowrap!important}.who span{margin-top:4px!important;padding:4px 8px!important;font-size:8px!important;font-weight:700!important;letter-spacing:.035em!important;border-radius:999px!important;background:#edf5f8!important;color:#176088!important}
+  .panelTools{order:21!important;margin-left:0!important;gap:7px!important}.panelConnected{min-height:30px!important;padding:0 10px!important;font-size:8px!important;font-weight:750!important;white-space:nowrap!important}.userAvatar{width:36px!important;height:36px!important;font-size:18px!important}.logout{order:22!important;margin-left:0!important;min-height:34px!important;padding:0 12px!important;font-size:12px!important;font-weight:550!important;border-radius:8px!important}
+  body.panelMenu .menuShell{grid-template-columns:220px minmax(0,1fr)!important}body.panelMenu .menuAside{padding:12px 9px 16px!important}.menuAside .sideTitle{padding:6px 7px 12px!important}.menuAside .navAvatar{width:33px!important;height:33px!important;font-size:16px!important}.menuAside .sideTitle b{font-size:13px!important;font-weight:600!important}.menuAside .sideTitle small{font-size:9px!important}.menuAside button{min-height:39px!important;padding:8px 9px!important;font-size:12px!important;font-weight:450!important;border-radius:8px!important;transition:transform .15s ease,background .18s ease,box-shadow .18s ease!important}.menuAside button:hover{transform:translateX(2px)!important}.menuAside button.on{background:linear-gradient(135deg,#0b3d79,#176fc1 72%,#24a8d5)!important;color:#fff!important;box-shadow:0 5px 13px rgba(20,102,175,.18)!important}.menuAside .navGroup{padding:11px 8px 6px!important;font-size:7.5px!important}
 }
+body.panelMenu .menuStage{padding:10px!important}body.panelMenu .menuFrame{height:calc(100vh - 84px)!important;border-radius:10px!important;box-shadow:0 3px 14px rgba(19,49,61,.06)!important}
+.moduleHeader,.pageHeader,.innerHeader{padding-top:10px!important;padding-bottom:10px!important}button.backBtn,.backBtn,#backBtn,.btnBack,[data-action="back"]{min-height:34px!important;padding:0 12px!important;border-radius:8px!important;font-size:12px!important;box-shadow:none!important}
+.hero{padding:17px 21px!important;border-radius:13px!important;box-shadow:0 6px 17px rgba(7,59,80,.11)!important}.hero h1{font-size:25px!important;margin:4px 0 5px!important}.hero p{font-size:11px!important;line-height:1.4!important}.eyebrow{font-size:8px!important;letter-spacing:.14em!important}.badge{padding:7px 10px!important;font-size:8px!important}
+.tabs,.tabbar,.subnav,.toolbar{gap:7px!important}.tabs button,.tabbar button,.subnav button,.toolbar button{min-height:36px!important;border-radius:8px!important;font-size:11px!important;font-weight:550!important;box-shadow:none!important}.tabs button.active,.tabbar button.active,.subnav button.active{box-shadow:inset 0 -2px 0 #1595b8!important}
 
-/* Sidebar mas fino */
-@media(min-width:681px){
-  body.panelMenu .menuShell{grid-template-columns:220px minmax(0,1fr)!important}
-  body.panelMenu .menuAside{padding:12px 9px 16px!important}
-  .menuAside .sideTitle{padding:6px 7px 12px!important}
-  .menuAside .navAvatar{width:33px!important;height:33px!important;font-size:16px!important}
-  .menuAside .sideTitle b{font-size:13px!important;font-weight:600!important}
-  .menuAside .sideTitle small{font-size:9px!important}
-  .menuAside button{min-height:39px!important;padding:8px 9px!important;font-size:12px!important;font-weight:450!important;border-radius:8px!important}
-  .menuAside .navGroup{padding:11px 8px 6px!important;font-size:7.5px!important}
-}
+/* Panel principal: tarjetas compactas, color y movimiento */
+.main{padding-top:16px!important}.sectionTitle{margin-top:16px!important;margin-bottom:7px!important}.sectionTitle h2{font-size:16px!important;font-weight:700!important}.sectionTitle span{font-size:9px!important}.summaryWrap{gap:9px!important}.summaryPanel{padding:11px!important;border-radius:12px!important}.summaryHead{margin-bottom:8px!important}.summaryHead h3{font-size:14px!important}.summaryHead span{font-size:9px!important}.stats{gap:7px!important}.stat{padding:10px 11px!important;border-radius:10px!important;box-shadow:0 3px 10px rgba(19,49,61,.045)!important}.stat i{font-size:17px!important}.num{font-size:21px!important;margin-top:5px!important}.lbl{font-size:8px!important;margin-top:2px!important}.hint{font-size:8px!important;margin-top:5px!important}
+.modules{gap:9px!important}.module,.rootCard{position:relative!important;overflow:hidden!important;border-radius:12px!important;padding:12px 13px!important;box-shadow:0 4px 13px rgba(8,43,92,.055)!important;transition:transform .16s ease,border-color .18s ease,box-shadow .18s ease!important}.module{min-height:132px!important}.module:before,.rootCard:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(#24a8d5,#176fc1);opacity:.8}.module:hover,.rootCard:hover{transform:translateY(-3px)!important;border-color:#8fc6df!important;box-shadow:0 9px 20px rgba(8,43,92,.11)!important}.mhead{gap:8px!important}.ico{width:36px!important;height:36px!important;border-radius:10px!important;font-size:18px!important;background:linear-gradient(145deg,#edf7fc,#dceef7)!important}.module h3{font-size:14px!important;font-weight:750!important}.module p{font-size:10px!important;line-height:1.35!important;margin:7px 0 10px!important}.rootCard strong{font-size:13px!important}.rootCard small{font-size:10px!important;line-height:1.35!important;margin:5px 0 9px!important}
+.rootCard button,.btn{min-height:34px!important;border-radius:8px!important;padding:8px 10px!important;font-size:10px!important;font-weight:750!important;background:linear-gradient(135deg,#0a3c76,#176fc1 70%,#24a8d5)!important;box-shadow:0 4px 10px rgba(15,93,160,.15)!important;transition:transform .13s ease,filter .16s ease,box-shadow .16s ease!important}.rootCard button:hover,.btn:hover{transform:translateY(-2px)!important;filter:brightness(1.06)!important;box-shadow:0 7px 14px rgba(15,93,160,.22)!important}.rootCard button:active,.btn:active{transform:translateY(1px) scale(.988)!important}
+.statusBar,.connectionBar,.onlineBar,.supabaseStatus{min-height:32px!important;padding:7px 12px!important;border-radius:8px!important;font-size:9px!important}.panelConnected{border-color:#50d88f!important;background:#128447!important;color:#fff!important;box-shadow:0 0 0 3px rgba(54,212,123,.10),0 0 13px rgba(41,215,118,.28)!important;animation:dpPanelGlow 2.2s ease-in-out infinite!important}
+@keyframes dpPanelGlow{0%,100%{box-shadow:0 0 0 3px rgba(54,212,123,.10),0 0 10px rgba(41,215,118,.24)}50%{box-shadow:0 0 0 4px rgba(54,212,123,.14),0 0 18px rgba(41,215,118,.43)}}
 
-/* Area interna del modulo: mas espacio util */
-body.panelMenu .menuStage{padding:10px!important}
-body.panelMenu .menuFrame{height:calc(100vh - 84px)!important;border-radius:10px!important;box-shadow:0 3px 14px rgba(19,49,61,.06)!important}
-
-/* Cabecera interna, avisos y boton volver */
-.moduleHeader,.pageHeader,.innerHeader{padding-top:10px!important;padding-bottom:10px!important}
-button.backBtn,.backBtn,#backBtn,.btnBack,[data-action="back"]{min-height:34px!important;padding:0 12px!important;border-radius:8px!important;font-size:12px!important;box-shadow:none!important}
-
-/* Heroes mas bajos y sobrios */
-.hero{padding:19px 23px!important;border-radius:12px!important;box-shadow:0 5px 16px rgba(7,59,80,.10)!important}
-.hero h1{font-size:27px!important;margin:5px 0 6px!important}
-.hero p{font-size:12px!important;line-height:1.42!important}
-.eyebrow{font-size:9px!important;letter-spacing:.14em!important}
-.badge{padding:8px 11px!important;font-size:9px!important}
-
-/* Pestañas / acciones internas */
-.tabs,.tabbar,.subnav,.toolbar{gap:7px!important}
-.tabs button,.tabbar button,.subnav button,.toolbar button{min-height:38px!important;border-radius:8px!important;font-size:11px!important;font-weight:550!important;box-shadow:none!important}
-.tabs button.active,.tabbar button.active,.subnav button.active{box-shadow:inset 0 -2px 0 #1595b8!important}
-
-/* Cards mas discretas */
-.module,.rootCard,.stat,.summaryPanel,.dashPanel{border-radius:10px!important;box-shadow:0 3px 11px rgba(19,49,61,.045)!important}
-.sectionTitle{margin-top:18px!important;margin-bottom:8px!important}
-.sectionTitle h2{font-size:17px!important;font-weight:650!important}
-.sectionTitle span{font-size:10px!important}
-
-/* Avisos de conexion compactos, incluyendo los renderizados dentro del iframe */
-.statusBar,.connectionBar,.onlineBar,.supabaseStatus{min-height:32px!important;padding:7px 12px!important;border-radius:8px!important;font-size:9px!important}
-
-@media(max-width:680px){
-  .who{display:none!important}
-  .panelTools{margin-left:auto!important}
-  .hero{padding:15px!important;border-radius:9px!important}
-  .hero h1{font-size:21px!important}
-  .hero p{font-size:11px!important}
-  body.panelMenu .menuAside button{min-height:68px!important;font-size:10px!important}
-}
+@media(max-width:680px){.who{display:none!important}.panelTools{margin-left:auto!important}.hero{padding:14px!important;border-radius:9px!important}.hero h1{font-size:20px!important}.hero p{font-size:10px!important}body.panelMenu .menuAside button{min-height:58px!important;font-size:10px!important}.module{min-height:0!important;padding:11px!important}.modules{gap:7px!important}.sectionTitle{margin-top:13px!important}}
+@media(prefers-reduced-motion:reduce){.module,.rootCard,.btn,.menuAside button,.panelConnected{animation:none!important;transition:none!important}}
