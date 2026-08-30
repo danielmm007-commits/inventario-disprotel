@@ -25,6 +25,19 @@
     ['auditoria.ver','seguridad.configurar']
   ];
   function canAny(allowed,keys){return allowed.has('*')||keys.some(key=>allowed.has(key))}
+  function hookTechnicianTransferFrame(){
+    if(normalize(me.rol)!=='TECNICO'&&!String(me.perfil_efectivo?.nombre||'').toUpperCase().includes('TECNICO'))return;
+    const applyToFrame=frame=>{
+      try{
+        const w=frame.contentWindow,d=frame.contentDocument;
+        if(!w||!d||!(w.location.pathname||'').toLowerCase().endsWith('/solicitudes-transferencias.html'))return;
+        const hide=()=>{const baja=d.getElementById('bajaAction');if(baja)baja.style.setProperty('display','none','important')};
+        hide();setTimeout(hide,300);setTimeout(hide,1000);
+      }catch{}
+    };
+    document.querySelectorAll('iframe.menuFrame').forEach(f=>{applyToFrame(f);if(!f.__techTransferHook){f.__techTransferHook=true;f.addEventListener('load',()=>applyToFrame(f))}});
+    if(!window.__techTransferObserver){window.__techTransferObserver=new MutationObserver(()=>document.querySelectorAll('iframe.menuFrame').forEach(f=>{applyToFrame(f);if(!f.__techTransferHook){f.__techTransferHook=true;f.addEventListener('load',()=>applyToFrame(f))}}));window.__techTransferObserver.observe(document.documentElement,{childList:true,subtree:true})}
+  }
   function apply(profile,keys){
     const allowed=new Set(keys||[]);
     document.querySelectorAll('.module').forEach(card=>{
@@ -72,6 +85,7 @@
     const title=[...document.querySelectorAll('.sectionTitle h2')].find(item=>item.textContent.trim()==='Módulos principales');
     if(title){const subtitle=title.parentElement?.querySelector('span');if(subtitle)subtitle.textContent='Vista dinámica según perfil y excepciones individuales'}
     document.querySelector('.modules')?.setAttribute('data-permissions-source','granular-v1');
+    hookTechnicianTransferFrame();
   }
   async function init(){
     const role=me.es_admin_principal?'ADMINISTRADOR SUPREMO':normalize(me.rol);
@@ -81,7 +95,7 @@
       const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-user':me.usuario,'x-pin':me.pin||'','x-session':me.session_token||''},body:JSON.stringify({action:'resolve_self'})});
       const data=await response.json();
       if(!response.ok||data?.error)throw new Error(data?.error||'No se pudieron cargar permisos');
-      const permisos=data.permisos||[];apply(data.perfil,permisos);const accessContext={usuario:me.usuario,usuario_id:me.id||'',perfil:data.perfil||{nombre:me.rol||role},permisos,validado_en:new Date().toISOString(),session_token:me.session_token||''};sessionStorage.setItem('disprotel_access_context_v1',JSON.stringify(accessContext));sessionStorage.setItem('disprotel_login_general_v2',JSON.stringify({...me,perfil_efectivo:accessContext.perfil,permisos_efectivos:permisos,modulos_validados:true,permisos_validados_en:accessContext.validado_en}));window.dispatchEvent(new CustomEvent('disprotel:permissions-ready',{detail:accessContext}));
+      const permisos=data.permisos||[];apply(data.perfil,permisos);const accessContext={usuario:me.usuario,usuario_id:me.id||'',perfil:data.perfil||{nombre:me.rol||role},permisos,validado_en:new Date().toISOString(),session_token:me.session_token||''};sessionStorage.setItem('disprotel_access_context_v1',JSON.stringify(accessContext));sessionStorage.setItem('disprotel_login_general_v2',JSON.stringify({...me,perfil_efectivo:accessContext.perfil,permisos_efectivos:permisos,modulos_validados:true,permisos_validados_en:accessContext.validado_en}));window.dispatchEvent(new CustomEvent('disprotel:permissions-ready',{detail:accessContext}));hookTechnicianTransferFrame();
     }catch(error){console.warn('Panel granular: usando permisos de respaldo',error)}
   }
   init();
