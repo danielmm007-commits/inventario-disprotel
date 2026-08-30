@@ -6,7 +6,27 @@
   const css=document.createElement('style');css.textContent=`.moduleCachedFrame{display:none!important;width:100%!important;border:0!important;background:#eef5f8}.moduleCachedFrame.moduleCacheActive{display:block!important}@media(min-width:681px){body.panelMenu.moduleOpen .moduleCachedFrame{height:calc(100vh - 88px)!important;border-radius:20px!important}}@media(max-width:680px){body.panelMenu.moduleOpen .menuFrame{display:block!important;width:100%!important;height:calc(100dvh - 48px)!important;border-radius:0!important;opacity:1!important}}`;document.head.appendChild(css);
   function directUrl(raw){try{const u=new URL(raw,location.href);if(u.pathname.endsWith('/modulo-integrado.html')){const src=u.searchParams.get('src');if(src){const su=new URL(src,location.href);su.searchParams.set('menu','1');return su.pathname.split('/').pop()+su.search}}return u.pathname.split('/').pop()+u.search}catch{return raw}}
   function keyFor(btn){return directUrl(btn.dataset.href||'').replace(/([?&])v=\d+/g,'$1v=session')}
-  function injectSolicitudes(frame){try{const w=frame.contentWindow,d=frame.contentDocument,path=(w.location.pathname||'').toLowerCase();if(!path.endsWith('/solicitudes-transferencias.html'))return;const tech=!!w.D?.is_technician;const id=tech?'solicitudesTecnicoV1Loader':'solicitudesFlujoV2Loader';if(d.getElementById(id))return;const s=d.createElement('script');s.id=id;s.src=tech?'solicitudes-transferencias-tecnico-v1.js?v=20260831-1':'solicitudes-transferencias-flujo-v2.js?v=20260830-3';d.body.appendChild(s)}catch{}}
+  function injectSolicitudes(frame){
+    try{
+      const w=frame.contentWindow,d=frame.contentDocument,path=(w.location.pathname||'').toLowerCase();
+      if(!path.endsWith('/solicitudes-transferencias.html'))return;
+      if(d.getElementById('solicitudesTecnicoV1Loader')||d.getElementById('solicitudesFlujoV2Loader')||d.__solicitudesPerfilResolviendo)return;
+      d.__solicitudesPerfilResolviendo=true;
+      let tries=0;
+      const wait=setInterval(()=>{
+        try{
+          if(!w.D){if(++tries<100)return;clearInterval(wait);d.__solicitudesPerfilResolviendo=false;return}
+          clearInterval(wait);
+          d.__solicitudesPerfilResolviendo=false;
+          const tech=!!w.D.is_technician;
+          const s=d.createElement('script');
+          s.id=tech?'solicitudesTecnicoV1Loader':'solicitudesFlujoV2Loader';
+          s.src=tech?'solicitudes-transferencias-tecnico-v1.js?v=20260831-2':'solicitudes-transferencias-flujo-v2.js?v=20260830-3';
+          d.body.appendChild(s);
+        }catch(e){clearInterval(wait);d.__solicitudesPerfilResolviendo=false}
+      },50);
+    }catch{}
+  }
   function injectNativeSerialCamera(frame){if(!isMobile())return;try{const w=frame.contentWindow,d=frame.contentDocument,path=(w.location.pathname||'').toLowerCase();if(!(path.endsWith('/index.html')||path.endsWith('/index'))||d.getElementById('btnCamaraNativa'))return;const fotoBtn=d.getElementById('btnFoto'),serial=d.getElementById('serial'),msg=d.getElementById('appMsg');if(!fotoBtn||!serial)return;const camBtn=d.createElement('button');camBtn.type='button';camBtn.id='btnCamaraNativa';camBtn.className='photo';camBtn.textContent='📸 Tomar foto del serial';camBtn.style.background='linear-gradient(135deg,#7b4ca3,#a661c2)';const camInput=d.createElement('input');camInput.id='camaraNativaInput';camInput.type='file';camInput.accept='image/*';camInput.setAttribute('capture','environment');camInput.className='hidden';fotoBtn.insertAdjacentElement('afterend',camBtn);camBtn.insertAdjacentElement('afterend',camInput);camBtn.onclick=()=>{if(serial.disabled)return;camInput.value='';camInput.click()};camInput.onchange=e=>{const file=e.target.files?.[0];if(file&&typeof w.prepararFoto==='function')w.prepararFoto(file,'serial',msg)}}catch{}}
   function injectPurchaseDocumentReader(frame){try{const w=frame.contentWindow,d=frame.contentDocument,path=(w.location.pathname||'').toLowerCase();if(!path.endsWith('/compras-ingresos.html')||d.getElementById('comprasDocumentoSerialesLoader'))return;const s=d.createElement('script');s.id='comprasDocumentoSerialesLoader';s.src='compras-documento-seriales-v1.js?v=20260829-1';d.body.appendChild(s)}catch{}}
   function decorateFrame(frame,btn){frame.classList.add('moduleCachedFrame');frame.dataset.moduleKey=keyFor(btn);frame.title=btn.querySelector('span')?.textContent||'Módulo DISPROTEL';frame.addEventListener('load',()=>{try{const path=frame.contentWindow.location.pathname||'';if(/login-general-v2\.html/i.test(path)){top.location.href='login-general-v2.html';return}injectNativeSerialCamera(frame);injectPurchaseDocumentReader(frame);injectSolicitudes(frame);const d=frame.contentDocument;if(!d||d.__disprotelBackHook)return;d.__disprotelBackHook=true;d.addEventListener('click',e=>{const c=e.target.closest('button,a');if(c&&norm(c.textContent).includes('ATRAS')){e.preventDefault();e.stopImmediatePropagation();goHome()}},true)}catch{}});return frame}
