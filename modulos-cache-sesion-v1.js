@@ -13,7 +13,7 @@
       if(d.getElementById('solicitudesFlujoV2Loader'))return;
       const s=d.createElement('script');
       s.id='solicitudesFlujoV2Loader';
-      s.src='solicitudes-transferencias-flujo-v2.js?v=20260830-4';
+      s.src='solicitudes-transferencias-flujo-v2.js?v=20260831-5';
       d.body.appendChild(s);
     }catch{}
   }
