@@ -33,8 +33,23 @@
   }
 
   function historyFilters(){
-    const type=$('historyType');if(type)type.classList.add('hidden');
-    const state=$('historyState');if(state){const keep=state.value;state.innerHTML='<option value="">Todos los estados</option><option value="PENDIENTE">Pendientes</option><option value="FINALIZADO">Finalizados</option><option value="RECHAZADA">Rechazados</option>';if([...state.options].some(o=>o.value===keep))state.value=keep}
+    const state=$('historyState');
+    const filters=state?.parentElement;
+    let type=$('historyType');
+    if(!type&&filters){
+      type=document.createElement('select');
+      type.id='historyType';
+      filters.insertBefore(type,state);
+      type.onchange=renderHistoryTech;
+    }
+    if(type){
+      const keep=type.value;
+      type.innerHTML='<option value="">Todos los recibidos</option><option value="ABASTECIMIENTO">Abastecimientos</option><option value="DIRECTA">Transferencias directas</option>';
+      if([...type.options].some(o=>o.value===keep))type.value=keep;
+      type.classList.toggle('hidden',mode!=='ABASTECIMIENTO');
+    }
+    if(filters)filters.style.gridTemplateColumns=mode==='ABASTECIMIENTO'?'1fr 1fr 1fr 2fr':'1fr 1fr 2fr';
+    if(state){const keep=state.value;state.innerHTML='<option value="">Todos los estados</option><option value="PENDIENTE">Pendientes</option><option value="FINALIZADO">Finalizados</option><option value="RECHAZADA">Rechazados</option>';if([...state.options].some(o=>o.value===keep))state.value=keep}
     const loc=$('historyLocation');if(loc?.options?.length)loc.options[0].textContent=mode==='DIRECTA'?'Todas las bodegas destino':mode==='BAJA'?'Mi bodega':'Todas las bodegas involucradas';
   }
 
@@ -59,13 +74,16 @@
 
   function renderHistoryTech(){
     const box=$('transferHistory');if(!box)return;
-    const state=$('historyState')?.value||'',loc=$('historyLocation')?.value||'',q=($('historySearch')?.value||'').trim().toLowerCase();
+    const type=$('historyType')?.value||'',state=$('historyState')?.value||'',loc=$('historyLocation')?.value||'',q=($('historySearch')?.value||'').trim().toLowerCase();
     let rows=historyRows();
-    if(mode==='ABASTECIMIENTO')rows=rows.filter(x=>(x.type==='ABASTECIMIENTO'&&x.emisor?.id===me())||(x.type==='DIRECTA'&&x.receptor?.id===me()));
+    if(mode==='ABASTECIMIENTO'){
+      rows=rows.filter(x=>(x.type==='ABASTECIMIENTO'&&x.emisor?.id===me())||(x.type==='DIRECTA'&&x.receptor?.id===me()));
+      if(type)rows=rows.filter(x=>x.type===type);
+    }
     else if(mode==='DIRECTA')rows=rows.filter(x=>x.type==='DIRECTA'&&x.emisor?.id===me());
     else rows=rows.filter(x=>x.type==='BAJA'&&x.emisor?.id===me());
     rows=rows.filter(x=>{const st=stateOf(x.type,x.raw),locOk=!loc||(mode==='DIRECTA'?x.destination?.id===loc:(x.origin?.id===loc||x.destination?.id===loc));return(!state||st===state)&&locOk&&(!q||JSON.stringify(x).toLowerCase().includes(q))}).sort((a,b)=>new Date(b.date)-new Date(a.date));
-    box.innerHTML=rows.length?rows.map(x=>{const st=stateOf(x.type,x.raw),label=x.type==='ABASTECIMIENTO'?'ABASTECIMIENTO RECIBIDO':x.type==='DIRECTA'?(x.emisor?.id===me()?'TRANSFERENCIA ENVIADA':'TRANSFERENCIA RECIBIDA'):'SOLICITUD DE BAJA',arts=(x.items||[]).map(i=>i.tipo_control==='SERIAL'?esc(i.producto?.producto)+' · serial '+esc(i.serial?.serial):(i.cantidad||1)+' × '+esc(i.producto?.producto||'ARTÍCULO')).join('<br>');return '<article class="request"><span class="pill '+(st==='FINALIZADO'?'done':'')+'">'+label+' · '+stateLabel(x.type,st)+'</span><h3>'+esc(x.code)+'</h3><small>'+new Date(x.date).toLocaleString('es-EC')+'</small><div class="items">'+arts+'</div><div><b>Ruta:</b> '+esc(x.origin?.ubicacion||'—')+' → '+esc(x.type==='BAJA'?'BAJA':x.destination?.ubicacion||'—')+'</div></article>'}).join(''):'<div class="empty">No hay movimientos para estos filtros.</div>';
+    box.innerHTML=rows.length?rows.map(x=>{const st=stateOf(x.type,x.raw),label=x.type==='ABASTECIMIENTO'?'ABASTECIMIENTO RECIBIDO':x.type==='DIRECTA'?(x.emisor?.id===me()?'TRANSFERENCIA ENVIADA':'TRANSFERENCIA DIRECTA RECIBIDA'):'SOLICITUD DE BAJA',arts=(x.items||[]).map(i=>i.tipo_control==='SERIAL'?esc(i.producto?.producto)+' · serial '+esc(i.serial?.serial):(i.cantidad||1)+' × '+esc(i.producto?.producto||'ARTÍCULO')).join('<br>');return '<article class="request"><span class="pill '+(st==='FINALIZADO'?'done':'')+'">'+label+' · '+stateLabel(x.type,st)+'</span><h3>'+esc(x.code)+'</h3><small>'+new Date(x.date).toLocaleString('es-EC')+'</small><div class="items">'+arts+'</div><div><b>Ruta:</b> '+esc(x.origin?.ubicacion||'—')+' → '+esc(x.type==='BAJA'?'BAJA':x.destination?.ubicacion||'—')+'</div></article>'}).join(''):'<div class="empty">No hay movimientos para estos filtros.</div>';
   }
 
   function renderView(){
@@ -84,7 +102,7 @@
       if(typeof renderIncoming==='function')renderIncoming();show(incoming,true);show(req,true);
       setTitle(incoming,'📥 Transferencias recibidas pendientes de aceptar','Aquí aparecen únicamente las transferencias que otros técnicos enviaron hacia tu bodega.');
       setTitle(req,'📋 Mis abastecimientos pendientes de confirmación','Abastecimientos que ya registraste y que Administración todavía debe confirmar.');
-      setTitle(hist,'🧾 Historial de abastecimientos y transferencias recibidas','Solo tus abastecimientos y las transferencias que recibiste.');
+      setTitle(hist,'🧾 Historial de abastecimientos y transferencias recibidas','Solo tus abastecimientos y las transferencias directas que recibiste. Puedes clasificarlas por tipo.');
     }else if(mode==='DIRECTA'){
       $('formTitle').textContent='Transferir equipos y materiales desde mi bodega';
       $('formSub').textContent='Envía únicamente artículos de tu inventario. El destino recibe el stock cuando acepta la transferencia.';
@@ -112,7 +130,7 @@
 
   function installClicks(){
     [['supplyAction','ABASTECIMIENTO'],['directAction','DIRECTA'],['bajaAction','BAJA']].forEach(([id,m])=>{const el=$(id);if(!el)return;el.onclick=null;el.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();changeMode(m)},true)});
-    const hs=$('historyState'),hl=$('historyLocation'),hq=$('historySearch');if(hs)hs.onchange=renderHistoryTech;if(hl)hl.onchange=renderHistoryTech;if(hq)hq.oninput=renderHistoryTech;
+    const ht=$('historyType'),hs=$('historyState'),hl=$('historyLocation'),hq=$('historySearch');if(ht)ht.onchange=renderHistoryTech;if(hs)hs.onchange=renderHistoryTech;if(hl)hl.onchange=renderHistoryTech;if(hq)hq.oninput=renderHistoryTech;
   }
 
   async function abastApi(action,payload={}){const sync=$('sync');if(sync)sync.textContent='🟡 GUARDANDO';const r=await fetch(ABAST_API,{method:'POST',headers:{'Content-Type':'application/json','x-session':SESSION?.session_token||''},body:JSON.stringify({action,...payload,carrito_token:CART_TOKEN})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok||d.error){if(sync)sync.textContent='🔴 ERROR';throw new Error(d.error||'Error del servidor')}if(sync){sync.textContent='● CONECTADO';sync.className='sync ok connected'}return d}
