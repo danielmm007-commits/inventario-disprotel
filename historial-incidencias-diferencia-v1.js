@@ -1,0 +1,25 @@
+(()=>{
+  if(window.__historialIncidenciasDiferenciaV1)return;window.__historialIncidenciasDiferenciaV1=true;
+  const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-incidencias-historial';
+  let incidencias=[];
+  const esc=s=>String(s??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
+  const session=(()=>{try{return JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'null')}catch{return null}})();
+  const style=document.createElement('style');style.textContent=`
+    .request.diffResolvedHistory{border:2px solid #6bb68b!important;background:linear-gradient(135deg,#f4fff8,#eefaf3)!important;box-shadow:0 7px 16px rgba(23,115,74,.08)!important}
+    .request.diffResolvedHistory .pill{background:#dff4e8!important;color:#176843!important}
+    .historyDiffResolved{margin:9px 0;padding:10px 11px;border-radius:11px;background:#fff;border:1px solid #b9dfc8;line-height:1.5;font-size:11px}
+    .historyDiffResolved b{color:#176843}.historyDiffResolved .pending0{color:#176843;font-weight:900}.historyDiffResolved .trace{color:#607583;font-size:10px;margin-top:4px}
+  `;document.head.appendChild(style);
+  async function loadIncidencias(){if(!session?.session_token)return;try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-session':session.session_token},body:JSON.stringify({action:'list'})}),d=await r.json();if(r.ok&&!d.error){incidencias=d.incidencias||[];decorate()}}catch{}}
+  function dataRoot(){try{return typeof D!=='undefined'?D:null}catch{return null}}
+  function incidentByCode(code){return incidencias.find(i=>i.transferencia?.id_transferencia===code)}
+  function lotByCode(code){const root=dataRoot();return(root?.transfer_history||[]).find(t=>t.id_transferencia===code)}
+  function matchItem(lot,inc){if(!lot)return null;const items=lot.items||[];if(inc.serial?.serial)return items.find(i=>i.serial?.serial===inc.serial.serial)||null;const code=inc.producto?.codigo;return items.find(i=>i.producto?.codigo===code)||items.find(i=>i.producto?.producto===inc.producto?.producto)||null}
+  function resolvedBlock(inc,lot){const item=matchItem(lot,inc),sent=Number(item?.cantidad||0),origMissing=Number(inc.cantidad_faltante||0),initial=Math.max(0,sent-origMissing),delivered=inc.cierre_tipo==='ENTREGA_FALTANTE'?Number(inc.movimiento_cierre?.cantidad||origMissing):0,total=Number(item?.cantidad_recibida??(initial+delivered)),pending=Math.max(0,sent-total),product=inc.producto?.producto||item?.producto?.producto||'ARTÍCULO';return `<div class="historyDiffResolved"><b>✅ Diferencia resuelta · incidencia cerrada</b><br>${esc(product)}<br>Enviado originalmente: <b>${sent}</b> · Recibido inicialmente: <b>${initial}</b> · Entregado después: <b>${delivered}</b> · Total recibido: <b>${total}</b> · <span class="pending0">Pendiente: ${pending}</span>${inc.cierre_observacion?`<div class="trace">Cierre: ${esc(inc.cierre_observacion)}</div>`:''}${inc.movimiento_cierre?.id_movimiento?`<div class="trace">Movimiento: ${esc(inc.movimiento_cierre.id_movimiento)}</div>`:''}</div>`}
+  function decorate(){const root=document.getElementById('transferHistory');if(!root)return;for(const art of root.querySelectorAll('article.request')){const h3=art.querySelector('h3');if(!h3)continue;const m=h3.textContent.match(/TRF-[A-Z0-9-]+/i);if(!m)continue;const code=m[0],inc=incidentByCode(code);if(!inc)continue;if(inc.estado==='CERRADA'){art.classList.add('diffResolvedHistory');const pill=art.querySelector('.pill');if(pill)pill.textContent='✅ TRANSFERENCIA DIRECTA · DIFERENCIA RESUELTA · CERRADA';art.querySelectorAll('.diffsummary').forEach(x=>x.remove());if(!art.querySelector('.historyDiffResolved')){const items=[...art.querySelectorAll('.items')].at(-1);const holder=document.createElement('div');holder.innerHTML=resolvedBlock(inc,lotByCode(code));const block=holder.firstElementChild;if(items?.parentNode)items.insertAdjacentElement('afterend',block);else art.appendChild(block)}}}}
+  function installWrappers(){let changed=false;try{if(typeof renderHistory==='function'&&!renderHistory.__diffHistoryWrapped){const old=renderHistory;const wrapped=function(){const r=old.apply(this,arguments);setTimeout(decorate,0);return r};wrapped.__diffHistoryWrapped=true;window.renderHistory=wrapped;changed=true}}catch{}
+    try{if(typeof renderTransferHistory==='function'&&!renderTransferHistory.__diffHistoryWrapped){const old=renderTransferHistory;const wrapped=function(){try{const root=dataRoot(),ht=document.getElementById('historyType');if(root?.is_manager&&ht?.classList.contains('hidden'))ht.value=''}catch{}const r=old.apply(this,arguments);setTimeout(decorate,0);return r};wrapped.__diffHistoryWrapped=true;window.renderTransferHistory=wrapped;changed=true}}catch{}return changed}
+  let tries=0;const timer=setInterval(()=>{installWrappers();decorate();if(++tries>80)clearInterval(timer)},100);
+  const mo=new MutationObserver(()=>decorate());const startObs=()=>{const root=document.getElementById('transferHistory');if(root)mo.observe(root,{childList:true,subtree:true})};setTimeout(startObs,500);
+  loadIncidencias();
+})();
