@@ -10,10 +10,11 @@
     try{
       const w=frame.contentWindow,d=frame.contentDocument,path=(w.location.pathname||'').toLowerCase();
       if(!path.endsWith('/solicitudes-transferencias.html'))return;
-      if(d.getElementById('solicitudesFlujoV2Loader'))return;
+      const old=d.getElementById('solicitudesFlujoV2Loader');
+      if(old)old.remove();
       const s=d.createElement('script');
       s.id='solicitudesFlujoV2Loader';
-      s.src='solicitudes-transferencias-flujo-v2.js?v=20260831-6';
+      s.src='solicitudes-transferencias-flujo-v2.js?v='+Date.now();
       d.body.appendChild(s);
     }catch{}
   }
