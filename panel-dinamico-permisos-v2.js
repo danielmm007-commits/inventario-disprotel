@@ -44,22 +44,9 @@
     const title=[...document.querySelectorAll('.sectionTitle h2')].find(item=>item.textContent.trim()==='Módulos principales');if(title){const subtitle=title.parentElement?.querySelector('span');if(subtitle)subtitle.textContent='Vista dinámica según perfil y excepciones individuales'}
     document.querySelector('.modules')?.setAttribute('data-permissions-source','granular-v1');
   }
-  function installTechHistoryHelper(){
-    if(normalize(me.rol)!=='TECNICO')return;
-    const attach=frame=>{
-      if(frame.dataset.techHistoryHelperHook)return;
-      frame.dataset.techHistoryHelperHook='1';
-      const inject=()=>{try{const path=(frame.contentWindow?.location?.pathname||'').toLowerCase();if(!path.endsWith('/solicitudes-transferencias-tecnico.html'))return;const d=frame.contentDocument;if(!d||d.getElementById('historialDiferenciaResueltaTecnicoV1'))return;const s=d.createElement('script');s.id='historialDiferenciaResueltaTecnicoV1';s.src='historial-diferencia-resuelta-tecnico-v1.js?v='+Date.now();d.body.appendChild(s)}catch{}};
-      frame.addEventListener('load',inject);inject();
-    };
-    const scan=()=>document.querySelectorAll('iframe').forEach(attach);
-    scan();
-    new MutationObserver(scan).observe(document.documentElement,{childList:true,subtree:true});
-  }
   async function init(){
     const role=me.es_admin_principal?'ADMINISTRADOR SUPREMO':normalize(me.rol);apply({nombre:me.rol||role},fallback[role]||fallback['PASANTE / AYUDANTE']);if(!me.session_token&&!me.pin)return;
     try{const response=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-user':me.usuario,'x-pin':me.pin||'','x-session':me.session_token||''},body:JSON.stringify({action:'resolve_self'})});const data=await response.json();if(!response.ok||data?.error)throw new Error(data?.error||'No se pudieron cargar permisos');const permisos=data.permisos||[];apply(data.perfil,permisos);const accessContext={usuario:me.usuario,usuario_id:me.id||'',perfil:data.perfil||{nombre:me.rol||role},permisos,validado_en:new Date().toISOString(),session_token:me.session_token||''};sessionStorage.setItem('disprotel_access_context_v1',JSON.stringify(accessContext));sessionStorage.setItem('disprotel_login_general_v2',JSON.stringify({...me,perfil_efectivo:accessContext.perfil,permisos_efectivos:permisos,modulos_validados:true,permisos_validados_en:accessContext.validado_en}));window.dispatchEvent(new CustomEvent('disprotel:permissions-ready',{detail:accessContext}))}catch(error){console.warn('Panel granular: usando permisos de respaldo',error)}
   }
-  installTechHistoryHelper();
   init();
 })();
