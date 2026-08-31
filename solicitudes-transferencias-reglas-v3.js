@@ -43,10 +43,10 @@
       const setTitle=(panel,title,sub)=>{if(!panel)return;const h=panel.querySelector('h2'),p=panel.querySelector('.sub');if(h)h.textContent=title;if(p)p.textContent=sub};
       setTitle(incoming,'📥 Transferencias recibidas pendientes de aceptar','Aquí aparecen únicamente transferencias que otro técnico envió hacia tu bodega.');
       setTitle(req,'📋 Mis abastecimientos pendientes de confirmación','Solo tus abastecimientos que Administración todavía no ha confirmado.');
-      setTitle(history,'🧾 Historial de abastecimientos y transferencias recibidas','Abastecimientos que registraste y transferencias que recibiste.');
+      setTitle(history,'🧾 Historial de abastecimientos y transferencias recibidas','Abastecimientos que registraste y transferencias directas que recibiste.');
 
       const historyType=document.getElementById('historyType');
-      if(historyType)historyType.classList.add('hidden');
+      if(historyType)historyType.classList.remove('hidden');
       const historyLocation=document.getElementById('historyLocation');
       if(historyLocation?.options?.length)historyLocation.options[0].textContent='Todas las bodegas involucradas';
 
