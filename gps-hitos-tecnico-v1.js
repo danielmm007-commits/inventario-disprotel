@@ -3,24 +3,24 @@ const GPS_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-
 const REAS_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-reasignacion-orden';
 const oldJobHtml=window.jobHtml;
 if(typeof oldJobHtml!=='function')return;
-function own(o){return !o?.aceptado_por?.nombre||String(o.aceptado_por.nombre).trim().toLocaleUpperCase('es-EC')===String(window.ME?.nombre||'').trim().toLocaleUpperCase('es-EC')}
+function creds(){try{return JSON.parse(sessionStorage.getItem('disprotel_trabajos_test')||'null')||{}}catch{return{}}}
 function tipoSoporte(o){return o?.tipo_trabajo==='SOPORTE_TECNICO'}
-function estadoActivo(o){return ['ACEPTADA','EN_CAMINO','EN_PROCESO','ESPERANDO_IP','IP_ASIGNADA'].includes(String(o?.estado||'').toUpperCase())}
+function puedeReasignar(o){return ['ACEPTADA','EN_CAMINO'].includes(String(o?.estado||'').toUpperCase())}
 window.jobHtml=function(o,disp=false,hist=false){
   let html=oldJobHtml(o,disp,hist);
-  if(disp||hist||!own(o))return html;
+  if(disp||hist)return html;
   html=html.replace('<div class="job ','<div data-orden-id="'+o.id+'" class="job ');
   const start=tipoSoporte(o)?'':`<button type="button" class="gpsOpBtn gpsStart" onclick="registrarHitoGps('${o.id}','inicio-traslado',this)">🚗 INICIAR TRASLADO</button>`;
-  const reas=estadoActivo(o)?`<button type="button" class="gpsOpBtn reasBtn" data-reas-btn="${o.id}" onclick="solicitarReasignacion('${o.id}',this)">↪ SOLICITAR REASIGNACIÓN</button>`:'';
-  const ops=`<div class="gpsOps" data-gps-ops="${o.id}"><div class="gpsOpsHead"><b>DESPLAZAMIENTO</b><span class="gpsOpsState">ACEPTADA</span></div><div class="gpsOpsTimes"></div><div class="gpsOpsButtons">${start}<button type="button" class="gpsOpBtn gpsArrival" onclick="registrarHitoGps('${o.id}','llegada',this)">📍 LLEGADA AL CLIENTE</button>${reas}</div><div class="reasState" data-reas-state="${o.id}"></div></div>`;
+  const reas=puedeReasignar(o)?`<button type="button" class="gpsOpBtn reasBtn" data-reas-btn="${o.id}" onclick="solicitarReasignacion('${o.id}',this)">↪ SOLICITAR REASIGNACIÓN</button>`:'';
+  const ops=`<div class="gpsOps" data-gps-ops="${o.id}"><div class="gpsOpsHead"><b>DESPLAZAMIENTO</b><span class="gpsOpsState">${String(o.estado||'ACEPTADA').replaceAll('_',' ')}</span></div><div class="gpsOpsTimes"></div><div class="gpsOpsButtons">${start}<button type="button" class="gpsOpBtn gpsArrival" onclick="registrarHitoGps('${o.id}','llegada',this)">📍 LLEGADA AL CLIENTE</button>${reas}</div><div class="reasState" data-reas-state="${o.id}"></div></div>`;
   const pos=html.lastIndexOf('</div>');
   return pos>=0?html.slice(0,pos)+ops+html.slice(pos):html;
 };
 function css(){if(document.getElementById('gpsHitosCss'))return;const s=document.createElement('style');s.id='gpsHitosCss';s.textContent=`
 .gpsOps{margin-top:12px!important;padding:11px;border:1px solid #cfdde5;border-radius:12px;background:#fff}.gpsOpsHead{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:0!important}.gpsOpsHead b{font-size:11px;color:#60737c;letter-spacing:.4px}.gpsOpsState{font-size:11px;font-weight:900;padding:5px 8px;border-radius:999px;background:#eef3f6;color:#17313d}.gpsOpsTimes{font-size:11px;color:#60737c;line-height:1.45;margin-top:7px!important}.gpsOpsButtons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px!important}.gpsOpsButtons button{margin:0!important;padding:11px 8px!important;font-size:13px!important}.gpsStart{background:#1769aa!important}.gpsArrival{background:#17824f!important}.reasBtn{background:#a76511!important}.reasBtn.pending{background:#f5e9cf!important;color:#79530b!important;border:1px solid #d9b46f!important}.gpsOpDone{background:#e8f6ed!important;color:#17643e!important;border:1px solid #9fd1b2!important}.gpsOpWarn{background:#fff3cd!important;color:#755e00!important}.gpsOpBtn:disabled{opacity:.7;cursor:default}.reasState{margin-top:8px!important}.reasNotice{padding:9px 10px;border-radius:10px;background:#fff4d7;border:1px solid #e4c275;color:#72520a;font-size:11px;line-height:1.45}@media(max-width:600px){.gpsOpsButtons{grid-template-columns:1fr}}
 `;document.head.appendChild(s)}
-async function gpsApi(orden,action,payload={}){const r=await fetch(GPS_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:window.US,pin:window.PIN,orden_id:orden,action,...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error GPS');return d}
-async function reasApi(orden,action,payload={}){const r=await fetch(REAS_API,{method:'POST',headers:{'Content-Type':'application/json','x-session':window.SESSION||''},body:JSON.stringify({orden_id:orden,action,...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error de reasignación');return d}
+async function gpsApi(orden,action,payload={}){const c=creds();const r=await fetch(GPS_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:c.usuario||'',pin:c.pin||'',session_token:c.session_token||'',orden_id:orden,action,...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error GPS');return d}
+async function reasApi(orden,action,payload={}){const c=creds();const r=await fetch(REAS_API,{method:'POST',headers:{'Content-Type':'application/json','x-session':c.session_token||''},body:JSON.stringify({orden_id:orden,action,...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error de reasignación');return d}
 function geoErrorState(e){return e?.code===1?'PERMISO_DENEGADO':'NO_DISPONIBLE'}
 function obtenerGps(){return new Promise((resolve,reject)=>{if(!navigator.geolocation)return reject({code:0,message:'GPS no disponible'});navigator.geolocation.getCurrentPosition(p=>resolve({latitud:p.coords.latitude,longitud:p.coords.longitude,precision_m:p.coords.accuracy,capturado_at:new Date().toISOString()}),reject,{enableHighAccuracy:true,timeout:15000,maximumAge:0})})}
 window.registrarHitoGps=async function(orden,action,btn){
