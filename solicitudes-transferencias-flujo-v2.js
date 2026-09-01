@@ -71,9 +71,9 @@
     const lots=D?.transfer_history||[],reqs=D?.requests||[],linked=new Set(reqs.map(r=>r.transferencia_lote_id).filter(Boolean)),rows=[];
     for(const r of reqs){
       const t=r.transferencia_lote_id?lots.find(x=>x.id===r.transferencia_lote_id):null,raw=t?.estado||r.estado;
-      rows.push({type:r.tipo,status:histStatus(r.tipo,raw),raw,code:r.codigo+(t?' · '+t.id_transferencia:''),createdAt:r.created_at,date:t?.fecha_respuesta||t?.fecha_solicitud||r.fecha_respuesta||r.created_at,responseDate:r.fecha_respuesta,origin:t?.origen||r.origen,destination:t?.destino||r.destino,emisor:t?.emisor||r.solicitante,receptor:t?.receptor||r.receptor,responder:r.aprobador,responseNote:r.respuesta_observacion,items:t?.items||r.items||[]});
+      rows.push({type:r.tipo,status:histStatus(r.tipo,raw),raw,code:r.codigo+(t?' · '+t.id_transferencia:''),createdAt:r.created_at,date:t?.fecha_respuesta||t?.fecha_solicitud||r.fecha_respuesta||r.created_at,responseDate:r.fecha_respuesta,originId:t?.origen_ubicacion_id||r.origen_sugerido_id||r.origen_id||null,destinationId:t?.destino_ubicacion_id||r.destino_id||null,origin:t?.origen||r.origen,destination:t?.destino||r.destino,emisor:t?.emisor||r.solicitante,receptor:t?.receptor||r.receptor,responder:r.aprobador,responseNote:r.respuesta_observacion,items:t?.items||r.items||[]});
     }
-    for(const t of lots.filter(x=>!linked.has(x.id)))rows.push({type:'DIRECTA',status:histStatus('DIRECTA',t.estado),raw:t.estado,code:t.id_transferencia,createdAt:t.fecha_solicitud,date:t.fecha_respuesta||t.fecha_solicitud,responseDate:t.fecha_respuesta,origin:t.origen,destination:t.destino,emisor:t.emisor,receptor:t.receptor,responseNote:t.respuesta_observacion,items:t.items||[]});
+    for(const t of lots.filter(x=>!linked.has(x.id)))rows.push({type:'DIRECTA',status:histStatus('DIRECTA',t.estado),raw:t.estado,code:t.id_transferencia,createdAt:t.fecha_solicitud,date:t.fecha_respuesta||t.fecha_solicitud,responseDate:t.fecha_respuesta,originId:t.origen_ubicacion_id||null,destinationId:t.destino_ubicacion_id||null,origin:t.origen,destination:t.destino,emisor:t.emisor,receptor:t.receptor,responseNote:t.respuesta_observacion,items:t.items||[]});
     return rows;
   }
 
@@ -86,7 +86,7 @@
     else rows=[];
 
     const st=$('historyState')?.value||'',loc=$('historyLocation')?.value||'',q=($('historySearch')?.value||'').trim().toLowerCase();
-    rows=rows.filter(x=>(!st||x.status===st)&&(!loc||(x.type==='ABASTECIMIENTO'?x.destination?.id===loc:x.type==='BAJA'?x.origin?.id===loc:x.origin?.id===loc||x.destination?.id===loc))&&(!q||JSON.stringify(x).toLowerCase().includes(q))).sort((a,b)=>new Date(b.date)-new Date(a.date));
+    rows=rows.filter(x=>(!st||x.status===st)&&(!loc||(x.type==='ABASTECIMIENTO'?x.destinationId===loc:x.type==='BAJA'?x.originId===loc:x.originId===loc||x.destinationId===loc))&&(!q||JSON.stringify(x).toLowerCase().includes(q))).sort((a,b)=>new Date(b.date)-new Date(a.date));
 
     const card=x=>{
       const arts=(x.items||[]).map(i=>{const name=i.producto?.producto||'ARTÍCULO';if(x.type==='DIRECTA'&&x.status==='DIFERENCIA'){const sent=Number(i.cantidad||1),got=Number(i.cantidad_recibida??0);return '<b>'+esc2(name)+'</b><br>Enviado: '+sent+' · Recibido: '+got+' · Faltante: '+Math.max(0,sent-got)}return i.tipo_control==='SERIAL'?esc2(name)+' · serial '+esc2(i.serial?.serial):Number(i.cantidad||1)+' × '+esc2(name)}).join('<br>');
