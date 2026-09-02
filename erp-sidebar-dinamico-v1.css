@@ -2,6 +2,7 @@
 .erpMenuToggle{margin-left:auto!important;width:44px!important;height:36px!important;min-height:36px!important;min-width:44px!important;padding:2px 4px 5px!important;display:grid!important;grid-template-rows:16px 9px!important;row-gap:3px!important;place-items:center!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:8px!important;background:rgba(255,255,255,.08)!important;color:#fff!important;line-height:1!important;cursor:pointer!important;flex:0 0 auto!important;transition:.16s ease!important}
 .erpMenuToggle:hover{background:rgba(255,255,255,.14)!important;transform:none!important}.erpMenuToggle .erpToggleIcon{font-size:16px!important;line-height:1!important}.erpMenuToggle .erpToggleState{font-size:6.5px!important;line-height:1!important;letter-spacing:.08em!important;font-weight:800!important;color:#bcd8e1!important;transform:translateY(2px)!important}.erpMenuToggle.isActive{background:linear-gradient(145deg,#19a878,#0d7e66)!important;border-color:#5ce0b5!important;box-shadow:0 0 0 2px rgba(80,222,177,.13)!important}.erpMenuToggle.isActive .erpToggleState{color:#fff!important}
 .menuAside .sideTitle{position:relative}.menuAside .sideTitle{display:flex!important;align-items:flex-start!important;gap:8px!important;flex-wrap:wrap!important}.menuAside .sideTitle .navAvatar{flex:0 0 auto!important}.menuAside .sideTitle b,.menuAside .sideTitle small{width:auto!important}.menuAside .sideTitle .erpMenuToggle{position:absolute!important;right:4px!important;top:4px!important}
+.menuAside button:not(.erpMenuToggle){color:#eaf6ff!important}.menuAside button:not(.erpMenuToggle) span{color:#eaf6ff!important;opacity:1!important;text-shadow:0 1px 1px rgba(0,0,0,.18)}.menuAside button:not(.erpMenuToggle):hover,.menuAside button:not(.erpMenuToggle).on{color:#fff!important}.menuAside button:not(.erpMenuToggle):hover span,.menuAside button:not(.erpMenuToggle).on span{color:#fff!important}.menuAside .navGroup{color:#8ec8ec!important}
 
 @media(min-width:681px){
   body.erpSidebarReady.panelMenu .menuShell{grid-template-columns:62px minmax(0,1fr)!important;transition:grid-template-columns .2s ease!important}
@@ -31,7 +32,7 @@
   body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside .navGroup,
   body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside .navGroup,
   body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside button:not(.erpMenuToggle) span,
-  body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside button:not(.erpMenuToggle) span{display:block!important}
+  body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside button:not(.erpMenuToggle) span{display:block!important;color:#eaf6ff!important;opacity:1!important}
   body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside .erpMenuToggle,
   body.erpSidebarReady.erpSidebarPinned.panelMenu .menuAside .erpMenuToggle{position:absolute!important;right:4px!important;top:4px!important;margin:0!important}
   body.erpSidebarReady.erpSidebarHover.panelMenu .menuAside button:not(.erpMenuToggle),
@@ -39,14 +40,13 @@
 }
 
 @media(max-width:680px){
-  /* En móvil el panel principal ya usa la navegación en tarjetas de panel-experiencia.
-     Debe permanecer visible mientras no haya un módulo abierto. */
   body.erpSidebarReady.panelMenu:not(.moduleOpen) .menuAside{display:grid!important}
   body.erpSidebarReady.panelMenu.moduleOpen .menuAside{display:none!important}
   body.erpSidebarReady.panelMenu .menuShell{display:block!important}
   body.erpSidebarReady.panelMenu .menuStage{width:100%!important}
   body.erpSidebarReady.panelMenu .menuAside .sideTitle{grid-column:auto!important;display:block!important;min-height:70px!important;padding:6px 7px 12px!important}
   body.erpSidebarReady.panelMenu .menuAside .sideTitle .erpMenuToggle{display:none!important}
-  body.erpSidebarReady.panelMenu .menuAside button:not(.erpMenuToggle){min-height:46px!important;flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;text-align:left!important;font-size:12px!important;padding:9px 10px!important}
+  body.erpSidebarReady.panelMenu .menuAside button:not(.erpMenuToggle){min-height:46px!important;flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;text-align:left!important;font-size:12px!important;padding:9px 10px!important;color:#eaf6ff!important}
+  body.erpSidebarReady.panelMenu .menuAside button:not(.erpMenuToggle) span{display:block!important;color:#eaf6ff!important;opacity:1!important}
   body.erpSidebarReady.panelMenu .menuAside .navGroup{display:block!important}
 }
