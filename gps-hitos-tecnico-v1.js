@@ -33,7 +33,7 @@ window.registrarHitoGps=async function(orden,action,btn){
  const original=btn?.textContent||'';if(btn){btn.disabled=true;btn.textContent='📍 OBTENIENDO GPS...'}
  let payload={estado_gps:'NO_DISPONIBLE',detalle:null};
  try{const g=await obtenerGps();payload={...g,estado_gps:'REGISTRADO',detalle:null}}catch(e){payload={estado_gps:geoErrorState(e),detalle:String(e?.message||'GPS no disponible').slice(0,250)}}
- try{await gpsApi(orden,action,payload);const ok=payload.estado_gps==='REGISTRADO';if(typeof window.showMsg==='function')window.showMsg(ok?'Hito registrado con ubicación.':'Hito registrado; GPS no disponible.',true);await window.cargar?.()}catch(e){if(typeof window.showMsg==='function')window.showMsg('No se pudo registrar el hito: '+e.message)}finally{if(btn&&document.body.contains(btn)){btn.disabled=false;btn.textContent=original}}
+ try{await gpsApi(orden,action,payload);const ok=payload.estado_gps==='REGISTRADO';if(typeof window.showMsg==='function')window.showMsg(ok?'Hito registrado con ubicación.':'Hito registrado; GPS no disponible.',true);await window.cargar?.();setTimeout(()=>refrescarHitos(orden),120)}catch(e){if(typeof window.showMsg==='function')window.showMsg('No se pudo registrar el hito: '+e.message)}finally{if(btn&&document.body.contains(btn)){btn.disabled=false;btn.textContent=original}}
 };
 window.solicitarReasignacion=async function(orden,btn){
  const motivo=prompt('Indica por qué no pueden continuar con este trabajo. Este motivo se enviará al Supervisor Técnico:');
