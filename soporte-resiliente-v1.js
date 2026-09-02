@@ -25,7 +25,7 @@
       const controller=new AbortController();
       const timeout=setTimeout(()=>controller.abort(),12000);
       try{
-        const response=await nativeFetch(input,{...init,cache:'no-store',signal:controller.signal});
+        const response=await nativeFetch(input,{...init,signal:controller.signal});
         if(response.status<500)return response;
         lastError=new Error('El servidor de soporte no respondió correctamente.');
         if(attempt===1)break;
