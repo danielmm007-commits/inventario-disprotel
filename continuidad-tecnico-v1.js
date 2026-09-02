@@ -5,8 +5,10 @@ if(typeof oldJobHtml!=='function')return;
 function creds(){try{return JSON.parse(sessionStorage.getItem('disprotel_trabajos_test')||'null')||{}}catch{return{}}}
 async function api(orden,action,payload={}){const c=creds();const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-session':c.session_token||''},body:JSON.stringify({orden_id:orden||'',action,...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error de continuidad');return d}
 function inject(html,block){const pos=html.lastIndexOf('</div>');return pos>=0?html.slice(0,pos)+block+html.slice(pos):html}
+function stripGps(html){return String(html).replace(/<div class="gpsOps"[\s\S]*?<\/div><\/div>/,'')}
 window.jobHtml=function(o,disp=false,hist=false){let html=oldJobHtml(o,disp,hist);if(disp||hist)return html;const estado=String(o?.estado||'').toUpperCase();
  if(estado==='PENDIENTE_REPROGRAMACION'){
+   html=stripGps(html);
    const box=`<div class="reprogBox"><div class="reprogTitle">⏸ TRABAJO REPROGRAMADO</div><div class="reprogText">La OT sigue asignada a tu grupo. Si Fernando no dispuso otro grupo, pueden retomarla directamente.</div><button type="button" class="resumeBtn" onclick="reanudarTrabajo('${o.id}',this)">▶ REANUDAR TRABAJO</button></div>`;
    return inject(html,box);
  }
