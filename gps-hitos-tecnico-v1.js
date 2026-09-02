@@ -51,5 +51,5 @@ window.refrescarGpsTodos=refrescarTodos;
 const oldCargar=window.cargar;if(typeof oldCargar==='function')window.cargar=async function(...args){const r=await oldCargar(...args);setTimeout(refrescarTodos,80);return r};
 const oldCamino=window.marcarEnCamino;if(typeof oldCamino==='function')window.marcarEnCamino=async function(id){const r=await oldCamino(id);const fake={textContent:'🚗 MARCAR EN CAMINO',disabled:false};await window.registrarHitoGps(id,'inicio-traslado',fake);return r};
 css();setTimeout(refrescarTodos,1000);
-if(!document.getElementById('continuidadTecnicoLoader')){const s=document.createElement('script');s.id='continuidadTecnicoLoader';s.src='continuidad-tecnico-v1.js?v=20260901-2108';document.body.appendChild(s)}
+if(!document.getElementById('continuidadTecnicoLoader')){const s=document.createElement('script');s.id='continuidadTecnicoLoader';s.src='continuidad-tecnico-v1.js?v=20260901-2215';document.body.appendChild(s)}
 })();
