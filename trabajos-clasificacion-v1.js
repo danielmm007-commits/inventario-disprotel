@@ -12,7 +12,12 @@
   @keyframes attentionPulse{0%,100%{box-shadow:0 0 0 0 #f59e0b55}50%{box-shadow:0 0 0 7px #f59e0b12;border-color:#f59e0b}}
   .workGrid.attentionMode{grid-template-columns:1fr}.workGrid.attentionMode .workPanel{display:none}.workGrid.attentionMode .workPanel.boardVisible{display:block}.workGrid.attentionMode .workPanel.history{display:block}
   .attentionMode .job{padding:11px 12px}
-  .attentionMode .job.jobCompact:not(.expanded)>:not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle){display:none!important}
+  .attentionMode .job.jobSupport{border-color:#f59e0b;box-shadow:inset 4px 0 0 #f59e0b}
+  .attentionMode .job.jobInstall{border-color:#176fc4;box-shadow:inset 4px 0 0 #176fc4}
+  .workKind{display:inline-block;margin:0 0 6px;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:.2px}
+  .jobSupport .workKind{background:#fff3dc;color:#9a5a00}
+  .jobInstall .workKind{background:#eaf5ff;color:#075da8}
+  .attentionMode .job.jobCompact:not(.expanded)>:not(.workKind):not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle){display:none!important}
   .jobToggle{width:100%;margin-top:9px;padding:9px 11px!important;background:#eaf2f6!important;color:#17313d!important}
   .jobQuickMeta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px;font-size:11px;color:#17313d;font-weight:800;margin-top:7px}
   .jobQuickMeta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.jobQuickMeta b{color:#60737c}
@@ -32,11 +37,13 @@
     return '';
   }
   function quick(job){
+    const client=field(job,'NOMBRE DEL CLIENTE')||clean(job.querySelector('.clientName')?.textContent);
     const type=field(job,'TIPO DE TRABAJO')||field(job,'SERVICIO / PLAN');
     const damage=field(job,'DETALLE')||field(job,'DESCRIPCIÓN')||field(job,'DANO')||field(job,'DAÑO');
     const place=field(job,'DIRECCIÓN')||field(job,'SECTOR');
     const by=field(job,'SOLICITADO POR');
     return [
+      client&&['Cliente:',client],
       type&&['Tipo:',type],
       damage&&['Detalle:',damage],
       place&&['Ubicación:',place],
@@ -55,10 +62,18 @@
     });
     job.querySelector('.badge')?.after(m);
   }
+  function kind(job){
+    const t=clean(field(job,'TIPO DE TRABAJO')||field(job,'SERVICIO / PLAN')).toUpperCase();
+    if(t.includes('INSTAL'))return ['jobInstall','INSTALACIÓN'];
+    if(t.includes('SOPORTE'))return ['jobSupport','SOPORTE'];
+    return ['', ''];
+  }
   function compact(job){
     job.classList.add('jobCompact');
     if(job.dataset.compactReady)return;
     job.dataset.compactReady='1';
+    const [cls,label]=kind(job);
+    if(cls){job.classList.add(cls);const k=document.createElement('span');k.className='workKind';k.textContent=label;job.prepend(k)}
     addQuickMeta(job,quick(job));
     const b=document.createElement('button');b.type='button';b.className='jobToggle';b.textContent='VER TRABAJO Y ACCIONES';
     b.onclick=()=>{job.classList.toggle('expanded');b.textContent=job.classList.contains('expanded')?'OCULTAR DETALLE':'VER TRABAJO Y ACCIONES'};
