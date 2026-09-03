@@ -25,6 +25,7 @@
   .jobInstall .jobToggle{border-color:#9ccbea!important;background:linear-gradient(135deg,#eaf7ff,#ffffff 48%,#d8edff)!important;color:#075da8!important}
   .job.expanded .jobToggle{animation:none;background:#17313d!important;color:#fff!important;border-color:#17313d!important}
   .job.expanded .jobToggle:before{content:'↑';color:#17313d}
+  .job button:disabled,.job a.disabledAction{background:#dbe5ea!important;color:#72848d!important;border-color:#c8d6dd!important;box-shadow:none!important;filter:grayscale(.2)!important;opacity:.88!important;cursor:not-allowed!important;animation:none!important}
   @keyframes jobTogglePulse{0%,100%{transform:translateY(0);filter:brightness(1)}50%{transform:translateY(-1px);filter:brightness(1.08);box-shadow:0 10px 24px #176fc43a}}
   @keyframes jobToggleShine{0%,55%{left:-55%}85%,100%{left:120%}}
   .jobQuickMeta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px;font-size:11px;color:#17313d;font-weight:800;margin-top:7px}
@@ -83,8 +84,10 @@
     const [cls,label]=kind(job);
     if(cls){job.classList.add(cls);const k=document.createElement('span');k.className='workKind';k.textContent=label;job.prepend(k)}
     addQuickMeta(job,quick(job));
-    const b=document.createElement('button');b.type='button';b.className='jobToggle';b.textContent='VER TRABAJO Y ACCIONES';
-    b.onclick=()=>{job.classList.toggle('expanded');b.textContent=job.classList.contains('expanded')?'OCULTAR DETALLE':'VER TRABAJO Y ACCIONES'};
+    const id=job.dataset.ordenId||'';
+    if(id&&window.__disprotelOpenJobId===id)job.classList.add('expanded');
+    const b=document.createElement('button');b.type='button';b.className='jobToggle';b.textContent=job.classList.contains('expanded')?'OCULTAR DETALLE':'VER TRABAJO Y ACCIONES';
+    b.onclick=()=>{job.classList.toggle('expanded');window.__disprotelOpenJobId=job.classList.contains('expanded')?id:'';b.textContent=job.classList.contains('expanded')?'OCULTAR DETALLE':'VER TRABAJO Y ACCIONES'};
     job.appendChild(b);
   }
   function ensure(){
@@ -124,6 +127,11 @@
     else if(!mode){if(title&&title.textContent!=='Trabajos activos')title.textContent='Trabajos activos';if(desc&&desc.textContent!=='Órdenes recibidas o tomadas por tu grupo.')desc.textContent='Órdenes recibidas o tomadas por tu grupo.'}
     busy=false;
   }
+  window.__setTechWorkView=function(nextView,openId){
+    if(nextView)view=nextView;
+    if(openId)window.__disprotelOpenJobId=openId;
+    setTimeout(apply,0);
+  };
   const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
   document.addEventListener('click',e=>{if(e.target.closest('.familyCard,#familyAll'))setTimeout(apply,0)},true);
   new MutationObserver(()=>setTimeout(apply,0)).observe(document.documentElement,{subtree:true,childList:true});
