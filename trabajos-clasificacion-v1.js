@@ -11,7 +11,8 @@
   .attentionCount{position:absolute;right:12px;top:11px;min-width:27px;height:27px;padding:0 7px;border-radius:999px;display:grid;place-items:center;background:#17313d;color:#fff;font-size:13px;font-weight:900}
   @keyframes attentionPulse{0%,100%{box-shadow:0 0 0 0 #f59e0b55}50%{box-shadow:0 0 0 7px #f59e0b12;border-color:#f59e0b}}
   .workGrid.attentionMode{grid-template-columns:1fr}.workGrid.attentionMode .workPanel{display:none}.workGrid.attentionMode .workPanel.boardVisible{display:block}.workGrid.attentionMode .workPanel.history{display:block}
-  .attentionMode .job{padding:11px 12px}.attentionMode .job:not(.expanded) .infoLine,.attentionMode .job:not(.expanded) .clientData,.attentionMode .job:not(.expanded)>.msg,.attentionMode .job:not(.expanded)>.grid,.attentionMode .job:not(.expanded)>button:not(.jobToggle){display:none}
+  .attentionMode .job{padding:11px 12px}
+  .attentionMode .job.jobCompact:not(.expanded)>:not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle){display:none!important}
   .jobToggle{width:100%;margin-top:9px;padding:9px 11px!important;background:#eaf2f6!important;color:#17313d!important}
   .jobQuickMeta{font-size:11px;color:#60737c;font-weight:800;margin-top:5px}
   @media(max-width:620px){.attentionSwitch{grid-template-columns:1fr}.attentionTab{padding:11px 13px}}
@@ -21,6 +22,7 @@
   function isAssigned(job){return ASSIGNED.has(state(job))}
   function counts(){return{available:jobs('disponibles').length,assigned:jobs('mios').filter(isAssigned).length,active:jobs('mios').filter(x=>!isAssigned(x)).length}}
   function compact(job){
+    job.classList.add('jobCompact');
     if(job.dataset.compactReady)return;
     job.dataset.compactReady='1';
     const type=job.querySelector('.infoLine .infoValue')?.textContent?.trim()||'';
