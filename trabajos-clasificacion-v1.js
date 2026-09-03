@@ -1,6 +1,6 @@
 (()=>{
   const ASSIGNED=new Set(['ASIGNADA','ASIGNADO','PENDIENTE_RECEPCION','PENDIENTE_CONFIRMACION']);
-  let view='available',busy=false;
+  let view='available',busy=false,autoFocused=false;
   const css=`
   .attentionSwitch{display:none;grid-template-columns:repeat(3,1fr);gap:10px;margin:13px 0}
   .attentionSwitch.show{display:grid}
@@ -40,9 +40,19 @@
     }return{grid,nav}
   }
   function attentionSelected(){const on=document.querySelector('.familyCard.on');return !!on&&/ATENCIÓN CLIENTES/i.test(on.textContent||'')}
+  function focusAttentionOnce(){
+    if(autoFocused)return false;
+    const all=document.getElementById('familyAll');
+    const attention=[...document.querySelectorAll('.familyCard')].find(x=>/ATENCIÓN CLIENTES/i.test(x.textContent||''));
+    if(!all?.classList.contains('on')||!attention)return false;
+    autoFocused=true;
+    attention.click();
+    return true;
+  }
   function apply(){
     if(busy)return;busy=true;
     const ui=ensure();if(!ui){busy=false;return}
+    if(focusAttentionOnce()){busy=false;return}
     const mode=attentionSelected(),c=counts(),available=document.querySelector('.workPanel.available'),mine=document.querySelector('.workPanel.active');
     ui.nav.classList.toggle('show',mode);ui.grid.classList.toggle('attentionMode',mode);
     ui.nav.querySelectorAll('.attentionTab').forEach(b=>{const k=b.dataset.view,n=c[k],count=b.querySelector('.attentionCount');b.classList.toggle('on',k===view);b.classList.toggle('needsAttention',n>0);if(count.textContent!==String(n))count.textContent=n});
