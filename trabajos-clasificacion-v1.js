@@ -18,7 +18,15 @@
   .jobSupport .workKind{background:#fff3dc;color:#9a5a00}
   .jobInstall .workKind{background:#eaf5ff;color:#075da8}
   .attentionMode .job.jobCompact:not(.expanded)>:not(.workKind):not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle){display:none!important}
-  .jobToggle{width:100%;margin-top:9px;padding:9px 11px!important;background:#eaf2f6!important;color:#17313d!important}
+  .jobToggle{position:relative;display:flex!important;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:11px;padding:12px 14px!important;border:1px solid #b7d7e9!important;border-radius:14px!important;background:linear-gradient(135deg,#eaf7ff,#ffffff 46%,#dcefff)!important;color:#082b5c!important;font-size:13px!important;font-weight:1000!important;letter-spacing:.02em;box-shadow:0 7px 18px #176fc426;overflow:hidden;animation:jobTogglePulse 1.8s ease-in-out infinite}
+  .jobToggle:before{content:'📋';width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#fff;border:1px solid #cbe2ee;box-shadow:0 4px 10px #082b5c17;font-size:18px}
+  .jobToggle:after{content:'';position:absolute;inset:-40% auto -40% -55%;width:48%;background:linear-gradient(90deg,transparent,#ffffff9c,transparent);transform:rotate(16deg);animation:jobToggleShine 2.6s ease-in-out infinite;pointer-events:none}
+  .jobSupport .jobToggle{border-color:#f2c77c!important;background:linear-gradient(135deg,#fff7e8,#ffffff 48%,#ffe9bf)!important;color:#754500!important;box-shadow:0 7px 18px #f59e0b2e}
+  .jobInstall .jobToggle{border-color:#9ccbea!important;background:linear-gradient(135deg,#eaf7ff,#ffffff 48%,#d8edff)!important;color:#075da8!important}
+  .job.expanded .jobToggle{animation:none;background:#17313d!important;color:#fff!important;border-color:#17313d!important}
+  .job.expanded .jobToggle:before{content:'↑';color:#17313d}
+  @keyframes jobTogglePulse{0%,100%{transform:translateY(0);filter:brightness(1)}50%{transform:translateY(-1px);filter:brightness(1.08);box-shadow:0 10px 24px #176fc43a}}
+  @keyframes jobToggleShine{0%,55%{left:-55%}85%,100%{left:120%}}
   .jobQuickMeta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px;font-size:11px;color:#17313d;font-weight:800;margin-top:7px}
   .jobQuickMeta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.jobQuickMeta b{color:#60737c}
   @media(max-width:620px){.attentionSwitch{grid-template-columns:1fr}.attentionTab{padding:11px 13px}}
