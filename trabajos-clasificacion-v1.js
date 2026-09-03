@@ -14,19 +14,52 @@
   .attentionMode .job{padding:11px 12px}
   .attentionMode .job.jobCompact:not(.expanded)>:not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle){display:none!important}
   .jobToggle{width:100%;margin-top:9px;padding:9px 11px!important;background:#eaf2f6!important;color:#17313d!important}
-  .jobQuickMeta{font-size:11px;color:#60737c;font-weight:800;margin-top:5px}
+  .jobQuickMeta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px;font-size:11px;color:#17313d;font-weight:800;margin-top:7px}
+  .jobQuickMeta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.jobQuickMeta b{color:#60737c}
   @media(max-width:620px){.attentionSwitch{grid-template-columns:1fr}.attentionTab{padding:11px 13px}}
   `;
   function state(job){return String(job.querySelector('.badge')?.textContent||'').trim().toUpperCase()}
   function jobs(id){return [...document.querySelectorAll('#'+id+' .job')]}
   function isAssigned(job){return ASSIGNED.has(state(job))}
   function counts(){return{available:jobs('disponibles').length,assigned:jobs('mios').filter(isAssigned).length,active:jobs('mios').filter(x=>!isAssigned(x)).length}}
+  function clean(v){return String(v||'').replace(/\s+/g,' ').trim()}
+  function field(job,label){
+    const wanted=label.toUpperCase();
+    for(const row of job.querySelectorAll('.otField,.infoLine')){
+      const k=clean(row.querySelector('b,.infoLabel')?.textContent).toUpperCase();
+      if(k.includes(wanted))return clean(row.querySelector('span,.infoValue')?.textContent);
+    }
+    return '';
+  }
+  function quick(job){
+    const type=field(job,'TIPO DE TRABAJO')||field(job,'SERVICIO / PLAN');
+    const damage=field(job,'DETALLE')||field(job,'DESCRIPCIÓN')||field(job,'DANO')||field(job,'DAÑO');
+    const place=field(job,'DIRECCIÓN')||field(job,'SECTOR');
+    const by=field(job,'SOLICITADO POR');
+    return [
+      type&&['Tipo:',type],
+      damage&&['Detalle:',damage],
+      place&&['Ubicación:',place],
+      by&&['Solicitado:',by]
+    ].filter(Boolean);
+  }
+  function addQuickMeta(job,items){
+    if(!items.length)return;
+    const m=document.createElement('div');m.className='jobQuickMeta';
+    items.forEach(([label,value])=>{
+      const s=document.createElement('span'),b=document.createElement('b');
+      b.textContent=label+' ';
+      s.appendChild(b);
+      s.appendChild(document.createTextNode(value));
+      m.appendChild(s);
+    });
+    job.querySelector('.badge')?.after(m);
+  }
   function compact(job){
     job.classList.add('jobCompact');
     if(job.dataset.compactReady)return;
     job.dataset.compactReady='1';
-    const type=job.querySelector('.infoLine .infoValue')?.textContent?.trim()||'';
-    if(type){const m=document.createElement('div');m.className='jobQuickMeta';m.textContent=type;job.querySelector('.badge')?.after(m)}
+    addQuickMeta(job,quick(job));
     const b=document.createElement('button');b.type='button';b.className='jobToggle';b.textContent='VER TRABAJO Y ACCIONES';
     b.onclick=()=>{job.classList.toggle('expanded');b.textContent=job.classList.contains('expanded')?'OCULTAR DETALLE':'VER TRABAJO Y ACCIONES'};
     job.appendChild(b);
@@ -42,6 +75,7 @@
     }return{grid,nav}
   }
   function attentionSelected(){const on=document.querySelector('.familyCard.on');return !!on&&/ATENCIÓN CLIENTES/i.test(on.textContent||'')}
+  function familySelected(){return !!document.querySelector('.familyCard.on')}
   function focusAttentionOnce(){
     if(autoFocused)return false;
     const all=document.getElementById('familyAll');
@@ -55,7 +89,7 @@
     if(busy)return;busy=true;
     const ui=ensure();if(!ui){busy=false;return}
     if(focusAttentionOnce()){busy=false;return}
-    const mode=attentionSelected(),c=counts(),available=document.querySelector('.workPanel.available'),mine=document.querySelector('.workPanel.active');
+    const mode=familySelected(),c=counts(),available=document.querySelector('.workPanel.available'),mine=document.querySelector('.workPanel.active');
     ui.nav.classList.toggle('show',mode);ui.grid.classList.toggle('attentionMode',mode);
     ui.nav.querySelectorAll('.attentionTab').forEach(b=>{const k=b.dataset.view,n=c[k],count=b.querySelector('.attentionCount');b.classList.toggle('on',k===view);b.classList.toggle('needsAttention',n>0);if(count.textContent!==String(n))count.textContent=n});
     available?.classList.toggle('boardVisible',mode&&view==='available');mine?.classList.toggle('boardVisible',mode&&view!=='available');
