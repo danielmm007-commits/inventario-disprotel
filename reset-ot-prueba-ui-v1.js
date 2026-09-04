@@ -23,8 +23,8 @@
     const st=document.createElement('style');
     st.id='resetOtPruebaStyle';
     st.textContent=`
-      .resetOtPruebaPanel{position:fixed;right:18px;bottom:88px;z-index:99999;width:min(360px,calc(100vw - 28px));border:1px solid #f59e0b;border-radius:14px;background:#fffdf2;box-shadow:0 16px 45px #071a382e;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#17313d}
-      .resetOtPruebaHead{display:flex;align-items:center;gap:8px;padding:11px 12px;background:linear-gradient(135deg,#fff7d6,#ffe08a);font-weight:1000;color:#5d3b00;font-size:12px}
+      .resetOtPruebaPanel{position:fixed;right:18px;bottom:88px;z-index:99999;width:min(360px,calc(100vw - 28px));border:1px solid #f59e0b;border-radius:14px;background:#fffdf2;box-shadow:0 16px 45px #071a382e;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#17313d;touch-action:none}
+      .resetOtPruebaHead{display:flex;align-items:center;gap:8px;padding:11px 12px;background:linear-gradient(135deg,#fff7d6,#ffe08a);font-weight:1000;color:#5d3b00;font-size:12px;cursor:move;user-select:none}
       .resetOtPruebaHead button{margin-left:auto;width:auto;border:0;border-radius:9px;background:#17313d;color:#fff;padding:7px 9px;font-size:11px;font-weight:900;cursor:pointer}
       .resetOtPruebaBody{display:grid;gap:8px;padding:10px;max-height:260px;overflow:auto}
       .resetOtPruebaItem{border:1px solid #f4c55b;border-radius:11px;background:#fff;padding:9px}
@@ -45,6 +45,8 @@
       panel=document.createElement('section');
       panel.className='resetOtPruebaPanel';
       document.body.appendChild(panel);
+      restoreDrag(panel,'disprotel_reset_ot_pos_v1');
+      makeDraggable(panel,'.resetOtPruebaHead','disprotel_reset_ot_pos_v1');
     }
     panel.innerHTML='<div class="resetOtPruebaHead"><span>🧪 RESET DE OTS DE PRUEBA</span><button type="button" data-reset-refresh>Actualizar</button></div><div class="resetOtPruebaBody">'+rows.map(o=>`
       <div class="resetOtPruebaItem">
@@ -52,6 +54,34 @@
         <small>${esc(o.cliente||'SIN CLIENTE')}<br>${esc(o.tipo||'TIPO NO DEFINIDO')}</small>
         <button type="button" data-reset-ot="${esc(o.id)}" data-reset-label="${esc(o.id_orden)}">RESETEAR ESTA OT</button>
       </div>`).join('')+'</div><div class="resetOtPruebaHint">Visible solo para pruebas. En producción se oculta.</div>';
+  }
+  function restoreDrag(el,key){
+    try{
+      const p=JSON.parse(localStorage.getItem(key)||'null');
+      if(!p)return;
+      el.style.left=p.left+'px';el.style.top=p.top+'px';el.style.right='auto';el.style.bottom='auto';
+    }catch{}
+  }
+  function makeDraggable(el,handleSel,key){
+    if(el.dataset.dragReady)return;el.dataset.dragReady='1';
+    let sx=0,sy=0,sl=0,st=0,moving=false;
+    const clamp=()=>{
+      const r=el.getBoundingClientRect(),pad=8;
+      const left=Math.max(pad,Math.min(r.left,innerWidth-r.width-pad));
+      const top=Math.max(pad,Math.min(r.top,innerHeight-r.height-pad));
+      el.style.left=left+'px';el.style.top=top+'px';el.style.right='auto';el.style.bottom='auto';
+      try{localStorage.setItem(key,JSON.stringify({left,top}))}catch{}
+    };
+    el.addEventListener('pointerdown',e=>{
+      const h=e.target.closest(handleSel);
+      if(!h||e.target.closest('button,input,select,textarea,a'))return;
+      moving=true;const r=el.getBoundingClientRect();sx=e.clientX;sy=e.clientY;sl=r.left;st=r.top;
+      el.style.left=sl+'px';el.style.top=st+'px';el.style.right='auto';el.style.bottom='auto';
+      el.setPointerCapture?.(e.pointerId);e.preventDefault();
+    });
+    el.addEventListener('pointermove',e=>{if(!moving)return;el.style.left=(sl+e.clientX-sx)+'px';el.style.top=(st+e.clientY-sy)+'px';e.preventDefault()});
+    el.addEventListener('pointerup',()=>{if(!moving)return;moving=false;clamp()});
+    addEventListener('resize',clamp);
   }
   function clearLocalFlow(id){
     const keys=['disprotel_ot_pausadas_tecnico_v1','disprotel_ot_reprogramadas_local_v1'];
