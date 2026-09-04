@@ -6,11 +6,19 @@
 
   function abrirIp(){
     const trabajo=$('accTrabajo'),ip=$('accIp');
+    recordarPaso('accIp');
     if(trabajo)trabajo.open=false;
     if(ip){
       ip.open=true;
       setTimeout(()=>ip.scrollIntoView({behavior:'smooth',block:'start'}),80);
     }
+  }
+
+  function recordarPaso(id){
+    try{
+      const oid=ordenId();
+      if(oid&&id)localStorage.setItem('disprotel_instalacion_paso_'+oid,id);
+    }catch{}
   }
 
   async function refrescarResumenGuardado(mantenerTrabajo=true){
@@ -44,6 +52,7 @@
   }
 
   async function guardarSeleccionFluida(){
+    window.__disprotelGuardadoMaterialesFluido=true;
     if(SAVING||(SAVED&&!ADDING))return;
     const items=Object.values(CART);
     if(!items.length){show('La canasta está vacía.','warn');return}
@@ -232,8 +241,13 @@
     if(!b)return false;
     if(b.dataset.guardadoFluido!=='1'){
       b.dataset.guardadoFluido='1';
-      b.onclick=guardarSeleccionFluida;
+      b.addEventListener('click',ev=>{
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        guardarSeleccionFluida();
+      },true);
     }
+    if(b.onclick)b.onclick=null;
     window.onuBox=onuBoxControlado;
     window.agregarOnu=agregarOnuControlada;
     window.materialesBox=materialesBoxBuscable;
