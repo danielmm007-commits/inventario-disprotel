@@ -4,9 +4,9 @@
 
   const GRUPOS=[
     {value:'',label:'Disponible para cualquier grupo técnico'},
-    {value:'Grupo Salcedo · Camioneta',label:'Grupo Salcedo · Camioneta'},
-    {value:'Grupo Salcedo · Furgoneta',label:'Grupo Salcedo · Furgoneta'},
-    {value:'Grupo Saquisilí',label:'Grupo Saquisilí'}
+    {value:'CAMIONETA',label:'Grupo Salcedo · Camioneta'},
+    {value:'FURGONETA',label:'Grupo Salcedo · Furgoneta'},
+    {value:'SAQUISILÍ',label:'Grupo Saquisilí'}
   ];
 
   function sinAcentos(v){
@@ -17,9 +17,9 @@
     const raw=String(v||'').trim();
     const n=sinAcentos(raw);
     if(!n)return '';
-    if(n.includes('CAMIONETA'))return 'Grupo Salcedo · Camioneta';
-    if(n.includes('FURGONETA'))return 'Grupo Salcedo · Furgoneta';
-    if(n.includes('SAQUISILI'))return 'Grupo Saquisilí';
+    if(n.includes('CAMIONETA'))return 'CAMIONETA';
+    if(n.includes('FURGONETA'))return 'FURGONETA';
+    if(n.includes('SAQUISILI'))return 'SAQUISILÍ';
     return raw;
   }
 
