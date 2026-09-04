@@ -4,7 +4,16 @@
   const esOnu=x=>ONU_CODES.has(String(x?.codigo||'').toUpperCase());
   const onuGuardada=()=> (SAVED_ITEMS||[]).find(esOnu)||null;
 
-  async function refrescarResumenGuardado(){
+  function abrirIp(){
+    const trabajo=$('accTrabajo'),ip=$('accIp');
+    if(trabajo)trabajo.open=false;
+    if(ip){
+      ip.open=true;
+      setTimeout(()=>ip.scrollIntoView({behavior:'smooth',block:'start'}),80);
+    }
+  }
+
+  async function refrescarResumenGuardado(mantenerTrabajo=true){
     let ultimoError=null;
     for(let i=0;i<15;i++){
       try{
@@ -18,7 +27,7 @@
           }
           renderResumenGuardado();
           const acc=$('accTrabajo');
-          if(acc)acc.open=true;
+          if(acc)acc.open=Boolean(mantenerTrabajo);
           return true;
         }
       }catch(e){ultimoError=e}
@@ -59,8 +68,9 @@
       $('stTrabajo').textContent='⏳ ACTUALIZANDO RESUMEN';
       show('✅ Artículos guardados correctamente. Actualizando resumen...');
 
-      await refrescarResumenGuardado();
-      show('✅ Artículos guardados correctamente. Revisa el resumen antes de continuar.');
+      await refrescarResumenGuardado(false);
+      show('✅ Artículos guardados correctamente. Continuamos con IP y plan.');
+      abrirIp();
 
       Promise.resolve().then(()=>cargarInventario()).catch(()=>{});
     }catch(e){
@@ -211,7 +221,8 @@
       }
       EDITING=false;
       show(`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`);
-      await refrescarResumenGuardado();
+      await refrescarResumenGuardado(false);
+      abrirIp();
       Promise.resolve().then(()=>cargarInventario()).catch(()=>{});
     }catch(e){show(e.message,'err');actualizarConteoCambiosControlado()}
   }
