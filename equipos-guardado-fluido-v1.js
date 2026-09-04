@@ -101,6 +101,37 @@
     renderInventario();
   }
 
+  function materialesBoxBuscable(){
+    const a=(INV?.materiales||[]).filter(x=>x.categoria!=='EQUIPOS'&&!ONU_CODES.has(String(x.codigo||'').toUpperCase())&&!/ONU|ONT/i.test(String(x.categoria||'')+' '+String(x.producto||''))&&!CART['p_'+x.id]);
+    if(!a.length)return `<div class="pickBox"><b>🧰 MATERIALES</b><div class="muted">No hay materiales por cantidad disponibles en esta minibodega.</div></div>`;
+    const opts=a.map(x=>`<option value="${esc(x.id)}">${esc(up(x.producto))} · ${x.disponible} ${esc(x.unidad)}</option>`).join('');
+    return `<div class="pickBox"><b>🧰 MATERIALES</b><div class="muted">Busca o elige un material, define cantidad y agrégalo a la canasta. No se descuenta nada hasta guardar.</div><input id="buscarMaterialInst" type="search" list="listaMaterialesInst" placeholder="Buscar material por nombre o código..." oninput="filtrarMaterialInst()"><datalist id="listaMaterialesInst">${a.map(x=>`<option value="${esc(up(x.producto))}"></option>`).join('')}</datalist><div class="pickRow"><select id="materialInst">${opts}</select><input id="cantMaterialInst" type="number" min="1" value="1"></div><button type="button" onclick="agregarMaterialSeleccionadoInst()">➕ AGREGAR A CANASTA</button><div id="materialInstInfo" class="muted" style="margin-top:7px">${a.length} material(es) disponibles en tu minibodega.</div></div>`;
+  }
+
+  function filtrarMaterialInst(){
+    const sel=$('materialInst'),info=$('materialInstInfo');
+    if(!sel)return;
+    const q=up($('buscarMaterialInst')?.value||'').trim();
+    const a=(INV?.materiales||[]).filter(x=>x.categoria!=='EQUIPOS'&&!ONU_CODES.has(String(x.codigo||'').toUpperCase())&&!/ONU|ONT/i.test(String(x.categoria||'')+' '+String(x.producto||''))&&!CART['p_'+x.id]).filter(x=>!q||up(x.producto).includes(q)||up(x.codigo).includes(q));
+    sel.innerHTML=a.map(x=>`<option value="${esc(x.id)}">${esc(up(x.producto))} · ${x.disponible} ${esc(x.unidad)}</option>`).join('');
+    if(info)info.textContent=a.length?`${a.length} coincidencia(s).`:'No hay coincidencias.';
+  }
+
+  function agregarMaterialSeleccionadoInst(){
+    const id=$('materialInst')?.value;
+    if(!id){show('Elige un material de la lista.','warn');return}
+    const x=(INV?.materiales||[]).find(v=>v.id===id);
+    if(!x)return;
+    const n=Number($('cantMaterialInst')?.value)||0;
+    if(n<1){show('Ingresa una cantidad mayor a 0 para '+up(x.producto)+'.','warn');return}
+    if(n>Number(x.disponible)){show('La cantidad supera el stock disponible de '+up(x.producto)+'.','err');return}
+    const k='p_'+x.id;
+    if(CART[k]){show(up(x.producto)+' ya está en la canasta.','warn');return}
+    CART[k]={tipo:'MATERIAL',producto_id:x.id,serial_id:null,codigo:x.codigo,nombre:x.producto,detalle:x.unidad,cantidad:n,unidad:x.unidad};
+    show(up(x.producto)+' · cantidad '+n+' agregada a la canasta.');
+    renderInventario();
+  }
+
   function renderEditarGuardadoControlado(){
     $('trabajoCabecera').classList.add('hidden');
     $('selectorTrabajo').classList.add('hidden');
@@ -194,10 +225,14 @@
     }
     window.onuBox=onuBoxControlado;
     window.agregarOnu=agregarOnuControlada;
+    window.materialesBox=materialesBoxBuscable;
+    window.filtrarMaterialInst=filtrarMaterialInst;
+    window.agregarMaterialSeleccionadoInst=agregarMaterialSeleccionadoInst;
     window.renderEditarGuardado=renderEditarGuardadoControlado;
     window.cambiosPendientes=cambiosPendientesControlados;
     window.actualizarConteoCambios=actualizarConteoCambiosControlado;
     window.guardarModificacionesMasivas=guardarModificacionesControladas;
+    try{if(INV&&(!SAVED||ADDING||EDITING))renderInventario()}catch(e){}
     return true;
   }
 

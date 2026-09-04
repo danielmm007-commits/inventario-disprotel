@@ -31,10 +31,11 @@
   let tries=0;
   const timer=setInterval(()=>{
     tries++;
-    const listo=txt('stDatos')||txt('stDoc')||txt('stTrabajo')||txt('stIp');
+    const listo=txt('stDoc')&&txt('stTrabajo')&&txt('stIp')&&!/CONSULTANDO|CARGANDO/.test(document.body.textContent.toUpperCase());
     if(listo||tries>30){
       clearInterval(timer);
-      setTimeout(retomar,250);
+      setTimeout(retomar,350);
+      setTimeout(retomar,1100);
     }
   },250);
 
