@@ -2,7 +2,7 @@
   const ASSIGNED=new Set(['ASIGNADA','ASIGNADO','PENDIENTE_RECEPCION','PENDIENTE_CONFIRMACION']);
   let view='available',busy=false,autoFocused=false;
   const css=`
-  .attentionSwitch{display:none;grid-template-columns:repeat(3,1fr);gap:10px;margin:13px 0}
+  .attentionSwitch{display:none;grid-template-columns:repeat(4,1fr);gap:10px;margin:13px 0}
   .attentionSwitch.show{display:grid}
   .attentionTab{position:relative;text-align:left;background:#fff;color:#17313d;border:2px solid #cfe0e8;border-radius:15px;padding:13px 14px;box-shadow:0 5px 16px #082b5c0b}
   .attentionTab.on{border-color:#176fc4;background:#eaf5ff;color:#082b5c}
@@ -10,13 +10,17 @@
   .attentionTab strong{display:block;font-size:14px}.attentionTab small{display:block;color:#687f8b;margin-top:4px}
   .attentionCount{position:absolute;right:12px;top:11px;min-width:27px;height:27px;padding:0 7px;border-radius:999px;display:grid;place-items:center;background:#17313d;color:#fff;font-size:13px;font-weight:900}
   @keyframes attentionPulse{0%,100%{box-shadow:0 0 0 0 #f59e0b55}50%{box-shadow:0 0 0 7px #f59e0b12;border-color:#f59e0b}}
-  .workGrid.attentionMode{grid-template-columns:1fr}.workGrid.attentionMode .workPanel{display:none}.workGrid.attentionMode .workPanel.boardVisible{display:block}.workGrid.attentionMode .workPanel.history{display:block}
+  .workGrid.attentionMode{grid-template-columns:1fr}.workGrid.attentionMode .workPanel{display:none}.workGrid.attentionMode .workPanel.boardVisible{display:block}
   .attentionMode .job{padding:11px 12px}
   .attentionMode .job.jobSupport{border-color:#f59e0b;box-shadow:inset 4px 0 0 #f59e0b}
   .attentionMode .job.jobInstall{border-color:#176fc4;box-shadow:inset 4px 0 0 #176fc4}
+  .attentionMode .job.jobClosedOk{border-color:#16a34a;box-shadow:inset 4px 0 0 #16a34a}
+  .attentionMode .job.jobClosedCancel{border-color:#dc2626;box-shadow:inset 4px 0 0 #dc2626}
   .workKind{display:inline-block;margin:0 0 6px;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:.2px}
   .jobSupport .workKind{background:#fff3dc;color:#9a5a00}
   .jobInstall .workKind{background:#eaf5ff;color:#075da8}
+  .jobClosedOk .workKind{background:#e8f8ee;color:#126239}
+  .jobClosedCancel .workKind{background:#fdecec;color:#991b1b}
   .attentionMode .job.jobCompact:not(.expanded)>:not(.workKind):not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle){display:none!important}
   .jobToggle{position:relative;display:flex!important;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:11px;padding:12px 14px!important;border:1px solid #b7d7e9!important;border-radius:14px!important;background:linear-gradient(135deg,#eaf7ff,#ffffff 46%,#dcefff)!important;color:#082b5c!important;font-size:13px!important;font-weight:1000!important;letter-spacing:.02em;box-shadow:0 7px 18px #176fc426;overflow:hidden;animation:jobTogglePulse 1.8s ease-in-out infinite}
   .jobToggle:before{content:'📋';width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#fff;border:1px solid #cbe2ee;box-shadow:0 4px 10px #082b5c17;font-size:18px}
@@ -35,7 +39,8 @@
   function state(job){return String(job.querySelector('.badge')?.textContent||'').trim().toUpperCase()}
   function jobs(id){return [...document.querySelectorAll('#'+id+' .job')]}
   function isAssigned(job){return ASSIGNED.has(state(job))}
-  function counts(){return{available:jobs('disponibles').length,assigned:jobs('mios').filter(isAssigned).length,active:jobs('mios').filter(x=>!isAssigned(x)).length}}
+  function isClosed(job){return /COMPLETADA|CANCELADA|NO_EJECUTADA/.test(state(job))}
+  function counts(){return{available:jobs('disponibles').length,assigned:jobs('asignados').length,active:jobs('mios').filter(x=>!isAssigned(x)).length,done:jobs('historial').length}}
   function clean(v){return String(v||'').replace(/\s+/g,' ').trim()}
   function field(job,label){
     const wanted=label.toUpperCase();
@@ -73,8 +78,9 @@
   }
   function kind(job){
     const t=clean(field(job,'TIPO DE TRABAJO')||field(job,'SERVICIO / PLAN')).toUpperCase();
-    if(t.includes('INSTAL'))return ['jobInstall','INSTALACIÓN'];
-    if(t.includes('SOPORTE'))return ['jobSupport','SOPORTE'];
+    const st=state(job),closed=isClosed(job),suffix=closed&&/CANCELADA|NO_EJECUTADA/.test(st)?' · CANCELADA':closed?' · FINALIZADA':'';
+    if(t.includes('INSTAL'))return [closed&&suffix.includes('CANCELADA')?'jobInstall jobClosedCancel':closed?'jobInstall jobClosedOk':'jobInstall','INSTALACIÓN'+suffix];
+    if(t.includes('SOPORTE'))return [closed&&suffix.includes('CANCELADA')?'jobSupport jobClosedCancel':closed?'jobSupport jobClosedOk':'jobSupport','SOPORTE'+suffix];
     return ['', ''];
   }
   function compact(job){
@@ -82,7 +88,7 @@
     if(job.dataset.compactReady)return;
     job.dataset.compactReady='1';
     const [cls,label]=kind(job);
-    if(cls){job.classList.add(cls);const k=document.createElement('span');k.className='workKind';k.textContent=label;job.prepend(k)}
+    if(cls){job.classList.add(...cls.split(/\s+/).filter(Boolean));const k=document.createElement('span');k.className='workKind';k.textContent=label;job.prepend(k)}
     addQuickMeta(job,quick(job));
     const id=job.dataset.ordenId||'';
     if(id&&window.__disprotelOpenJobId===id)job.classList.add('expanded');
@@ -96,7 +102,8 @@
     if(!nav){nav=document.createElement('section');nav.id='attentionSwitch';nav.className='attentionSwitch';nav.innerHTML=`
       <button class="attentionTab" data-view="available">🔔 <strong>Disponibles</strong><small>Órdenes libres para tomar</small><span class="attentionCount">0</span></button>
       <button class="attentionTab" data-view="assigned">📥 <strong>Asignados</strong><small>Pendientes de recibir</small><span class="attentionCount">0</span></button>
-      <button class="attentionTab" data-view="active">🛠️ <strong>En ejecución</strong><small>Aceptados o en proceso</small><span class="attentionCount">0</span></button>`;
+      <button class="attentionTab" data-view="active">🛠️ <strong>En ejecución</strong><small>Aceptados o en proceso</small><span class="attentionCount">0</span></button>
+      <button class="attentionTab" data-view="done">📚 <strong>Finalizadas</strong><small>Cerradas o canceladas</small><span class="attentionCount">0</span></button>`;
       grid.before(nav);nav.querySelectorAll('.attentionTab').forEach(b=>b.onclick=()=>{view=b.dataset.view;apply()});
     }return{grid,nav}
   }
@@ -115,15 +122,16 @@
     if(busy)return;busy=true;
     const ui=ensure();if(!ui){busy=false;return}
     if(focusAttentionOnce()){busy=false;return}
-    const mode=familySelected(),c=counts(),available=document.querySelector('.workPanel.available'),mine=document.querySelector('.workPanel.active');
+    const mode=familySelected(),c=counts(),available=document.querySelector('.workPanel.available'),assigned=document.querySelector('.workPanel.assigned'),mine=document.querySelector('.workPanel.active'),history=document.querySelector('.workPanel.history');
     ui.nav.classList.toggle('show',mode);ui.grid.classList.toggle('attentionMode',mode);
     ui.nav.querySelectorAll('.attentionTab').forEach(b=>{const k=b.dataset.view,n=c[k],count=b.querySelector('.attentionCount');b.classList.toggle('on',k===view);b.classList.toggle('needsAttention',n>0);if(count.textContent!==String(n))count.textContent=n});
-    available?.classList.toggle('boardVisible',mode&&view==='available');mine?.classList.toggle('boardVisible',mode&&view!=='available');
-    jobs('mios').forEach(j=>j.style.display=!mode||(view==='assigned'?isAssigned(j):view==='active'?!isAssigned(j):true)?'':'none');
-    [...jobs('disponibles'),...jobs('mios')].forEach(compact);
+    available?.classList.toggle('boardVisible',mode&&view==='available');
+    assigned?.classList.toggle('boardVisible',mode&&view==='assigned');
+    mine?.classList.toggle('boardVisible',mode&&view==='active');
+    history?.classList.toggle('boardVisible',mode&&view==='done');
+    [...jobs('disponibles'),...jobs('asignados'),...jobs('mios'),...jobs('historial')].forEach(compact);
     const title=mine?.querySelector('h2'),desc=mine?.querySelector('.workHead p');
-    if(mode&&view==='assigned'){if(title&&title.textContent!=='Trabajos asignados')title.textContent='Trabajos asignados';if(desc&&desc.textContent!=='Órdenes dirigidas al grupo pendientes de recepción.')desc.textContent='Órdenes dirigidas al grupo pendientes de recepción.'}
-    else if(mode&&view==='active'){if(title&&title.textContent!=='Trabajos en ejecución')title.textContent='Trabajos en ejecución';if(desc&&desc.textContent!=='Órdenes aceptadas, en camino, en sitio o en proceso.')desc.textContent='Órdenes aceptadas, en camino, en sitio o en proceso.'}
+    if(mode&&view==='active'){if(title&&title.textContent!=='Trabajos en ejecución')title.textContent='Trabajos en ejecución';if(desc&&desc.textContent!=='Órdenes aceptadas, en camino, en sitio o en proceso.')desc.textContent='Órdenes aceptadas, en camino, en sitio o en proceso.'}
     else if(!mode){if(title&&title.textContent!=='Trabajos activos')title.textContent='Trabajos activos';if(desc&&desc.textContent!=='Órdenes recibidas o tomadas por tu grupo.')desc.textContent='Órdenes recibidas o tomadas por tu grupo.'}
     busy=false;
   }
