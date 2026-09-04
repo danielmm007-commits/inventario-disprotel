@@ -53,6 +53,20 @@
         <button type="button" data-reset-ot="${esc(o.id)}" data-reset-label="${esc(o.id_orden)}">RESETEAR ESTA OT</button>
       </div>`).join('')+'</div><div class="resetOtPruebaHint">Visible solo para pruebas. En producción se oculta.</div>';
   }
+  function clearLocalFlow(id){
+    const keys=['disprotel_ot_pausadas_tecnico_v1','disprotel_ot_reprogramadas_local_v1'];
+    for(const k of keys){
+      try{
+        const data=JSON.parse(sessionStorage.getItem(k)||'{}')||{};
+        if(id)delete data[id];
+        sessionStorage.setItem(k,JSON.stringify(data));
+      }catch{sessionStorage.removeItem(k)}
+    }
+    try{
+      if(sessionStorage.getItem('disprotel_instalacion_orden_test')?.includes(id))sessionStorage.removeItem('disprotel_instalacion_orden_test');
+    }catch{}
+    window.__disprotelOpenJobId='';
+  }
   async function reset(id,label,btn){
     if(busy)return;
     if(!confirm('¿Resetear '+label+' y borrar historial operativo de prueba?'))return;
@@ -62,6 +76,7 @@
       const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reset-test-order',orden_id:id,session_token:s.session_token||'',usuario:s.usuario||'',pin:s.pin||''})});
       const d=await r.json().catch(()=>({error:'Respuesta inválida'}));
       if(!r.ok||d.error)throw new Error(d.error||'No se pudo resetear');
+      clearLocalFlow(id);
       map.clear();
       if(typeof window.cargar==='function')await window.cargar();
       else location.reload();
