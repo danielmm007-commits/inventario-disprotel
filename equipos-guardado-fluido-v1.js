@@ -89,6 +89,18 @@
     }
   }
 
+  const showOriginal=window.show;
+  if(typeof showOriginal==='function'&&!window.__disprotelShowInventarioLimpio){
+    window.__disprotelShowInventarioLimpio=true;
+    window.show=function(t,c='ok'){
+      const msg=String(t||'');
+      if(c==='err'&&/No existe minibodega para el grupo/i.test(msg)&&INV?.ubicacion?.ubicacion){
+        return showOriginal('Minibodega detectada: '+up(INV.ubicacion.ubicacion),'ok');
+      }
+      return showOriginal(t,c);
+    };
+  }
+
   function onuBoxControlado(){
     const actual=onuGuardada();
     if(ADDING&&actual){

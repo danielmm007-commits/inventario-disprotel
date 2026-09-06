@@ -50,18 +50,23 @@
     const trabajo=txt('stTrabajo')+' '+txt('resumenGuardado');
     const ip=txt('stIp')+' '+txt('ipEstado');
     const evid=txt('stEvidencias')+' '+txt('evMsg');
+    const hayItemsGuardados=Boolean(window.SAVED)||(Array.isArray(window.SAVED_ITEMS)&&window.SAVED_ITEMS.length>0)||/GUARDADO|ARTÍCULOS REGISTRADOS|ARTICULOS REGISTRADOS|ITEM\(S\)/.test(trabajo);
 
     if(/SUBIDA|CARGADA|EVIDENCIA|FOTO|GPS|CIERRE/.test(evid))return 'accEvidencias';
-    if(/ESPERANDO IP|SOLICITUD ENVIADA|IP AÚN NO SOLICITADA|IP AUN NO SOLICITADA|IP CONFIRMADA|ASIGNADA/.test(ip)&&/GUARDADO|ARTÍCULOS REGISTRADOS|ARTICULOS REGISTRADOS/.test(trabajo))return 'accIp';
-    if(!/GUARDADO|ARTÍCULOS REGISTRADOS|ARTICULOS REGISTRADOS|MODIFICANDO|AGREGANDO/.test(trabajo))return 'accTrabajo';
+    if(hayItemsGuardados&&/ESPERANDO IP|SOLICITUD ENVIADA|IP AÚN NO SOLICITADA|IP AUN NO SOLICITADA|IP CONFIRMADA|ASIGNADA|PENDIENTE/.test(ip))return 'accIp';
+    if(!hayItemsGuardados&&!/MODIFICANDO|AGREGANDO/.test(trabajo))return 'accTrabajo';
     if(!/COMPLETO|DISPONIBLE/.test(doc))return 'accDoc';
-    return 'accTrabajo';
+    return hayItemsGuardados?'accIp':'accTrabajo';
   }
 
   function objetivo(){
     const forced=new URLSearchParams(location.search).get('paso');
     const map={datos:'accDatos',documento:'accDoc',materiales:'accTrabajo',ip:'accIp',evidencias:'accEvidencias'};
-    return map[forced]||pasoGuardado()||pasoPorEstado();
+    const porEstado=pasoPorEstado();
+    const guardado=pasoGuardado();
+    if(map[forced])return map[forced];
+    if(porEstado==='accEvidencias'||porEstado==='accIp')return porEstado;
+    return guardado||porEstado;
   }
 
   function retomar(){
