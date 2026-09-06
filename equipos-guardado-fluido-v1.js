@@ -4,11 +4,17 @@
   const esOnu=x=>ONU_CODES.has(String(x?.codigo||'').toUpperCase());
   const onuGuardada=()=> (SAVED_ITEMS||[]).find(esOnu)||null;
   function publicarConteoGuardado(){
-    window.__disprotelArticulosInstalacionGuardados=Array.isArray(SAVED_ITEMS)?SAVED_ITEMS.length:0;
+    const n=Array.isArray(SAVED_ITEMS)?SAVED_ITEMS.length:0;
+    window.__disprotelArticulosInstalacionGuardados=n;
+    if(n===0){try{localStorage.removeItem('disprotel_instalacion_paso_'+ordenId())}catch{}}
   }
   window.cantidadArticulosInstalacionGuardados=()=>Number(window.__disprotelArticulosInstalacionGuardados||0);
 
   function abrirIp(){
+    if(Number(window.cantidadArticulosInstalacionGuardados?.()||0)<=0){
+      recordarPaso('accTrabajo');
+      return;
+    }
     const trabajo=$('accTrabajo'),ip=$('accIp');
     recordarPaso('accIp');
     if(trabajo)trabajo.open=false;
@@ -30,15 +36,16 @@
     for(let i=0;i<15;i++){
       try{
         const d=await post(API_DOM,'items-status',{orden_id:ordenId()});
-        if(d?.saved){
-          SAVED=true;
-          SAVED_ITEMS=d.items||[];
+        if(d&&('saved'in d||Array.isArray(d.items))){
+          SAVED_ITEMS=Array.isArray(d.items)?d.items:[];
+          SAVED=!!d.saved&&SAVED_ITEMS.length>0;
           publicarConteoGuardado();
           if(d.instalacion_id){
             O.instalacion_id=d.instalacion_id;
             sessionStorage.setItem(INSTKEY,JSON.stringify(O));
           }
-          renderResumenGuardado();
+          if(SAVED)renderResumenGuardado();
+          else renderCart();
           const acc=$('accTrabajo');
           if(acc)acc.open=Boolean(mantenerTrabajo);
           return true;
@@ -266,6 +273,7 @@
   function instalar(){
     const b=$('confirmarUso');
     if(!b)return false;
+    publicarConteoGuardado();
     if(b.dataset.guardadoFluido!=='1'){
       b.dataset.guardadoFluido='1';
       b.addEventListener('click',ev=>{
