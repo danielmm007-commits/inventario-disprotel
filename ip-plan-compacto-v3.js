@@ -3,8 +3,15 @@
  const API_ROUTER=B+'inventario-router-cobertura';
  let ROUTERS=[],ROUTER_ACTUAL=null,actualizando=false,ultimaVista='',routersCargados=false;
  function routerKey(){return 'disprotel_router_cobertura_'+ordenId()}
- function recordarRouter(id){if(!id)return;ROUTER_ACTUAL=id;try{localStorage.setItem(routerKey(),id)}catch{}}
- function routerLocal(){try{return localStorage.getItem(routerKey())||''}catch{return ''}}
+ function recordarRouter(id){if(!id)return;ROUTER_ACTUAL=id;const r=ROUTERS.find(x=>x.id===id);if(r){O.router_cobertura_id=id;O.router=r;try{sessionStorage.setItem(INSTKEY,JSON.stringify(O))}catch{}}try{localStorage.setItem(routerKey(),id)}catch{}try{document.dispatchEvent(new CustomEvent('disprotel:router-cambiado'))}catch{}}
+  function routerLocal(){try{return localStorage.getItem(routerKey())||''}catch{return ''}}
+ function textoCobertura(){return limpiar([O?.cliente_zona_final,O?.cliente_zona,O?.cliente_sector,O?.cliente_referencia_final,O?.cliente_referencia,O?.cliente_direccion_final,O?.cliente_direccion,O?.cliente_parroquia_final,O?.cliente_parroquia,O?.cliente_canton_final,O?.cliente_canton].filter(Boolean).join(' '))}
+ function routerSugerido(){
+   const t=textoCobertura();
+   const aliases=['TOALINI','GALPON','GALPÓN','LLIMBE','CHAMBAPONGO','ESPINO BLANCO'];
+   if(!aliases.some(a=>t.includes(a)))return null;
+   return ROUTERS.find(r=>limpiar(r.nombre).includes('CHAMBAPONGO'))||null;
+ }
  function limpiar(v){return up(String(v||'').replace(/\/[0-9]+$/,'').trim())}
  function fmt(v){if(!v)return '—';try{return new Date(v).toLocaleString('es-EC')}catch{return String(v)}}
  function mejor(cs){return Array.isArray(cs)&&cs.length?cs[0]:null}
@@ -18,15 +25,18 @@
    try{
      const [lr,go]=await Promise.all([post(API_ROUTER,'list'),post(API_ROUTER,'get-order',{orden_id:ordenId()})]);
      ROUTERS=lr.routers||[];
-     ROUTER_ACTUAL=ROUTER_ACTUAL||routerLocal()||go.router_id||O?.router_cobertura_id||null;
+     const sugerido=routerSugerido();
+     ROUTER_ACTUAL=ROUTER_ACTUAL||routerLocal()||go.router_id||O?.router_cobertura_id||sugerido?.id||null;
      if(go.router_id&&!routerLocal())recordarRouter(go.router_id);
      routersCargados=true;
      return true;
    }catch(e){show(e.message,'err');return false}
  }
  function selectorRouter(){
+   const sugerido=routerSugerido();
    const ops=ROUTERS.map(r=>`<option value="${esc(r.id)}" ${r.id===ROUTER_ACTUAL?'selected':''}>${esc(up(r.nombre))}</option>`).join('');
-   return `<div class="pickBox" style="margin-top:12px"><b>📡 ROUTER DE COBERTURA</b><div class="muted" style="margin-top:5px">Elige el router que atiende esta instalación. Este dato indica al scanner qué MikroTik debe revisar.</div><select id="routerCoberturaIp" style="width:100%;padding:12px;border:1px solid #cbd8de;border-radius:10px;font-size:16px;background:#fff;margin-top:9px"><option value="">-- ELIGE ROUTER DE COBERTURA --</option>${ops}</select></div>`;
+   const nota=sugerido?`<div class="msg ok" style="margin-top:8px">✅ Router sugerido por comunidad/sector: <b>${esc(up(sugerido.nombre))}</b>. Puedes cambiarlo si no corresponde.</div>`:'';
+   return `<div class="pickBox" style="margin-top:12px"><b>📡 ROUTER DE COBERTURA</b><div class="muted" style="margin-top:5px">Elige el router que atiende esta instalación. Este dato indica al scanner qué MikroTik debe revisar.</div>${nota}<select id="routerCoberturaIp" style="width:100%;padding:12px;border:1px solid #cbd8de;border-radius:10px;font-size:16px;background:#fff;margin-top:9px"><option value="">-- ELIGE ROUTER DE COBERTURA --</option>${ops}</select></div>`;
  }
  const compactEstado=async function(){
    if(actualizando)return;
