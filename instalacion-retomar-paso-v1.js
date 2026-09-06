@@ -50,7 +50,7 @@
     const trabajo=txt('stTrabajo')+' '+txt('resumenGuardado');
     const ip=txt('stIp')+' '+txt('ipEstado');
     const evid=txt('stEvidencias')+' '+txt('evMsg');
-    const hayItemsGuardados=Boolean(window.SAVED)||(Array.isArray(window.SAVED_ITEMS)&&window.SAVED_ITEMS.length>0)||/GUARDADO|ARTÍCULOS REGISTRADOS|ARTICULOS REGISTRADOS|ITEM\(S\)/.test(trabajo);
+    const hayItemsGuardados=/GUARDADO|ARTÍCULOS REGISTRADOS|ARTICULOS REGISTRADOS/.test(trabajo);
 
     if(/SUBIDA|CARGADA|EVIDENCIA|FOTO|GPS|CIERRE/.test(evid))return 'accEvidencias';
     if(hayItemsGuardados&&/ESPERANDO IP|SOLICITUD ENVIADA|IP AÚN NO SOLICITADA|IP AUN NO SOLICITADA|IP CONFIRMADA|ASIGNADA|PENDIENTE/.test(ip))return 'accIp';
