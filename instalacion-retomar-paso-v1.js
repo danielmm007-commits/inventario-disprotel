@@ -5,7 +5,7 @@
   const PASOS=['accDatos','accDoc','accTrabajo','accIp','accEvidencias','accFinalizarReporte'];
   const $=id=>document.getElementById(id);
   const txt=id=>String($(id)?.textContent||'').toUpperCase();
-  let abriendo=false;
+  let abriendo=false,retomado=false,usuarioToco=false;
 
   function orden(){
     try{return new URLSearchParams(location.search).get('orden')||O?.id||''}
@@ -42,6 +42,7 @@
   }
 
   function abrir(id){
+    if(usuarioToco&&retomado)return;
     if(!PASOS.includes(id)||!$(id))return;
     const actual=PASOS.find(x=>$(x)?.open);
     if(actual===id)return;
@@ -51,7 +52,7 @@
       if(el)el.open=x===id;
     });
     setTimeout(()=>$(id)?.scrollIntoView({behavior:'smooth',block:'start'}),80);
-    setTimeout(()=>{abriendo=false},220);
+    setTimeout(()=>{abriendo=false;retomado=true},220);
   }
 
   function pasoPorEstado(){
@@ -80,14 +81,20 @@
   }
 
   function retomar(){
+    if(usuarioToco&&retomado)return;
     const target=objetivo();
     if(target)abrir(target);
   }
 
   function instalarMemoriaUsuario(){
+    document.addEventListener('pointerdown',ev=>{
+      if(ev.target?.closest?.('details.card>summary'))usuarioToco=true;
+    },true);
+
     document.addEventListener('toggle',ev=>{
       const el=ev.target;
       if(abriendo||!el?.matches?.('details.card')||!el.open)return;
+      if(!usuarioToco)return;
       guardarPaso(el.id);
     },true);
 

@@ -1,7 +1,10 @@
 (()=>{
  const $=id=>document.getElementById(id);
  const API_ROUTER=B+'inventario-router-cobertura';
- let ROUTERS=[],ROUTER_ACTUAL=null,actualizando=false;
+ let ROUTERS=[],ROUTER_ACTUAL=null,actualizando=false,ultimaVista='',routersCargados=false;
+ function routerKey(){return 'disprotel_router_cobertura_'+ordenId()}
+ function recordarRouter(id){if(!id)return;ROUTER_ACTUAL=id;try{localStorage.setItem(routerKey(),id)}catch{}}
+ function routerLocal(){try{return localStorage.getItem(routerKey())||''}catch{return ''}}
  function limpiar(v){return up(String(v||'').replace(/\/[0-9]+$/,'').trim())}
  function fmt(v){if(!v)return '—';try{return new Date(v).toLocaleString('es-EC')}catch{return String(v)}}
  function mejor(cs){return Array.isArray(cs)&&cs.length?cs[0]:null}
@@ -14,7 +17,10 @@
  async function cargarRouters(){
    try{
      const [lr,go]=await Promise.all([post(API_ROUTER,'list'),post(API_ROUTER,'get-order',{orden_id:ordenId()})]);
-     ROUTERS=lr.routers||[];ROUTER_ACTUAL=go.router_id||null;
+     ROUTERS=lr.routers||[];
+     ROUTER_ACTUAL=ROUTER_ACTUAL||routerLocal()||go.router_id||O?.router_cobertura_id||null;
+     if(go.router_id&&!routerLocal())recordarRouter(go.router_id);
+     routersCargados=true;
      return true;
    }catch(e){show(e.message,'err');return false}
  }
@@ -29,11 +35,15 @@
      const d=await post(API_IP,'status',{orden_id:ordenId()}),q=d.solicitud,cs=d.candidatos||[],c=mejor(cs);
      if(d.orden){O.plan_final=d.orden.plan_final??O.plan_final;O.plan_solicitado=d.orden.plan_solicitado??O.plan_solicitado;O.tv_final=d.orden.tv_final??O.tv_final;sessionStorage.setItem(INSTKEY,JSON.stringify(O))}
      const estado=$('ipEstado'),cand=$('candidatos'),sol=$('solicitar'),act=$('actualizar');if(!estado||!cand)return;
+     const firma=JSON.stringify({q:q?{id:q.id,estado:q.estado,ip:q.ip_asignada,fecha:q.solicitado_at}:null,c:c?{id:c.id,address:c.address,plan:c.plan_detectado,parent:c.queue_parent}:null,router:ROUTER_ACTUAL,routers:ROUTERS.length});
+     if(firma===ultimaVista)return;
+     ultimaVista=firma;
      const viejo=$('planCatalogoBox');if(viejo)viejo.remove();
      cand.innerHTML='';
      if(!q){
-       await cargarRouters();
+       if(!routersCargados)await cargarRouters();
        estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><div class="muted" style="margin-top:8px">Selecciona el router de cobertura y luego solicita la asignación de IP.</div>${selectorRouter()}`;
+       const sel=$('routerCoberturaIp');if(sel)sel.onchange=()=>recordarRouter(String(sel.value||'').trim());
        if(sol){sol.classList.remove('hidden');sol.textContent='📡 SOLICITAR ASIGNACIÓN DE IP'}
        if(act)act.classList.add('hidden');
        $('stIp').textContent='PENDIENTE';return;
@@ -61,8 +71,9 @@
      const routerId=String(sel?.value||'').trim();
      if(!routerId){show('⚠️ Elige primero el router de cobertura.','warn');sel?.focus();return}
      if(b)b.disabled=true;
+     recordarRouter(routerId);
      const guardado=await post(API_ROUTER,'set-order',{orden_id:ordenId(),router_id:routerId});
-     ROUTER_ACTUAL=guardado.router?.id||routerId;
+     recordarRouter(guardado.router?.id||routerId);
      O.router_cobertura_id=ROUTER_ACTUAL;O.router=guardado.router||O.router;sessionStorage.setItem(INSTKEY,JSON.stringify(O));
      await post(API_O,'request-ip',{orden_id:ordenId(),plan_final:'',tv_final:Boolean(O.tv_final??O.tv_solicitada)});
      show('✅ Router de cobertura guardado y solicitud de IP enviada.');
