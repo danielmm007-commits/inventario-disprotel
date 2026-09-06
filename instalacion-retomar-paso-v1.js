@@ -2,7 +2,7 @@
   if(window.__disprotelRetomarInstalacion)return;
   window.__disprotelRetomarInstalacion=true;
 
-  const PASOS=['accDatos','accDoc','accTrabajo','accIp','accEvidencias'];
+  const PASOS=['accDatos','accDoc','accTrabajo','accIp','accEvidencias','accFinalizarReporte'];
   const $=id=>document.getElementById(id);
   const txt=id=>String($(id)?.textContent||'').toUpperCase();
   let abriendo=false;
@@ -35,6 +35,8 @@
 
   function abrir(id){
     if(!PASOS.includes(id)||!$(id))return;
+    const actual=PASOS.find(x=>$(x)?.open);
+    if(actual===id)return;
     abriendo=true;
     PASOS.forEach(x=>{
       const el=$(x);
@@ -95,8 +97,7 @@
   }
 
   function iniciarRetomar(){
-    const tiempos=[250,700,1400,2600,4300];
-    tiempos.forEach(ms=>setTimeout(retomar,ms));
+    setTimeout(retomar,180);
   }
 
   let tries=0;
