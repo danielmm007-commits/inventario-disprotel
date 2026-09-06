@@ -17,7 +17,7 @@
   function ocultarContinuarInternoTrabajo(){const acc=document.getElementById('accTrabajo');if(!acc)return;for(const b of acc.querySelectorAll('button')){if(b.id==='flujoContinuar-accTrabajo')continue;if(/^✅?\s*CONTINUAR$/i.test((b.textContent||'').trim()))b.classList.add('hidden')}}
   function ponerFlujoNumerales(){for(const [a,s] of pasos)ponerContinuarPaso(a,s);ocultarContinuarInternoTrabajo()}
   function texto(id){return String(document.getElementById(id)?.textContent||'').toUpperCase()}
-  function materialesGuardados(){return /GUARDADO|ARTÍCULOS REGISTRADOS|ARTICULOS REGISTRADOS/.test(texto('stTrabajo')+' '+texto('resumenGuardado'))}
+  function materialesGuardados(){const fn=window.cantidadArticulosInstalacionGuardados;if(typeof fn==='function')return Number(fn())>0;return /GUARDADO|ARTÍCULOS REGISTRADOS|ARTICULOS REGISTRADOS/.test(texto('stTrabajo')+' '+texto('resumenGuardado'))&&!/NO SE ENCONTRARON LÍNEAS|NO SE ENCONTRARON LINEAS|SIN ARTÍCULOS|SIN ARTICULOS/.test(texto('resumenGuardado'))}
   function ipTocada(){return materialesGuardados()&&/SOLICITUD ENVIADA|ESPERANDO IP|IP TENTATIVA|IP DEFINITIVA|IP CONFIRMADA|ASIGNADA/.test(texto('stIp')+' '+texto('ipEstado'))}
   function evidenciasCompletas(){return /COMPLETO/.test(texto('stEvidencias')+' '+texto('accEvidencias'))}
   function pasoPermitido(id){if(id==='accIp')return materialesGuardados();if(id==='accEvidencias')return ipTocada();if(id==='accFinalizarReporte')return evidenciasCompletas();return true}

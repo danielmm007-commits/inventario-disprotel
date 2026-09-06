@@ -3,6 +3,10 @@
   const ONU_CODES=new Set(['ONU-BRIDGE','ONU-CATV']);
   const esOnu=x=>ONU_CODES.has(String(x?.codigo||'').toUpperCase());
   const onuGuardada=()=> (SAVED_ITEMS||[]).find(esOnu)||null;
+  function publicarConteoGuardado(){
+    window.__disprotelArticulosInstalacionGuardados=Array.isArray(SAVED_ITEMS)?SAVED_ITEMS.length:0;
+  }
+  window.cantidadArticulosInstalacionGuardados=()=>Number(window.__disprotelArticulosInstalacionGuardados||0);
 
   function abrirIp(){
     const trabajo=$('accTrabajo'),ip=$('accIp');
@@ -29,6 +33,7 @@
         if(d?.saved){
           SAVED=true;
           SAVED_ITEMS=d.items||[];
+          publicarConteoGuardado();
           if(d.instalacion_id){
             O.instalacion_id=d.instalacion_id;
             sessionStorage.setItem(INSTKEY,JSON.stringify(O));
@@ -243,7 +248,17 @@
       EDITING=false;
       show(`✅ ${cambios.length} modificación(es) guardada(s). Inventario actualizado.`);
       await refrescarResumenGuardado(false);
-      abrirIp();
+      if(window.cantidadArticulosInstalacionGuardados()>0){
+        abrirIp();
+      }else{
+        SAVED=false;
+        $('stTrabajo').textContent='PENDIENTE';
+        const trabajo=$('accTrabajo'),ip=$('accIp'),ev=$('accEvidencias'),fin=$('accFinalizarReporte');
+        if(trabajo)trabajo.open=true;
+        [ip,ev,fin].forEach(x=>{if(x)x.open=false});
+        try{window.recordarPasoInstalacion?.('accTrabajo')}catch{}
+        show('La instalación quedó sin artículos guardados. Agrega al menos un artículo para continuar a IP.','warn');
+      }
       Promise.resolve().then(()=>cargarInventario()).catch(()=>{});
     }catch(e){show(e.message,'err');actualizarConteoCambiosControlado()}
   }
