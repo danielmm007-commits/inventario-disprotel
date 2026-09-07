@@ -21,6 +21,15 @@
    if(!solicitado||!detectado||solicitado===detectado)return '';
    return `<div class="msg warn" style="margin-top:10px">⚠️ El plan detectado en el router parece diferente al solicitado. Esto es solo informativo y no impide continuar con la instalación.</div>`;
  }
+ function detalleAsignacion(q){
+   const d=q?.detector_detalle||{};
+   const origen=String(d.origen||q?.observacion||'').toLocaleUpperCase('es-EC');
+   const etiqueta=origen.includes('REASIGNACION')||origen.includes('MODIFICADA')?'🔁 IP REASIGNADA':origen.includes('MANUAL')||origen.includes('CORREGIDA')?'✏️ IP ASIGNADA MANUALMENTE':'✅ IP CONFIRMADA POR SCANNER';
+   const fecha=q?.asignada_at?` · ${esc(fmt(q.asignada_at))}`:'';
+   const anterior=d.ip_anterior?`<div class="muted" style="margin-top:6px">Cambio: <b>${esc(d.ip_anterior)}</b> → <b>${esc(q.ip_asignada||d.ip_definitiva||'')}</b></div>`:'';
+   const obs=q?.observacion?`<div class="muted" style="margin-top:6px">${esc(q.observacion)}</div>`:'';
+   return `<div class="msg ok" style="margin-top:10px"><b>${etiqueta}</b><div class="muted" style="margin-top:5px">Registrada por Fernando/responsable autorizado${fecha}</div>${anterior}${obs}</div>`;
+ }
  async function cargarRouters(){
    try{
      const [lr,go]=await Promise.all([post(API_ROUTER,'list'),post(API_ROUTER,'get-order',{orden_id:ordenId()})]);
@@ -61,7 +70,7 @@
      if(sol)sol.classList.add('hidden');
      if(q.estado==='ASIGNADA'){
        if(act)act.classList.add('hidden');
-       estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><span class="badge okb" style="margin-top:9px">✅ IP DEFINITIVA</span><div class="ip">${esc(q.ip_asignada||'—')}</div><div class="muted" style="margin-top:8px">Asignada por el responsable autorizado. Si Fernando la reasigna, esta pantalla se actualiza automáticamente.</div>${avisoPlan(c)}`;
+       estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><span class="badge okb" style="margin-top:9px">✅ IP DEFINITIVA</span><div class="ip">${esc(q.ip_asignada||'—')}</div>${detalleAsignacion(q)}${avisoPlan(c)}`;
        $('stIp').textContent='✅ IP DEFINITIVA · '+String(q.ip_asignada||'');return;
      }
      if(act){act.classList.remove('hidden');act.textContent='🔄 ACTUALIZAR ESTADO'}
