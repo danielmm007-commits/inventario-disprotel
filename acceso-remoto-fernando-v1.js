@@ -1,11 +1,11 @@
 (()=>{
 if(window.__accesoRemotoFernandoV1)return;window.__accesoRemotoFernandoV1=true;
-const API_AR='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-acceso-remoto',KEY='disprotel_ip_test';
+const API_AR='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-acceso-remoto',KEY='disprotel_login_general_v2';
 const esc2=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function ses(){try{return JSON.parse(sessionStorage.getItem(KEY)||'null')||{}}catch{return{}}}
 function cargarVisor(){if(window.VisorEvidencias){window.VisorEvidencias.aplicar();return}if(document.getElementById('visorEvidenciasScript'))return;const s=document.createElement('script');s.id='visorEvidenciasScript';s.src='visor-evidencias-v1.js?v=20260819-1022';s.onload=()=>window.VisorEvidencias?.aplicar();document.head.appendChild(s)}
 function cargarCamara(){if(window.__camaraTraseraV1||document.getElementById('camaraTraseraScript'))return;const s=document.createElement('script');s.id='camaraTraseraScript';s.src='camara-trasera-v1.js?v=20260819-1043';document.head.appendChild(s)}
-async function ar(action,p={}){const s=ses();const r=await fetch(API_AR+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:s.usuario,pin:s.pin,action,...p})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error');return d}
+async function ar(action,p={}){const s=ses();const r=await fetch(API_AR+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_token:s.session_token,action,...p})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error');return d}
 async function dataUrl(f){return await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result||''));r.onerror=rej;r.readAsDataURL(f)})}
 function estadoTxt(a){if(!a||!a.estado)return'⚪ PENDIENTE';if(a.estado==='SOLICITADO')return'🟠 SOLICITADO';if(a.estado==='REQUIERE_CORRECCION')return'⚠️ REQUIERE CORRECCIÓN';if(a.estado==='CONFIRMADO')return'✅ CONFIRMADO';return'⚪ PENDIENTE'}
 function sigAcceso(a,ev,ip,estadoOrden){return JSON.stringify([a?.estado||'PENDIENTE',a?.solicitado_at||'',a?.confirmado_at||'',a?.observacion||'',a?.confirmado_por?.nombre||'',ev?.id||'',ev?.registrado_por||'',ip||'',estadoOrden||''])}

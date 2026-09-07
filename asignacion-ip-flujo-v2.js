@@ -36,7 +36,11 @@
       const mcard=manualCard(req); if(!mcard)return;
       const inp=mcard.querySelector('input[id^="manual-"]');
       const sol=idSolDesdeInput(inp); if(!sol)return;
-      mcard.style.display=editando.has(sol)?'block':'none';
+      const tieneCandidata=[...req.querySelectorAll('.cand')].some(card=>candidatoInfo(card));
+      mcard.style.display=(!tieneCandidata||editando.has(sol))?'block':'none';
+      if(!tieneCandidata){
+        const b=mcard.querySelector('b'); if(b)b.textContent='✏️ CONFIRMAR IP MANUAL';
+      }
       if(editando.has(sol)){
         let lock=mcard.querySelector('.scannerLock');
         if(!lock){lock=document.createElement('div');lock.className='msg scannerLock';lock.style.background='#fff3cd';lock.style.color='#725b00';lock.textContent='🔒 Scanner pausado solo para esta solicitud mientras editas.';mcard.prepend(lock)}
@@ -76,8 +80,10 @@
   };
 
   window.manual=async(sol,orden)=>{
-    if(!editando.has(sol))return show('Pulsa EDITAR IP antes de realizar una corrección manual.','err');
     const card=document.getElementById('manual-'+sol)?.closest('.cand');
+    const req=card?.closest('.req');
+    const tieneCandidata=req?[...req.querySelectorAll('.cand')].some(c=>candidatoInfo(c)):false;
+    if(tieneCandidata&&!editando.has(sol))return show('Pulsa EDITAR IP antes de realizar una corrección manual.','err');
     const ip=(document.getElementById('manual-'+sol)?.value||'').trim();
     const obs=(document.getElementById('obs-'+sol)?.value||'').trim();
     if(!ip)return inlineMsg(card,'❌ Ingresa la IP correcta.','err');
