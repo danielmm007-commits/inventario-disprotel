@@ -18,12 +18,15 @@
   function ponerFlujoNumerales(){for(const [a,s] of pasos)ponerContinuarPaso(a,s);ocultarContinuarInternoTrabajo()}
   function texto(id){return String(document.getElementById(id)?.textContent||'').toUpperCase()}
   function materialesGuardados(){const fn=window.cantidadArticulosInstalacionGuardados;if(typeof fn==='function')return Number(fn())>0;return /GUARDADO|ARTÍCULOS REGISTRADOS|ARTICULOS REGISTRADOS/.test(texto('stTrabajo')+' '+texto('resumenGuardado'))&&!/NO SE ENCONTRARON LÍNEAS|NO SE ENCONTRARON LINEAS|SIN ARTÍCULOS|SIN ARTICULOS/.test(texto('resumenGuardado'))}
-  function ipTocada(){return materialesGuardados()&&/SOLICITUD ENVIADA|ESPERANDO IP|IP TENTATIVA|IP DEFINITIVA|IP CONFIRMADA|ASIGNADA/.test(texto('stIp')+' '+texto('ipEstado'))}
+  function ipConfirmada(){
+    const ip=texto('stIp')+' '+texto('ipEstado');
+    return materialesGuardados()&&/IP DEFINITIVA|IP CONFIRMADA|✅/.test(ip)&&!/SOLICITUD ENVIADA|ESPERANDO IP|IP TENTATIVA|PENDIENTE|IP AÚN NO SOLICITADA|IP AUN NO SOLICITADA/.test(ip);
+  }
   function evidenciasCompletas(){return /COMPLETO/.test(texto('stEvidencias')+' '+texto('accEvidencias'))}
-  function pasoPermitido(id){if(id==='accIp')return materialesGuardados();if(id==='accEvidencias')return ipTocada();if(id==='accFinalizarReporte')return evidenciasCompletas();return true}
+  function pasoPermitido(id){if(id==='accIp')return materialesGuardados();if(id==='accEvidencias')return ipConfirmada();if(id==='accFinalizarReporte')return evidenciasCompletas();return true}
   function controlarSecuencia(){
     if(document.body.classList.contains('otSoloLectura'))return;
-    const reglas={accIp:materialesGuardados(),accEvidencias:ipTocada(),accFinalizarReporte:evidenciasCompletas()};
+    const reglas={accIp:materialesGuardados(),accEvidencias:ipConfirmada(),accFinalizarReporte:evidenciasCompletas()};
     for(const id of ['accIp','accEvidencias','accFinalizarReporte']){
       const el=document.getElementById(id),ok=Boolean(reglas[id]);
       if(!el)continue;

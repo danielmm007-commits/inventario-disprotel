@@ -41,6 +41,11 @@
     return /GUARDADO|ARTÍCULOS REGISTRADOS|ARTICULOS REGISTRADOS/.test(trabajo);
   }
 
+  function ipDefinitiva(){
+    const ip=txt('stIp')+' '+txt('ipEstado');
+    return /IP DEFINITIVA|IP CONFIRMADA|✅/.test(ip)&&!/ESPERANDO IP|SOLICITUD ENVIADA|IP TENTATIVA|PENDIENTE|IP AÚN NO SOLICITADA|IP AUN NO SOLICITADA/.test(ip);
+  }
+
   function abrir(id){
     if(usuarioToco&&retomado)return;
     if(!PASOS.includes(id)||!$(id))return;
@@ -62,7 +67,7 @@
     const evid=txt('stEvidencias')+' '+txt('evMsg');
     const hayItemsGuardados=articulosGuardados();
 
-    if(/SUBIDA|CARGADA|EVIDENCIA|FOTO|GPS|CIERRE/.test(evid))return 'accEvidencias';
+    if(ipDefinitiva()&&/SUBIDA|CARGADA|EVIDENCIA|FOTO|GPS|CIERRE/.test(evid))return 'accEvidencias';
     if(hayItemsGuardados&&/ESPERANDO IP|SOLICITUD ENVIADA|IP AÚN NO SOLICITADA|IP AUN NO SOLICITADA|IP CONFIRMADA|ASIGNADA|PENDIENTE/.test(ip))return 'accIp';
     if(!hayItemsGuardados)return 'accTrabajo';
     if(!/COMPLETO|DISPONIBLE/.test(doc))return 'accDoc';
@@ -110,7 +115,7 @@
         },900);
       }
       if(id==='solicitar'||id==='actualizar'||/SOLICITAR IP|REVISAR DETECCIÓN|REVISAR DETECCION|ACTUALIZAR ESTADO/.test(t))guardarPaso('accIp');
-      if(id==='flujoContinuar-accIp'||/EVIDENCIAS/.test(t))setTimeout(()=>guardarPaso('accEvidencias'),120);
+      if((id==='flujoContinuar-accIp'||/EVIDENCIAS/.test(t))&&ipDefinitiva())setTimeout(()=>guardarPaso('accEvidencias'),120);
     },true);
   }
 
