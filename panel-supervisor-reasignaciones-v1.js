@@ -1,0 +1,74 @@
+(()=>{
+  const ORDER_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-ordenes';
+  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const ses=()=>{try{return JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'{}')}catch{return{}}};
+  function grupoCodigo(v){const n=norm(v);if(n.includes('FURGONETA'))return'FURGONETA';if(n.includes('CAMIONETA'))return'CAMIONETA';if(n.includes('SAQUISILI'))return'SAQUISILÍ';return''}
+  function boot(){
+    const frame=document.getElementById('base');
+    if(!frame)return;
+    const patch=()=>{
+      const d=frame.contentDocument,w=frame.contentWindow;
+      if(!d||!w||!d.body)return;
+      if(!d.getElementById('reasigSupervisorStyle')){
+        const st=d.createElement('style');st.id='reasigSupervisorStyle';st.textContent=`
+          .att.reasig-directa{border:2px solid #e64a4a;background:linear-gradient(135deg,#fff6f5,#fff);box-shadow:0 0 0 0 rgba(230,74,74,.28);animation:reasigPulse 1.7s ease-in-out infinite}
+          .att.reasig-directa .reasig-title{font-weight:1000;color:#b42323;font-size:12px}
+          .att.reasig-directa .reasig-cause{margin-top:6px;padding:7px 8px;border-radius:9px;background:#fff1d6;color:#7a5000;font-size:10px;font-weight:800}
+          .att.reasig-directa .reasig-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+          .att.reasig-directa button{border:0;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:900;cursor:pointer}
+          .reasig-primary{background:#0c3470;color:#fff}.reasig-secondary{background:#eef4f7;color:#173b63;border:1px solid #cfdbe4!important}
+          @keyframes reasigPulse{50%{box-shadow:0 0 0 6px rgba(230,74,74,.10)}}`;
+        d.head.appendChild(st);
+      }
+      if(w.__reasigSupervisorPatched)return;
+      const originalRender=w.render;
+      if(typeof originalRender!=='function')return;
+      w.__reasigSupervisorPatched=true;
+      w.render=function(){
+        originalRender.apply(this,arguments);
+        try{renderAttention(d,w)}catch(e){console.warn('reasignacion-ui',e)}
+      };
+      try{renderAttention(d,w)}catch{}
+    };
+    frame.addEventListener('load',()=>setTimeout(patch,350));
+    setTimeout(patch,700);
+  }
+  function renderAttention(d,w){
+    const DATA=w.DATA;if(!DATA)return;
+    const z=d.getElementById('zone')?.value||'SALCEDO';
+    const zoneOk=x=>z==='TODAS'||x===z;
+    const att=(DATA.requiere_atencion||[]).filter(o=>zoneOk(o.zona));
+    const box=d.getElementById('attention');if(!box)return;
+    d.getElementById('attCount').textContent=String(att.length);
+    box.innerHTML=att.map(o=>{
+      if(o.tipo_atencion==='REASIGNACION'&&o.reasignacion){
+        const r=o.reasignacion,c=r.causa_operativa;
+        return `<div class="att reasig-directa">
+          <div class="reasig-title">🔴 REASIGNACIÓN SOLICITADA · ${esc(r.id_orden||'OT')}</div>
+          <div class="sub">${esc(r.cliente_nombre||'')} · ${esc(r.grupo_actual||'Sin grupo')}</div>
+          <div style="margin-top:5px;font-size:10px"><b>Motivo de campo:</b> ${esc(r.motivo||'Sin detalle')}</div>
+          ${c?`<div class="reasig-cause">🚐 ${esc(c.unidad||'Unidad')} · ${esc(String(c.tipo||'').replaceAll('_',' '))}${c.motivo?' · '+esc(c.motivo):''}</div>`:''}
+          <div class="reasig-actions">
+            <button class="reasig-primary" onclick="window.__abrirReasigFernando('${esc(r.orden_id)}','${esc(r.grupo_actual||'')}')">REASIGNAR</button>
+            <button class="reasig-secondary" onclick="window.__verOtReasigFernando('${esc(r.orden_id)}')">VER OT</button>
+          </div>
+        </div>`;
+      }
+      const remote=o.acceso_remoto||o.tipo_atencion==='ACCESO_REMOTO';
+      return `<div class="att"><b>${remote?'🔴 Acceso remoto':'🟡 Novedad'} · ${esc(o.id_orden||'')}</b><div class="sub">${esc(o.cliente_nombre||'')} · ${esc(o.acceso_remoto?.estado||o.estado||'')}</div></div>`;
+    }).join('')||'<div class="sub">Sin requerimientos pendientes.</div>';
+    w.__abrirReasigFernando=(ordenId,grupoActual)=>abrirModal(d,w,ordenId,grupoActual);
+    w.__verOtReasigFernando=ordenId=>{location.href='trabajos-tecnicos.html?orden_id='+encodeURIComponent(ordenId)};
+  }
+  function abrirModal(d,w,ordenId,grupoActual){
+    let ov=d.getElementById('reasigFernandoModal');
+    if(!ov){ov=d.createElement('div');ov.id='reasigFernandoModal';ov.className='overlay';ov.innerHTML=`<div class="modal" style="max-width:520px"><div class="head"><div><h2>Reasignar OT</h2><div class="sub">Decisión operativa de Fernando</div></div><button class="close" id="rfClose">✕</button></div><div class="form" style="margin-top:12px"><label class="full">Nuevo grupo<select id="rfGrupo"></select></label><label class="full">Observación<textarea id="rfMotivo" placeholder="Motivo o decisión operativa"></textarea></label><div class="full"><button class="save" id="rfGuardar">Confirmar reasignación</button></div></div><div id="rfMsg" class="notice"></div></div>`;d.body.appendChild(ov);d.getElementById('rfClose').onclick=()=>ov.classList.remove('show');ov.onclick=e=>{if(e.target===ov)ov.classList.remove('show')}}
+    ov.dataset.ordenId=ordenId;const actual=grupoCodigo(grupoActual);const opts=[['CAMIONETA','Grupo Salcedo · Camioneta'],['FURGONETA','Grupo Salcedo · Furgoneta'],['SAQUISILÍ','Grupo Saquisilí–Latacunga']].filter(x=>x[0]!==actual);d.getElementById('rfGrupo').innerHTML=opts.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');d.getElementById('rfMotivo').value='';d.getElementById('rfMsg').textContent='';d.getElementById('rfGuardar').onclick=()=>resolver(d,w,ordenId);ov.classList.add('show');
+  }
+  async function resolver(d,w,ordenId){
+    const token=ses().session_token||'';const grupo=d.getElementById('rfGrupo').value,motivo=d.getElementById('rfMotivo').value.trim();const msg=d.getElementById('rfMsg');msg.textContent='Procesando…';
+    try{const r=await fetch(ORDER_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reassign-order',session_token:token,orden_id:ordenId,grupo_destino:grupo,motivo})}),j=await r.json();if(!r.ok){msg.textContent='⚠ '+(j.error||'No se pudo reasignar');return}msg.textContent='✅ OT reasignada';setTimeout(()=>d.getElementById('reasigFernandoModal').classList.remove('show'),450);setTimeout(()=>{try{w.load()}catch{}},600)}catch(e){msg.textContent='⚠ '+e.message}
+  }
+  boot();
+})();
