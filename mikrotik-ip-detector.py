@@ -44,6 +44,14 @@ def detector_api(action,payload=None):
     return req_json(f'{SUPABASE_URL}/functions/v1/inventario-ip-detector',headers=h,data={'action':action,**(payload or {})})
 
 
+def reportar_latido(router_id,total):
+    try:
+        return detector_api('detector-heartbeat',{'router_id':router_id,'total_permitidos':total})
+    except Exception as e:
+        print('No se pudo reportar latido scanner:',e)
+        return None
+
+
 def parse_router_time(value):
     if not value: return None
     v=str(value).strip()
@@ -86,19 +94,19 @@ def main():
                 rid=s.get('router_id')
                 if rid: agrupadas.setdefault(str(rid),[]).append(s)
             if not pendientes: print(datetime.now().strftime('%H:%M:%S'),'Sin solicitudes esperando IP.')
-            for rid,sols in agrupadas.items():
-                router=by_id.get(rid)
-                if not router:
-                    print('Solicitud pendiente para RB no configurado:',rid)
-                    continue
+            for rid,router in by_id.items():
+                sols=agrupadas.get(rid,[])
                 try:
                     rows=mikrotik_permitidos(router)
                     print(datetime.now().strftime('%H:%M:%S'),router.get('name',rid),':',len(rows),'PERMITIDOS')
+                    reportar_latido(rid,len(rows))
                     for s in sols:
                         result=detector_api('detector-snapshot',{'solicitud_ip_id':s['solicitud_ip_id'],'router_id':rid,'registros':rows})
                         print(' ',s['id_orden'],s['cliente_nombre'],'=>',result)
                 except Exception as e:
                     print('Error leyendo',router.get('name',rid),':',e)
+            for rid in sorted(set(agrupadas)-set(by_id)):
+                print('Solicitud pendiente para RB no configurado:',rid)
         except Exception as e:
             print('Error ciclo detector:',e)
         time.sleep(POLL_SECONDS)

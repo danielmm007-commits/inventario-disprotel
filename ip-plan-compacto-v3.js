@@ -30,6 +30,12 @@
    const obs=q?.observacion?`<div class="muted" style="margin-top:6px">${esc(q.observacion)}</div>`:'';
    return `<div class="msg ok" style="margin-top:10px"><b>${etiqueta}</b><div class="muted" style="margin-top:5px">Registrada por Fernando/responsable autorizado${fecha}</div>${anterior}${obs}</div>`;
  }
+ function scannerResumen(h){
+   if(!h?.updated_at)return 'Scanner sin latido registrado para este router.';
+   const mins=Number(h.minutos_sin_latido||0);
+   const ago=mins<=0?'hace menos de 1 min':`hace ${mins} min`;
+   return `${h.estado_operativo==='OPERATIVO'?'🟢 Scanner operativo':'🔴 Scanner sin señal'} · último latido ${ago} · ${h.total_permitidos??0} IP monitoreadas.`;
+ }
  async function cargarRouters(){
    try{
      const [lr,go]=await Promise.all([post(API_ROUTER,'list'),post(API_ROUTER,'get-order',{orden_id:ordenId()})]);
@@ -54,7 +60,7 @@
      const d=await post(API_IP,'status',{orden_id:ordenId()}),q=d.solicitud,cs=d.candidatos||[],c=mejor(cs);
      if(d.orden){O.plan_final=d.orden.plan_final??O.plan_final;O.plan_solicitado=d.orden.plan_solicitado??O.plan_solicitado;O.tv_final=d.orden.tv_final??O.tv_final;sessionStorage.setItem(INSTKEY,JSON.stringify(O))}
      const estado=$('ipEstado'),cand=$('candidatos'),sol=$('solicitar'),act=$('actualizar');if(!estado||!cand)return;
-     const firma=JSON.stringify({q:q?{id:q.id,estado:q.estado,ip:q.ip_asignada,fecha:q.solicitado_at}:null,c:c?{id:c.id,address:c.address,plan:c.plan_detectado,parent:c.queue_parent}:null,router:ROUTER_ACTUAL,routers:ROUTERS.length});
+     const firma=JSON.stringify({q:q?{id:q.id,estado:q.estado,ip:q.ip_asignada,fecha:q.solicitado_at}:null,c:c?{id:c.id,address:c.address,plan:c.plan_detectado,parent:c.queue_parent}:null,heartbeat:d.scanner_heartbeat?{at:d.scanner_heartbeat.updated_at,estado:d.scanner_heartbeat.estado_operativo,total:d.scanner_heartbeat.total_permitidos}:null,router:ROUTER_ACTUAL,routers:ROUTERS.length});
      if(firma===ultimaVista)return;
      ultimaVista=firma;
      const viejo=$('planCatalogoBox');if(viejo)viejo.remove();
@@ -78,7 +84,7 @@
        estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><span class="badge wait" style="margin-top:9px">🟡 IP TENTATIVA DETECTADA</span><div class="ip">${esc(c.address)}</div><div class="muted" style="margin-top:8px"><b>Puedes adelantar la configuración del equipo con esta IP.</b> Todavía está pendiente de confirmación por Fernando y puede cambiar antes de quedar definitiva.</div><div class="muted" style="margin-top:7px">Solicitud enviada: ${esc(fmt(q.solicitado_at))}</div>${avisoPlan(c)}`;
        $('stIp').textContent='🟡 IP TENTATIVA · '+String(c.address||'');
      }else{
-       estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><span class="badge wait" style="margin-top:9px">⏳ SOLICITUD ENVIADA</span><div class="muted" style="margin-top:8px">Solicitud: ${esc(fmt(q.solicitado_at))}. El scanner está buscando una IP tentativa. Pendiente de confirmación por Fernando.</div>${avisoPlan(c)}`;
+       estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><span class="badge wait" style="margin-top:9px">⏳ SOLICITUD ENVIADA</span><div class="muted" style="margin-top:8px">Solicitud: ${esc(fmt(q.solicitado_at))}. Pendiente de confirmación por Fernando.</div><div class="muted" style="margin-top:7px">${esc(scannerResumen(d.scanner_heartbeat))}</div>${avisoPlan(c)}`;
        $('stIp').textContent='⏳ ESPERANDO IP';
      }
    }catch(e){show(e.message,'err')}
