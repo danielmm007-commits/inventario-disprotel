@@ -39,6 +39,7 @@
     const lista=document.getElementById('lista');
     if(lista)obs.observe(lista,{childList:true,subtree:true});
     restaurar();
+    if(!document.getElementById('mesaTecnicaFernandoScript')){const s=document.createElement('script');s.id='mesaTecnicaFernandoScript';s.src='mesa-tecnica-fernando-v1.js?v=20260907-1640';document.head.appendChild(s)}
   };
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',iniciar):iniciar();
 
