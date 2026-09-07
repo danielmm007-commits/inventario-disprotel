@@ -22,7 +22,7 @@
     const ip=texto('stIp')+' '+texto('ipEstado');
     return materialesGuardados()&&/IP DEFINITIVA|IP CONFIRMADA|✅/.test(ip)&&!/SOLICITUD ENVIADA|ESPERANDO IP|IP TENTATIVA|PENDIENTE|IP AÚN NO SOLICITADA|IP AUN NO SOLICITADA/.test(ip);
   }
-  function evidenciasCompletas(){return /COMPLETO/.test(texto('stEvidencias')+' '+texto('accEvidencias'))}
+  function evidenciasCompletas(){return /✅\s*COMPLETO|^COMPLETO$/.test(texto('stEvidencias').trim())}
   function pasoPermitido(id){if(id==='accIp')return materialesGuardados();if(id==='accEvidencias')return ipConfirmada();if(id==='accFinalizarReporte')return evidenciasCompletas();return true}
   function controlarSecuencia(){
     if(document.body.classList.contains('otSoloLectura'))return;
@@ -50,5 +50,7 @@
   function ejecucion(){if(!/instalacion-ejecucion\.html$/i.test(location.pathname))return;const oid=orden();if(!oid)return;navTop('← REVISAR DATOS DEL CLIENTE',`instalacion-domicilio.html?orden=${encodeURIComponent(oid)}`,'volverDatosCliente',true);for(const a of document.querySelectorAll('a.btn,button')){if(/VOLVER A TRABAJOS/i.test(a.textContent||''))a.classList.add('hidden')}const duplicado=document.getElementById('volverDatosClienteAbajo');if(duplicado)duplicado.remove();bloquearClickNumerales();ponerFlujoNumerales();controlarSecuencia();revisarCierre();let n=0;const t=setInterval(()=>{ponerFlujoNumerales();controlarSecuencia();if(++n>50)clearInterval(t)},200);setInterval(controlarSecuencia,800);setInterval(revisarCierre,4000);document.addEventListener('click',e=>{const b=e.target?.closest?.('button');if(b&&/FINALIZAR/i.test(b.textContent||''))setTimeout(revisarCierre,1000)},true)}
   function domicilio(){if(!/instalacion-domicilio\.html$/i.test(location.pathname))return;navTop('← VOLVER A TRABAJOS ACTIVOS',destinoActivos(),'volverTrabajosFlujo');const a=document.getElementById('volverTrabajosFlujo');a?.addEventListener('click',irActivos,true);conectarCancelar();let n=0;const t=setInterval(()=>{conectarCancelar();if(++n>30)clearInterval(t)},200)}
   function boot(){domicilio();ejecucion()}
+  window.controlarSecuenciaInstalacion=controlarSecuencia;
+  window.pasoPermitidoInstalacion=pasoPermitido;
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot):boot();
 })();

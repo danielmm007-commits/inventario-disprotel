@@ -86,7 +86,7 @@
   }
 
   function retomar(){
-    if(usuarioToco&&retomado)return;
+    if(usuarioToco)return;
     const target=objetivo();
     if(target)abrir(target);
   }
@@ -106,6 +106,7 @@
     document.addEventListener('click',ev=>{
       const b=ev.target?.closest?.('button,a');
       if(!b)return;
+      usuarioToco=true;
       const id=b.id||'';
       const t=String(b.textContent||'').toUpperCase();
       if(id==='confirmarUso'||id==='guardarCambiosMasivos'||/GUARDAR SELECCIÓN|GUARDAR SELECCION|GUARDAR TODAS LAS MODIFICACIONES/.test(t)){
