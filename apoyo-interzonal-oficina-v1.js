@@ -3,7 +3,10 @@
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
   let me={};try{me=JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'{}')}catch{}
-  if(norm(me.rol)!=='ADMINISTRADOR'||!['LATACUNGA','SAQUISILI'].includes(norm(me.sucursal)))return;
+  const perfil=norm(me.perfil_efectivo?.nombre||'');
+  const esPerfilLocal=perfil==='ADMINISTRATIVO OPERATIVO SAQUISILI–LATACUNGA'||perfil==='ADMINISTRATIVO OPERATIVO SAQUISILI-LATACUNGA';
+  const esLegacyLocal=norm(me.rol)==='ADMINISTRADOR'&&['LATACUNGA','SAQUISILI'].includes(norm(me.sucursal));
+  if(!esPerfilLocal&&!esLegacyLocal)return;
   const token=me.session_token||'';if(!token)return;
   async function send(body){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-session':token},body:JSON.stringify(body)}),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'No se pudo procesar');return j}
   function installStyle(){if(document.getElementById('apoyoInterzonalStyle'))return;const s=document.createElement('style');s.id='apoyoInterzonalStyle';s.textContent=`
