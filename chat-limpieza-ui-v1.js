@@ -1,7 +1,8 @@
 (()=>{
-if(window.__chatLimpiezaUiV5)return;window.__chatLimpiezaUiV5=true;
+if(window.__chatLimpiezaUiV6)return;window.__chatLimpiezaUiV6=true;
 const KEY='disprotel_login_general_v2',API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/chat-limpieza',CHAT='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/chat-interno';
 let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}if(!me.session_token)return;
+if(!document.querySelector('script[data-chat-sidebar-pins]')){const s=document.createElement('script');s.dataset.chatSidebarPins='1';s.src='chat-sidebar-anclados-v1.js?v='+Date.now();document.head.appendChild(s)}
 const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/^\s*💬\s*/,'').trim().replace(/\s+/g,' ').toUpperCase();
 async function call(url,action,payload={}){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','x-session':me.session_token},body:JSON.stringify({action,...payload})}),d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok||d.error)throw new Error(d.error||'Error');return d}
 let dirCache=null,dirAt=0;async function directory(force=false){if(!force&&dirCache&&Date.now()-dirAt<10000)return dirCache;dirCache=await call(CHAT,'directory');dirAt=Date.now();return dirCache}
