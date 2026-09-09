@@ -52,3 +52,13 @@ body.chatSidebarBootReady .menuAside{visibility:visible!important}
   body.erpSidebarReady.panelMenu .menuAside button:not(.erpMenuToggle) span{display:block!important;color:#eaf6ff!important;opacity:1!important}
   body.erpSidebarReady.panelMenu .menuAside .navGroup{display:block!important}
 }
+
+/* Chat compacto: acciones visibles en la misma fila del nombre */
+.chatManager.chatConversationFocus .chatRoomStage,
+.chatManager.chatConversationFocus .chatPanel{overflow:visible!important}
+.chatManager.chatConversationFocus .chatPanel>.chatHead{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+.chatManager.chatConversationFocus .chatPanel>.chatHead .chatMembersButton,
+.chatManager.chatConversationFocus .chatPanel>.chatHead .chatSound{display:inline-grid!important;place-items:center!important}
+.chatManager.chatConversationFocus .chatPanel>.chatHead .chatClose{display:none!important}
+.chatManager.chatConversationFocus .chatMessages{overflow:auto!important;border-radius:9px 9px 0 0!important}
+.chatManager.chatConversationFocus .chatForm{border-radius:0 0 9px 9px!important}
