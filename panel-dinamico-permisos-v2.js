@@ -20,6 +20,14 @@
   };
   const rootRules=[['usuarios.ver','usuarios.crear','usuarios.editar'],['permisos.ver','permisos.asignar','perfiles.gestionar'],['grupos.ver','grupos.gestionar','bodegas.gestionar'],['auditoria.ver','seguridad.configurar']];
   function canAny(allowed,keys){return allowed.has('*')||keys.some(key=>allowed.has(key))}
+  function ordenarModulos(profileName){
+    const role=normalize(profileName),modules=document.querySelector('.modules');if(!modules)return;
+    const prioridad=role.includes('SUPERVISOR')||role.includes('ADMINISTRADOR');if(!prioridad)return;
+    const orden=['Área técnica','IP y acceso remoto','Solicitud de IP y acceso remoto','Solicitudes','Inventario','Compras e ingresos','Transferencias'];
+    const cards=[...modules.querySelectorAll('.module')];
+    orden.forEach(nombre=>{const card=cards.find(c=>normalize(c.querySelector('h3')?.textContent)===normalize(nombre));if(card)modules.appendChild(card)});
+    cards.filter(c=>!orden.some(nombre=>normalize(c.querySelector('h3')?.textContent)===normalize(nombre))).forEach(c=>modules.appendChild(c));
+  }
   function apply(profile,keys){
     const allowed=new Set(keys||[]);
     document.querySelectorAll('.module').forEach(card=>{const name=card.querySelector('h3')?.textContent?.trim()||'';card.style.display=canAny(allowed,moduleRules[name]||[])?'flex':'none'});
@@ -41,6 +49,7 @@
     document.querySelectorAll('.menuAside button[data-href]').forEach(btn=>{if(normalize(profileName)==='TECNICO'&&/SOLICITUDES Y TRANSFERENCIAS/i.test(btn.textContent||''))btn.dataset.href='solicitudes-transferencias-tecnico.html?v=7'});
     const whoRole=document.getElementById('whoRole');if(whoRole)whoRole.textContent=profileName;const badge=document.getElementById('rootBadge');if(badge)badge.textContent='● '+profileName.toUpperCase();const hero=document.querySelector('.hero p');if(hero)hero.textContent='Panel adaptado a los permisos efectivos de '+profileName+'.';
     const techCard=[...document.querySelectorAll('.module')].find(card=>card.querySelector('h3')?.textContent?.trim()==='Área técnica');if(techCard&&normalize(profileName).includes('SUPERVISOR')){const link=techCard.querySelector('a.btn');if(link){link.href='panel-general-supervisor-visual.html';link.textContent='Abrir supervisión técnica →'}}
+    ordenarModulos(profileName);
     const title=[...document.querySelectorAll('.sectionTitle h2')].find(item=>item.textContent.trim()==='Módulos principales');if(title){const subtitle=title.parentElement?.querySelector('span');if(subtitle)subtitle.textContent='Vista dinámica según perfil y excepciones individuales'}
     document.querySelector('.modules')?.setAttribute('data-permissions-source','granular-v1');
   }
