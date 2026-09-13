@@ -8,7 +8,36 @@
 <style>
 :root{--navy:#071f3f;--navy2:#0b315d;--blue:#0877cc;--cyan:#1db7ea;--ink:#17324d;--muted:#6f8294;--line:#dbe6ee;--soft:#f4f8fb;--ok:#1f8c62;--shadow:0 24px 70px rgba(8,38,76,.16)}
 *{box-sizing:border-box}html,body{margin:0;width:100%;min-height:100%;font-family:Inter,Segoe UI,Arial,sans-serif;background:#edf3f7;color:var(--ink)}body{display:grid;place-items:center;padding:22px;overflow:hidden}.shell{position:relative;width:min(1420px,96vw);height:min(820px,94vh);min-height:650px;background:#fff;border:1px solid #dce7ef;border-radius:24px;overflow:hidden;display:grid;grid-template-columns:1.08fr .92fr;box-shadow:var(--shadow)}
-.left{position:relative;padding:42px 48px 34px;background:linear-gradient(180deg,rgba(255,255,255,.94) 0%,rgba(248,251,253,.90) 42%,rgba(240,246,250,.86) 100%),url('https://commons.wikimedia.org/wiki/Special:FilePath/Cotopaxi.jpg');background-size:cover;background-position:center 58%;overflow:hidden}.left:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,.92) 0%,rgba(255,255,255,.82) 42%,rgba(255,255,255,.48) 72%,rgba(255,255,255,.20) 100%);pointer-events:none}.left:after{content:"";position:absolute;left:-120px;bottom:-210px;width:560px;height:360px;border:1px solid rgba(26,128,190,.12);border-radius:50%;transform:rotate(-8deg)}
+.left{
+  position:relative;
+  padding:42px 48px 34px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.78) 0%,
+      rgba(248,251,253,.68) 40%,
+      rgba(240,246,250,.56) 100%
+    ),
+    url('https://commons.wikimedia.org/wiki/Special:FilePath/Cotopaxi.jpg');
+  background-size:cover;
+  background-position:center 54%;
+  overflow:hidden
+}
+
+.left:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255,255,255,.78) 0%,
+      rgba(255,255,255,.58) 40%,
+      rgba(255,255,255,.22) 72%,
+      rgba(255,255,255,.08) 100%
+    );
+  pointer-events:none
+}.left:after{content:"";position:absolute;left:-120px;bottom:-210px;width:560px;height:360px;border:1px solid rgba(26,128,190,.12);border-radius:50%;transform:rotate(-8deg)}
 .brand{position:relative;z-index:2;display:flex;align-items:center;gap:14px}.logo{width:150px;height:68px;object-fit:contain}.fallback{display:none;font-size:25px;font-weight:900;color:#0b4d8d}.brandCopy b{display:block;font-size:28px;letter-spacing:.04em;color:#0b4d8d}.brandCopy span{display:block;font-size:10px;letter-spacing:.22em;color:#238fcf;margin-top:2px}.claim{font-size:12px;font-weight:800;font-style:italic;color:#315e87;margin-top:6px}
 .hero{position:relative;z-index:2;margin-top:55px;max-width:610px}.eyeline{width:54px;height:4px;background:linear-gradient(90deg,var(--blue),var(--cyan));border-radius:99px;margin-bottom:19px}.hero h1{font-size:48px;line-height:1.02;letter-spacing:-.035em;margin:0;color:#102f58}.hero h1 span{color:var(--blue)}.hero p{font-size:17px;line-height:1.55;color:#687d90;max-width:570px;margin:17px 0 0}.chips{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:32px;max-width:650px}.chip{border:1px solid #d8e5ee;background:rgba(255,255,255,.86);border-radius:14px;padding:12px 7px;text-align:center;box-shadow:0 8px 20px rgba(18,72,112,.04)}.chip i{display:grid;place-items:center;width:34px;height:34px;margin:auto;border-radius:10px;background:#eaf5fc;color:#0873c3;font-style:normal;font-size:18px}.chip b{display:block;font-size:10px;margin-top:7px;color:#244a6c}.chip small{display:block;font-size:7px;color:#8a9aa8;margin-top:3px}
 .zone{position:absolute;z-index:2;left:48px;right:48px;bottom:34px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.coverage{display:flex;align-items:center;gap:16px}.mapIcon{position:relative;width:116px;height:94px}.mapIcon svg{width:100%;height:100%}.dot{position:absolute;width:10px;height:10px;border-radius:50%;background:#0b7fd1;box-shadow:0 0 0 4px rgba(11,127,209,.13)}.d1{left:32px;top:27px}.d2{left:67px;top:40px}.d3{left:54px;top:65px;width:14px;height:14px;background:#083e82}.coverageText{font-size:10px;color:#6c8192;line-height:1.5}.coverageText b{display:block;font-size:15px;color:#173f68}.coverageText em{font-style:normal;color:#0a73bf;font-weight:800}.sede{padding:11px 14px;border-radius:12px;background:#edf7fd;border:1px solid #d1e9f7;font-size:10px;color:#57728a}.sede b{display:block;color:#0f4e83;font-size:13px;margin-bottom:3px}
