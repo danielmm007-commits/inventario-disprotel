@@ -30,6 +30,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add principal.html integracion-admin-panel.js principal-base.html
-          git commit -m "Desacoplar panel principal de la vista base" || exit 0
+          git add -A principal.html panel-experiencia-v1.js integracion-admin-panel.js
+          git commit -m "Fijar panel principal en una sola estructura" || exit 0
           git push
