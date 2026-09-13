@@ -39,7 +39,7 @@
     requestAnimationFrame(()=>document.getElementById('panelAtomicPaint')?.remove())
   };
   const ready=()=>{
-    if(!document.body.classList.contains('panelMenu'))return false;
+    if(!document.body.classList.contains('panelMenu')||document.documentElement.dataset.panelStaticHydrated!=='1')return false;
     const shell=document.querySelector('.menuShell');
     const aside=document.querySelector('.menuAside');
     const dash=document.querySelector('.menuDashboard');
