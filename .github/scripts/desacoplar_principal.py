@@ -8,6 +8,25 @@ integracion_path = root / 'integracion-admin-panel.js'
 
 principal = principal_path.read_text(encoding='utf-8')
 
+# El panel nace ya en modo navegación. Antes esta clase se agregaba por JS después
+# del primer render y por eso visualmente aparecía primero la derecha y luego la izquierda.
+def activar_panel_menu(html):
+    m = re.search(r'<body([^>]*)>', html, re.I)
+    if not m:
+        raise SystemExit('No se encontró <body> en principal.html')
+    attrs = m.group(1)
+    cm = re.search(r'class=(['"'])(.*?)\1', attrs, re.I)
+    if cm:
+        clases = cm.group(2).split()
+        if 'panelMenu' not in clases:
+            clases.append('panelMenu')
+        nuevo = attrs[:cm.start()] + 'class=' + cm.group(1) + ' '.join(clases) + cm.group(1) + attrs[cm.end():]
+    else:
+        nuevo = attrs + ' class="panelMenu"'
+    return html[:m.start()] + '<body' + nuevo + '>' + html[m.end():]
+
+principal = activar_panel_menu(principal)
+
 # El armazón izquierda/derecha queda en el HTML desde el primer parseo.
 if 'id="principalMenuShell"' not in principal:
     pat = re.compile(r'(<main class="main">[\s\S]*?</main>)', re.M)
@@ -97,4 +116,4 @@ integracion = integracion_path.read_text(encoding='utf-8')
 integracion = integracion.replace("if(!document.body.classList.contains('panelMenu'))return false;", "if(!document.body.classList.contains('panelMenu')||document.documentElement.dataset.panelStaticHydrated!=='1')return false;")
 integracion_path.write_text(integracion, encoding='utf-8')
 
-print('Armazón principal fijo: izquierda y derecha ya no se crean ni se mueven después del primer render.')
+print('Panel principal activado desde HTML: izquierda y derecha nacen en el mismo estado visual.')
