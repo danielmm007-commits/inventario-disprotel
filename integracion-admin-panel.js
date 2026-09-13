@@ -35,7 +35,7 @@
   const reveal=()=>{
     if(finished)return;
     finished=true;
-    document.body.classList.add('panelAtomicReady');
+    document.body.classList.add('panelAtomicReady');document.getElementById('principalDirectPrepaint')?.remove();
     requestAnimationFrame(()=>document.getElementById('panelAtomicPaint')?.remove())
   };
   const ready=()=>{
