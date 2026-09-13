@@ -32,7 +32,7 @@
 </main>
 <div id="recoverOverlay" class="overlay"><div class="modal"><h3>Recuperar contraseña</h3><p>Ingresa la cédula o el correo institucional registrado en tu ficha de usuario.</p><label for="recoverLogin">Cédula o correo</label><input id="recoverLogin" autocomplete="username" placeholder="Cédula de 10 dígitos o correo institucional"><div id="recoverError" class="error"></div><div class="actions"><button id="recoverCancel" class="cancel" type="button">CANCELAR</button><button id="recoverSend" class="send" type="button">ENVIAR ENLACE</button></div></div></div>
 <script>
-(async()=>{try{const files=['assets/login/bg-final-1.txt','assets/login/bg-final-2.txt','assets/login/bg-final-3.txt','assets/login/bg-final-4.txt'];const parts=await Promise.all(files.map(f=>fetch(f+'?v=20260913',{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('bg');return r.text()})));document.documentElement.style.setProperty('--login-bg',`url("data:image/webp;base64,${parts.join('').trim()}")`)}catch(e){console.warn('Fondo login:',e)}})();
+(async()=>{try{const files=['assets/login/bg-new-1.txt','assets/login/bg-new-2.txt','assets/login/bg-new-3.txt','assets/login/bg-new-4.txt'];const parts=await Promise.all(files.map(f=>fetch(f+'?v=20260913-2',{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('bg');return r.text()})));document.documentElement.style.setProperty('--login-bg',`url("data:image/webp;base64,${parts.join('').trim()}")`)}catch(e){console.warn('Fondo login:',e)}})();
 const AUTH_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-auth-login';
 const LEGACY_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-login';
 const PASSWORD_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-password-admin';
