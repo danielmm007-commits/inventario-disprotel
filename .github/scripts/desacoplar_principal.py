@@ -15,12 +15,12 @@ def activar_panel_menu(html):
     if not m:
         raise SystemExit('No se encontró <body> en principal.html')
     attrs = m.group(1)
-    cm = re.search(r'class=(['"'])(.*?)\1', attrs, re.I)
+    cm = re.search(r'class="([^"]*)"', attrs, re.I)
     if cm:
-        clases = cm.group(2).split()
+        clases = cm.group(1).split()
         if 'panelMenu' not in clases:
             clases.append('panelMenu')
-        nuevo = attrs[:cm.start()] + 'class=' + cm.group(1) + ' '.join(clases) + cm.group(1) + attrs[cm.end():]
+        nuevo = attrs[:cm.start()] + 'class="' + ' '.join(clases) + '"' + attrs[cm.end():]
     else:
         nuevo = attrs + ' class="panelMenu"'
     return html[:m.start()] + '<body' + nuevo + '>' + html[m.end():]
@@ -111,7 +111,6 @@ elif 'dataset.panelStaticHydrated' not in panel:
 
 panel_path.write_text(panel, encoding='utf-8')
 
-# Revelar solo cuando la estructura fija ya fue hidratada y tiene ambas columnas listas.
 integracion = integracion_path.read_text(encoding='utf-8')
 integracion = integracion.replace("if(!document.body.classList.contains('panelMenu'))return false;", "if(!document.body.classList.contains('panelMenu')||document.documentElement.dataset.panelStaticHydrated!=='1')return false;")
 integracion_path.write_text(integracion, encoding='utf-8')
