@@ -1,0 +1,35 @@
+name: Desacoplar principal
+
+on:
+  push:
+    paths:
+      - '.github/workflows/desacoplar-principal.yml'
+      - '.github/scripts/desacoplar_principal.py'
+
+permissions:
+  contents: write
+
+jobs:
+  desacoplar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Convertir principal en panel directo
+        run: python .github/scripts/desacoplar_principal.py
+      - name: Verificar que principal no use principal-base
+        run: |
+          if grep -q "principal-base.html" principal.html; then
+            echo "principal.html todavía referencia principal-base.html"
+            exit 1
+          fi
+          if grep -q "document.write" principal.html; then
+            echo "principal.html todavía usa document.write"
+            exit 1
+          fi
+      - name: Publicar desacople
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add principal.html integracion-admin-panel.js principal-base.html
+          git commit -m "Desacoplar panel principal de la vista base" || exit 0
+          git push
