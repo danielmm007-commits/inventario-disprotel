@@ -1,0 +1,41 @@
+name: Conectar fondo tecnologico login
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/attach-login-tech-bg.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Insertar script en login
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('login-general-v2.html')
+          s=p.read_text(encoding='utf-8')
+          tag='<script src="login-tech-bg-v1.js?v=20260914-final"></script>'
+          if tag not in s:
+              s=s.replace('</body>',tag+'\n</body>',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Publicar
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add login-general-v2.html
+          if git diff --cached --quiet; then
+            echo "Sin cambios"
+          else
+            git commit -m "Activar fondo tecnologico final del login"
+            git push
+          fi
