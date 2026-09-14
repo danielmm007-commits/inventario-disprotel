@@ -16,15 +16,52 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Reconstruir WebP real
-        shell: bash
+        shell: python
         run: |
-          cat assets/login/bg-new-1.txt assets/login/bg-new-2.txt assets/login/bg-new-3.txt assets/login/bg-new-4.txt \
-            | tr -d '\r\n\t ' \
-            | base64 --decode > assets/login/login-background.webp
-          test "$(head -c 4 assets/login/login-background.webp)" = "RIFF"
-          test -s assets/login/login-background.webp
-          file assets/login/login-background.webp
-          ls -lh assets/login/login-background.webp
+          from pathlib import Path
+          import base64, struct
+
+          files=[
+            Path('assets/login/bg-new-1.txt'),
+            Path('assets/login/bg-new-2.txt'),
+            Path('assets/login/bg-new-3.txt'),
+            Path('assets/login/bg-new-4.txt'),
+          ]
+          raw=''.join(p.read_text(encoding='utf-8') for p in files)
+          raw=''.join(raw.split())
+
+          def ok(data:bytes):
+            if len(data)<16 or data[:4]!=b'RIFF' or data[8:12]!=b'WEBP':
+              return False
+            declared=struct.unpack('<I',data[4:8])[0]+8
+            return declared==len(data)
+
+          data=None
+          try:
+            test=base64.b64decode(raw,validate=True)
+            if ok(test): data=test
+          except Exception:
+            pass
+
+          if data is None:
+            # Los fragmentos heredados tienen un carácter sobrante. Probamos quitarlo.
+            for i in range(len(raw)):
+              candidate=raw[:i]+raw[i+1:]
+              try:
+                test=base64.b64decode(candidate,validate=True)
+              except Exception:
+                continue
+              if ok(test):
+                data=test
+                print('Base64 reparado quitando carácter en posición',i)
+                break
+
+          if data is None:
+            raise SystemExit('No se pudo reconstruir un WebP válido desde bg-new-*')
+
+          out=Path('assets/login/login-background.webp')
+          out.write_bytes(data)
+          print('WebP válido:',len(data),'bytes')
 
       - name: Hacer que el login use el archivo directamente
         shell: python
@@ -33,7 +70,8 @@ jobs:
           import re
           p=Path('login-general-v2.html')
           s=p.read_text(encoding='utf-8')
-          s=s.replace('--login-bg:none','--login-bg:url("assets/login/login-background.webp?v=20260913-direct")')
+          s=s.replace('--login-bg:none','--login-bg:url("assets/login/login-background.webp?v=20260913-direct2")')
+          s=s.replace('--login-bg:url("assets/login/login-background.webp?v=20260913-direct")','--login-bg:url("assets/login/login-background.webp?v=20260913-direct2")')
           s=re.sub(r"\(async\(\)=>\{try\{const files=\['assets/login/bg-new-1\.txt'[\s\S]*?\}\}\)\(\);\n?",'',s,count=1)
           p.write_text(s,encoding='utf-8')
 
