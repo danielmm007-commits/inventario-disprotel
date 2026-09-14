@@ -19,7 +19,7 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import base64, struct
+          import base64, struct, re
 
           files=[
             Path('assets/login/bg-new-1.txt'),
@@ -27,8 +27,13 @@ jobs:
             Path('assets/login/bg-new-3.txt'),
             Path('assets/login/bg-new-4.txt'),
           ]
-          raw=''.join(p.read_text(encoding='utf-8') for p in files)
-          raw=''.join(raw.split())
+          pieces=[p.read_text(encoding='utf-8-sig') for p in files]
+          raw=''.join(pieces)
+          # Conserva únicamente caracteres base64 y elimina padding intermedio heredado.
+          raw=re.sub(r'[^A-Za-z0-9+/=]','',raw)
+          core=raw.replace('=','')
+          core += '='*((4-len(core)%4)%4)
+          print('Longitudes:', [len(x) for x in pieces], 'normalizada:', len(core))
 
           def ok(data:bytes):
             if len(data)<16 or data[:4]!=b'RIFF' or data[8:12]!=b'WEBP':
@@ -38,15 +43,17 @@ jobs:
 
           data=None
           try:
-            test=base64.b64decode(raw,validate=True)
+            test=base64.b64decode(core,validate=True)
             if ok(test): data=test
-          except Exception:
-            pass
+          except Exception as e:
+            print('Decode normalizado:',e)
 
-          if data is None:
-            # Los fragmentos heredados tienen un carácter sobrante. Probamos quitarlo.
-            for i in range(len(raw)):
-              candidate=raw[:i]+raw[i+1:]
+          # Si existe un carácter base64 sobrante, localizarlo validando el tamaño RIFF.
+          if data is None and len(core.rstrip('='))%4==1:
+            bare=core.rstrip('=')
+            for i in range(len(bare)):
+              candidate=bare[:i]+bare[i+1:]
+              candidate += '='*((4-len(candidate)%4)%4)
               try:
                 test=base64.b64decode(candidate,validate=True)
               except Exception:
@@ -70,8 +77,8 @@ jobs:
           import re
           p=Path('login-general-v2.html')
           s=p.read_text(encoding='utf-8')
-          s=s.replace('--login-bg:none','--login-bg:url("assets/login/login-background.webp?v=20260913-direct2")')
-          s=s.replace('--login-bg:url("assets/login/login-background.webp?v=20260913-direct")','--login-bg:url("assets/login/login-background.webp?v=20260913-direct2")')
+          s=s.replace('--login-bg:none','--login-bg:url("assets/login/login-background.webp?v=20260913-direct3")')
+          s=re.sub(r'--login-bg:url\("assets/login/login-background\.webp\?v=[^"\)]*"\)','--login-bg:url("assets/login/login-background.webp?v=20260913-direct3")',s)
           s=re.sub(r"\(async\(\)=>\{try\{const files=\['assets/login/bg-new-1\.txt'[\s\S]*?\}\}\)\(\);\n?",'',s,count=1)
           p.write_text(s,encoding='utf-8')
 
