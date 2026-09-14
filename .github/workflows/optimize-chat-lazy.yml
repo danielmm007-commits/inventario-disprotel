@@ -1,0 +1,103 @@
+name: Optimizar chat diferido
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/optimize-chat-lazy.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  optimizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar optimizacion del chat
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # 1) Chat: solo hace polling de la conversación abierta.
+          p=Path('chat-interno-v1.js')
+          s=p.read_text(encoding='utf-8')
+
+          if 'let pollTimer=null;const startPolling=' not in s:
+              old="async function poll(){try{"
+              new="let pollTimer=null;const startPolling=()=>{if(pollTimer)return;poll();pollTimer=setInterval(()=>{if(opened&&!document.hidden)poll()},5000)};const stopPolling=()=>{if(pollTimer){clearInterval(pollTimer);pollTimer=null}};async function poll(){try{"
+              if old not in s: raise SystemExit('No se encontró poll() del chat')
+              s=s.replace(old,new,1)
+
+          s=s.replace("poll();setInterval(poll,5000);const api=","const api=",1)
+          s=s.replace("panel.querySelector('.chatClose').onclick=()=>{opened=false;panel.classList.remove('open')};","panel.querySelector('.chatClose').onclick=()=>{opened=false;panel.classList.remove('open');stopPolling()};",1)
+          s=s.replace("opened=!opened;panel.classList.toggle('open',opened);if(opened){closeOtherRooms", "opened=!opened;panel.classList.toggle('open',opened);if(!opened)stopPolling();if(opened){startPolling();closeOtherRooms",1)
+          s=s.replace("close:()=>{opened=false;panel.classList.remove('open')}","close:()=>{opened=false;panel.classList.remove('open');stopPolling()}",1)
+          s=s.replace("if(!opened){opened=true;panel.classList.add('open')}closeOtherRooms(room.key);", "if(!opened){opened=true;panel.classList.add('open')}startPolling();closeOtherRooms(room.key);",1)
+
+          # Ya no crea todas las salas ni dispara sus consultas al iniciar la página.
+          marker="call('channels').then(d=>(d.channels||[]).filter(x=>x.kind==='SOPORTE').forEach((room,index,all)=>createRoom(room,index,all.length))).catch(()=>{});"
+          s=s.replace(marker,"/* carga inicial de canales diferida hasta abrir Chat */")
+
+          # Animación de carga al abrir el administrador del chat.
+          if '.chatLoading{' not in s:
+              s=s.replace('@keyframes chatPulse{', '.chatLoading{min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#5f7683;text-align:center}.chatLoading i{width:28px;height:28px;border:3px solid #d7e7ef;border-top-color:#1779b7;border-radius:50%;animation:chatLoadSpin .72s linear infinite}.chatLoading b{color:#123f73;font-size:13px}.chatLoading span{font-size:10px}@keyframes chatLoadSpin{to{transform:rotate(360deg)}}@keyframes chatPulse{',1)
+
+          old="makeDraggable(managerButton,null,'disprotel_chat_manager_button_v1',async()=>{manager.classList.toggle('open');if(manager.classList.contains('open'))try{await refreshManager()}catch(e){manager.innerHTML='<div class=\"chatManagerHead\"><b>Chat sin conexión</b></div>'}});"
+          new="makeDraggable(managerButton,null,'disprotel_chat_manager_button_v1',async()=>{manager.classList.toggle('open');if(manager.classList.contains('open')){manager.innerHTML='<div class=\"chatLoading\"><i></i><b>Cargando conversaciones…</b><span>Preparando Chat DISPROTEL</span></div>';try{await refreshManager()}catch(e){manager.innerHTML='<div class=\"chatManagerHead\"><b>Chat sin conexión</b></div>'}}});"
+          if old in s:
+              s=s.replace(old,new,1)
+          else:
+              raise SystemExit('No se encontró apertura del administrador de chat')
+
+          p.write_text(s,encoding='utf-8')
+
+          # 2) Sidebar: no consulta anclados cada 15 s. Usa caché y refresca al abrir chat.
+          p=Path('chat-sidebar-anclados-v1.js')
+          s=p.read_text(encoding='utf-8')
+          if "const CACHE='disprotel_chat_pins_cache_v1';" not in s:
+              s=s.replace('let currentPins=[],openingPinned=false;',"let currentPins=[],openingPinned=false;const CACHE='disprotel_chat_pins_cache_v1';",1)
+
+          a=s.index('async function paint(){')
+          b=s.index('\nlet running=false;',a)
+          paint="""async function paint(force=false){css();const aside=findAside();if(!aside)return;let host=aside.querySelector('.chatSideBlock');if(!host){host=document.createElement('div');host.className='chatSideBlock';const buttons=[...aside.querySelectorAll('button:not(.erpMenuToggle)')];const last=buttons[buttons.length-1];if(last)last.insertAdjacentElement('afterend',host);else aside.appendChild(host)}if(force){try{const d=await api('pins');currentPins=d.pins||[];localStorage.setItem(CACHE,JSON.stringify(currentPins))}catch{try{currentPins=JSON.parse(localStorage.getItem(CACHE)||'[]')}catch{currentPins=[]}}}else{try{currentPins=JSON.parse(localStorage.getItem(CACHE)||'[]')}catch{currentPins=[]}}host.innerHTML='<div class=\"chatSideLabel\">Chat</div><div role=\"button\" tabindex=\"0\" class=\"chatSideBtn\" data-chat-all><span>💬</span><span>Conversaciones</span></div><div class=\"chatSideLabel\" style=\"padding-top:10px\">Anclados</div>'+(currentPins.length?currentPins.map(p=>'<div role=\"button\" tabindex=\"0\" class=\"chatPinBtn\" data-chat-key=\"'+esc(p.key)+'\"><span>📌</span><span class=\"label\">'+esc(p.label)+'</span><span class=\"chatPinBadge '+(Number(p.unread||0)?'':'zero')+'\">'+Number(p.unread||0)+'</span></div>').join(''):'<div class=\"chatPinEmpty\">Los anclados se actualizan cuando abras el chat.</div>');const all=host.querySelector('[data-chat-all]');if(all)clickLike(all,async()=>{await openManager(false);setTimeout(()=>poll(true),120)});host.querySelectorAll('[data-chat-key]').forEach(btn=>clickLike(btn,async()=>{await openRoom(btn.dataset.chatKey);setTimeout(()=>poll(true),120)}));reveal()}"""
+          s=s[:a]+paint+s[b:]
+
+          a=s.index('let running=false;async function poll()')
+          b=s.rfind('\n})();')
+          tail="""let running=false;async function poll(force=false){if(running||document.hidden)return;running=true;try{await paint(force)}finally{running=false}}window.addEventListener('disprotel-chat-pins-changed',()=>setTimeout(()=>poll(true),80));let n=0;const boot=setInterval(()=>{if(findAside()){clearInterval(boot);paint(false)}else if(++n>60){clearInterval(boot);reveal()}},100);"""
+          s=s[:a]+tail+s[b:]
+          p.write_text(s,encoding='utf-8')
+
+          # 3) Bump de caché en principal para que Pages tome el chat optimizado.
+          p=Path('principal.html')
+          s=p.read_text(encoding='utf-8')
+          import re
+          s=re.sub(r'chat-interno-v1\.js\?v=[^\"\']+', 'chat-interno-v1.js?v=20260914-lazy1', s)
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Validar optimizacion
+        shell: bash
+        run: |
+          grep -q "chatLoading" chat-interno-v1.js
+          grep -q "startPolling" chat-interno-v1.js
+          grep -q "disprotel_chat_pins_cache_v1" chat-sidebar-anclados-v1.js
+          if grep -q "setInterval(poll,15000)" chat-sidebar-anclados-v1.js; then
+            echo "Sigue activo el polling de anclados cada 15 s"
+            exit 1
+          fi
+
+      - name: Publicar
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add chat-interno-v1.js chat-sidebar-anclados-v1.js principal.html
+          if git diff --cached --quiet; then
+            echo "Sin cambios"
+          else
+            git commit -m "Optimizar chat con carga diferida"
+            git push
+          fi
