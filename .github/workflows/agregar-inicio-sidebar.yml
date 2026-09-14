@@ -1,0 +1,63 @@
+name: Agregar Inicio al menu principal
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/agregar-inicio-sidebar.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Agregar acceso Inicio
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('erp-sidebar-dinamico-v1.js')
+          s=p.read_text(encoding='utf-8')
+
+          old="function prioritizeTech(aside){if(role()!=='TÉCNICO')return;const buttons=[...aside.querySelectorAll('button:not(.erpMenuToggle)')];const tech=buttons.find(b=>/ÁREA TÉCNICA/i.test(b.textContent||''));const first=buttons[0];if(tech&&first&&tech!==first)aside.insertBefore(tech,first)}"
+          new="function prioritizeTech(aside){if(role()!=='TÉCNICO')return;const home=aside.querySelector('.erpHomeButton');const buttons=[...aside.querySelectorAll('button:not(.erpMenuToggle):not(.erpHomeButton)')];const tech=buttons.find(b=>/ÁREA TÉCNICA/i.test(b.textContent||''));const first=buttons[0];if(tech&&first&&tech!==first)aside.insertBefore(tech,first);if(home&&aside.querySelector('.sideTitle'))aside.querySelector('.sideTitle').insertAdjacentElement('afterend',home)}\n  function ensureHomeButton(aside){let b=aside.querySelector('.erpHomeButton');if(b)return b;const title=aside.querySelector('.sideTitle');if(!title)return null;b=document.createElement('button');b.type='button';b.className='erpHomeButton';b.title='Inicio · Panel general';b.setAttribute('aria-label','Volver al panel general');b.innerHTML='<span aria-hidden=\"true\">🏠</span><span>Inicio</span>';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();location.href='principal.html'});title.insertAdjacentElement('afterend',b);return b}"
+          if old not in s:
+              raise SystemExit('No se encontro prioritizeTech')
+          s=s.replace(old,new,1)
+
+          old2="document.body.classList.add('erpSidebarReady');prioritizeTech(aside);let title=aside.querySelector('.sideTitle')"
+          new2="document.body.classList.add('erpSidebarReady');prioritizeTech(aside);ensureHomeButton(aside);let title=aside.querySelector('.sideTitle')"
+          if old2 not in s:
+              raise SystemExit('No se encontro install sidebar')
+          s=s.replace(old2,new2,1)
+
+          old3="const aside=document.querySelector('.menuAside');if(aside)prioritizeTech(aside);document.querySelectorAll('iframe.menuFrame').forEach(hookFrame)"
+          new3="const aside=document.querySelector('.menuAside');if(aside){prioritizeTech(aside);ensureHomeButton(aside)}document.querySelectorAll('iframe.menuFrame').forEach(hookFrame)"
+          if old3 not in s:
+              raise SystemExit('No se encontro observer sidebar')
+          s=s.replace(old3,new3,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Validar
+        shell: bash
+        run: |
+          grep -q "erpHomeButton" erp-sidebar-dinamico-v1.js
+          grep -q "Volver al panel general" erp-sidebar-dinamico-v1.js
+
+      - name: Publicar
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add erp-sidebar-dinamico-v1.js
+          if git diff --cached --quiet; then
+            echo "Sin cambios"
+          else
+            git commit -m "Agregar Inicio al menu principal"
+            git push
+          fi
