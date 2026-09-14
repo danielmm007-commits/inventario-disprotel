@@ -15,7 +15,6 @@
     .invAttentionHost{position:relative!important}
     .invAttentionHost.invNeedsAttention{border-color:#e3aa27!important;animation:invAttentionPulse 1.15s ease-in-out infinite!important;filter:saturate(1.12)}
     .invAttentionSymbol{position:absolute;right:8px;top:8px;z-index:20;display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:#d88b00;color:#fff;font-size:13px;font-weight:1000;box-shadow:0 4px 11px rgba(125,81,0,.3)}
-    .invAttentionSymbol.hidden{display:none!important}
     @keyframes invAttentionPulse{0%,100%{box-shadow:0 0 0 0 rgba(227,170,39,.22),0 8px 22px rgba(9,43,92,.08);filter:brightness(1)}50%{box-shadow:0 0 0 8px rgba(227,170,39,.16),0 0 26px rgba(255,190,45,.42);filter:brightness(1.16)}}
   `;
   document.head.appendChild(style);
@@ -34,20 +33,42 @@
     });
   }
 
+  function menuNeedsAttention(d){
+    if(!d)return false;
+    const c=d.counts||{};
+    if(d.perfil==='ADMIN'){
+      return Number(c.abastecimientos||0)>0||Number(c.directas||0)>0||Number(c.bajas||0)>0;
+    }
+    if(d.perfil==='TECNICO'){
+      return Number(c.transferencias_por_recibir||0)>0||Number(c.abastecimientos_por_confirmar||0)>0||Number(c.bajas_pendientes||0)>0;
+    }
+    return [
+      c.abastecimientos,c.directas,c.bajas,
+      c.transferencias_por_recibir,c.abastecimientos_por_confirmar,c.bajas_pendientes
+    ].some(v=>Number(v||0)>0);
+  }
+
   function mark(el,on){
     if(!el)return;
     el.classList.add('invAttentionHost');
     let sym=el.querySelector(':scope > .invAttentionSymbol');
-    if(!sym){sym=document.createElement('span');sym.className='invAttentionSymbol hidden';sym.textContent='⚠';el.appendChild(sym)}
+    if(on&&!sym){
+      sym=document.createElement('span');
+      sym.className='invAttentionSymbol';
+      sym.textContent='⚠';
+      el.appendChild(sym);
+    }
+    if(!on&&sym)sym.remove();
     el.classList.toggle('invNeedsAttention',!!on);
-    sym.classList.toggle('hidden',!on);
   }
 
-  function paintMain(total){
-    const done=new Set();
+  function paintMain(d){
+    const on=menuNeedsAttention(d),done=new Set();
     for(const el of mainCandidates()){
       const host=el.closest('.module,.rootCard,.dashItem,button,a')||el;
-      if(done.has(host))continue;done.add(host);mark(host,total>0);
+      if(done.has(host))continue;
+      done.add(host);
+      mark(host,on);
       host.querySelectorAll(':scope > .invAttentionText,:scope > .invAttentionBadge').forEach(x=>x.remove());
     }
   }
@@ -108,7 +129,9 @@
     if(running)return;running=true;
     try{
       const d=await getAlerts(),changed=lastVersion!==null&&d.version!==lastVersion;
-      lastData=d;paintMain(Number(d.total||0));paintInside(d);
+      lastData=d;
+      paintMain(d);
+      paintInside(d);
       if(changed){refreshOpenModule();setTimeout(()=>paintInside(d),700)}
       lastVersion=d.version||'';
     }catch(e){console.warn('Alertas inventario:',e)}finally{running=false}
@@ -120,7 +143,7 @@
     if((t.includes('SOLICITUD')&&t.includes('TRANSFER'))||t.includes('TRANSFERENCIAS DE EQUIPOS'))setTimeout(()=>{poll();refreshOpenModule();if(lastData)setTimeout(()=>paintInside(lastData),500)},350);
   },true);
 
-  const observer=new MutationObserver(()=>{if(lastData){paintMain(Number(lastData.total||0));paintInside(lastData)}});
+  const observer=new MutationObserver(()=>{if(lastData){paintMain(lastData);paintInside(lastData)}});
   observer.observe(document.body,{childList:true,subtree:true});
   poll();
   setInterval(poll,10000);
