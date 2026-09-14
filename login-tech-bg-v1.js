@@ -42,12 +42,26 @@
     .techScan{position:absolute;inset:-30%;background:linear-gradient(112deg,transparent 46%,rgba(100,222,255,.025) 49%,rgba(112,225,255,.07) 50%,rgba(100,222,255,.025) 51%,transparent 54%);animation:techScan 11s linear infinite;opacity:.62}
     .top,.center{z-index:3!important}
 
+    .card{isolation:isolate!important}
+    .loginBorderRunner{position:absolute;inset:0;z-index:30;pointer-events:none;border-radius:inherit;overflow:hidden}
+    .loginBorderRunner .edge{position:absolute;display:block;opacity:0;background:linear-gradient(90deg,transparent 0%,rgba(116,231,255,.20) 10%,#d8fbff 42%,#65ddff 68%,transparent 100%);filter:drop-shadow(0 0 4px #74e7ff) drop-shadow(0 0 11px rgba(44,194,255,.95));will-change:left,top,right,bottom,opacity}
+    .loginBorderRunner .edgeTop,.loginBorderRunner .edgeBottom{width:92px;height:2px}
+    .loginBorderRunner .edgeRight,.loginBorderRunner .edgeLeft{width:2px;height:92px;background:linear-gradient(180deg,transparent 0%,rgba(116,231,255,.20) 10%,#d8fbff 42%,#65ddff 68%,transparent 100%)}
+    .loginBorderRunner .edgeTop{top:0;left:-100px;animation:loginEdgeTop 5.6s linear infinite}
+    .loginBorderRunner .edgeRight{right:0;top:-100px;animation:loginEdgeRight 5.6s linear 1.4s infinite}
+    .loginBorderRunner .edgeBottom{bottom:0;right:-100px;animation:loginEdgeBottom 5.6s linear 2.8s infinite}
+    .loginBorderRunner .edgeLeft{left:0;bottom:-100px;animation:loginEdgeLeft 5.6s linear 4.2s infinite}
+
     @keyframes techGridDrift{from{transform:translate3d(0,0,0)}to{transform:translate3d(46px,46px,0)}}
     @keyframes techOrbit{to{transform:rotate(360deg)}}
     @keyframes techNodePulse{0%,100%{opacity:.42;transform:scale(.8);box-shadow:0 0 0 4px rgba(104,225,255,.04),0 0 11px rgba(58,215,255,.42)}50%{opacity:1;transform:scale(1.35);box-shadow:0 0 0 10px rgba(104,225,255,.07),0 0 26px rgba(58,215,255,1)}}
     @keyframes techLightRun{0%{transform:translateX(0);opacity:0}8%{opacity:1}86%{opacity:1}100%{transform:translateX(calc(100% + 390px));opacity:0}}
     @keyframes techFloat{0%,100%{translate:0 0}50%{translate:0 -12px}}
     @keyframes techScan{from{transform:translate3d(-10%,-8%,0)}to{transform:translate3d(10%,8%,0)}}
+    @keyframes loginEdgeTop{0%{left:-100px;opacity:0}2%{opacity:1}23%{left:100%;opacity:1}25%,100%{left:100%;opacity:0}}
+    @keyframes loginEdgeRight{0%{top:-100px;opacity:0}2%{opacity:1}23%{top:100%;opacity:1}25%,100%{top:100%;opacity:0}}
+    @keyframes loginEdgeBottom{0%{right:-100px;opacity:0}2%{opacity:1}23%{right:100%;opacity:1}25%,100%{right:100%;opacity:0}}
+    @keyframes loginEdgeLeft{0%{bottom:-100px;opacity:0}2%{opacity:1}23%{bottom:100%;opacity:1}25%,100%{bottom:100%;opacity:0}}
 
     @media(max-width:720px){
       .techOrbit.left{width:330px;height:330px;left:-175px;top:18%}.techOrbit.right{width:280px;height:280px;right:-145px;top:12%}.techPanel{width:150px;height:105px;opacity:.55}.techBeam{opacity:.52}.techBeam.b4,.techBeam.b6{display:none}.techNode{width:7px;height:7px}
@@ -60,18 +74,28 @@
     @media(max-height:620px){
       .center{padding-top:52px!important;padding-bottom:26px!important}
     }
-    @media(prefers-reduced-motion:reduce){.techDecor *{animation:none!important}.scene:before{animation:none!important}}
+    @media(prefers-reduced-motion:reduce){.techDecor *,.loginBorderRunner *{animation:none!important}.scene:before{animation:none!important}}
   `;
   document.head.appendChild(style);
 
   const mount=()=>{
     const scene=document.querySelector('.scene');
-    if(!scene||scene.querySelector('.techDecor'))return;
-    const decor=document.createElement('div');
-    decor.className='techDecor';
-    decor.setAttribute('aria-hidden','true');
-    decor.innerHTML='<span class="techOrbit left"></span><span class="techOrbit right"></span><span class="techBeam b1"></span><span class="techBeam b2"></span><span class="techBeam b3"></span><span class="techBeam b4"></span><span class="techBeam b5"></span><span class="techBeam b6"></span><span class="techNode n1"></span><span class="techNode n2"></span><span class="techNode n3"></span><span class="techNode n4"></span><span class="techNode n5"></span><span class="techNode n6"></span><span class="techPanel p1"></span><span class="techPanel p2"></span><span class="techScan"></span>';
-    scene.prepend(decor);
+    if(!scene)return;
+    if(!scene.querySelector('.techDecor')){
+      const decor=document.createElement('div');
+      decor.className='techDecor';
+      decor.setAttribute('aria-hidden','true');
+      decor.innerHTML='<span class="techOrbit left"></span><span class="techOrbit right"></span><span class="techBeam b1"></span><span class="techBeam b2"></span><span class="techBeam b3"></span><span class="techBeam b4"></span><span class="techBeam b5"></span><span class="techBeam b6"></span><span class="techNode n1"></span><span class="techNode n2"></span><span class="techNode n3"></span><span class="techNode n4"></span><span class="techNode n5"></span><span class="techNode n6"></span><span class="techPanel p1"></span><span class="techPanel p2"></span><span class="techScan"></span>';
+      scene.prepend(decor);
+    }
+    const card=document.querySelector('.card');
+    if(card&&!card.querySelector('.loginBorderRunner')){
+      const border=document.createElement('div');
+      border.className='loginBorderRunner';
+      border.setAttribute('aria-hidden','true');
+      border.innerHTML='<span class="edge edgeTop"></span><span class="edge edgeRight"></span><span class="edge edgeBottom"></span><span class="edge edgeLeft"></span>';
+      card.appendChild(border);
+    }
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
