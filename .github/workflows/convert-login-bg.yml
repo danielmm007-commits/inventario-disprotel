@@ -1,0 +1,51 @@
+name: Convertir fondo login
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/convert-login-bg.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  convertir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruir WebP real
+        shell: bash
+        run: |
+          cat assets/login/bg-new-1.txt assets/login/bg-new-2.txt assets/login/bg-new-3.txt assets/login/bg-new-4.txt \
+            | tr -d '\r\n\t ' \
+            | base64 --decode > assets/login/login-background.webp
+          test "$(head -c 4 assets/login/login-background.webp)" = "RIFF"
+          test -s assets/login/login-background.webp
+          file assets/login/login-background.webp
+          ls -lh assets/login/login-background.webp
+
+      - name: Hacer que el login use el archivo directamente
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path('login-general-v2.html')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('--login-bg:none','--login-bg:url("assets/login/login-background.webp?v=20260913-direct")')
+          s=re.sub(r"\(async\(\)=>\{try\{const files=\['assets/login/bg-new-1\.txt'[\s\S]*?\}\}\)\(\);\n?",'',s,count=1)
+          p.write_text(s,encoding='utf-8')
+
+      - name: Publicar imagen y login
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/login/login-background.webp login-general-v2.html
+          if git diff --cached --quiet; then
+            echo "Sin cambios"
+            exit 0
+          fi
+          git commit -m "Usar fondo real directo en login"
+          git push
