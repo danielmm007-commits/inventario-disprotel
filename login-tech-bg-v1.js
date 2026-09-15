@@ -2,6 +2,13 @@
   if(window.__disprotelLoginTechBgV1)return;
   window.__disprotelLoginTechBgV1=true;
 
+  const logo=document.querySelector('.logoWrap img');
+  if(logo){
+    logo.loading='eager';
+    logo.decoding='sync';
+    try{logo.fetchPriority='high'}catch(e){}
+  }
+
   const style=document.createElement('style');
   style.id='loginTechBgStyle';
   style.textContent=`
@@ -10,7 +17,17 @@
     .scene{min-height:100svh!important;height:auto!important;overflow:hidden!important;background:radial-gradient(circle at 18% 18%,rgba(0,177,255,.14),transparent 27%),radial-gradient(circle at 82% 24%,rgba(24,111,255,.12),transparent 25%),radial-gradient(circle at 50% 110%,rgba(0,133,255,.16),transparent 34%),linear-gradient(135deg,#041329 0%,#08264a 48%,#0b3562 100%)!important}
     .scene:before{content:""!important;position:absolute!important;inset:-8%!important;background-image:linear-gradient(rgba(91,203,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(91,203,255,.07) 1px,transparent 1px)!important;background-size:46px 46px!important;background-position:0 0!important;background-repeat:repeat!important;opacity:.34!important;transform:none!important;animation:techGridDrift 22s linear infinite!important;pointer-events:none!important;z-index:0!important}
     .scene:after{content:""!important;position:absolute!important;inset:0!important;background:radial-gradient(ellipse at 50% 48%,rgba(4,18,39,.05) 0%,rgba(3,14,32,.16) 36%,rgba(2,10,24,.42) 100%),linear-gradient(90deg,rgba(1,9,23,.18),transparent 28%,transparent 72%,rgba(1,9,23,.18))!important;pointer-events:none!important;z-index:2!important}
-    .center{min-height:100svh!important;height:auto!important;overflow:visible!important}
+    .center{min-height:100svh!important;height:100svh!important;display:grid!important;place-items:center!important;padding:clamp(44px,7vh,74px) 18px clamp(12px,3vh,26px)!important;overflow:hidden!important}
+    .card{width:min(430px,92vw)!important;max-height:calc(100svh - 20px)!important;padding:clamp(14px,2.7vh,24px) 28px clamp(13px,2.5vh,22px)!important}
+    .logoWrap{width:76%!important;max-width:clamp(190px,34vh,300px)!important;margin:0 auto clamp(2px,1vh,7px)!important}
+    .divider{margin:clamp(5px,1.6vh,12px) auto clamp(8px,2.2vh,17px)!important}
+    label{margin:clamp(6px,1.5vh,11px) 0 clamp(3px,.8vh,6px)!important}
+    .field input{height:clamp(40px,6.2vh,49px)!important}
+    .row{margin-top:clamp(6px,1.5vh,12px)!important}
+    .go{height:clamp(41px,6.4vh,51px)!important;margin-top:clamp(8px,2vh,17px)!important}
+    .support{height:clamp(32px,5vh,40px)!important;margin-top:clamp(5px,1.2vh,9px)!important}
+    .locations{margin-top:clamp(6px,1.8vh,15px)!important;padding-top:clamp(6px,1.5vh,12px)!important}
+    .secure{margin-top:clamp(4px,1.2vh,10px)!important}
     .techDecor{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none}
     .techOrbit{position:absolute;border:1px solid rgba(94,218,255,.24);border-radius:50%;box-shadow:0 0 38px rgba(0,169,255,.08),inset 0 0 32px rgba(0,169,255,.04);animation:techOrbit 30s linear infinite}
     .techOrbit:before,.techOrbit:after{content:"";position:absolute;border-radius:50%;border:1px dashed rgba(111,226,255,.14)}
@@ -64,15 +81,43 @@
     @keyframes loginEdgeLeft{0%{bottom:-100px;opacity:0}2%{opacity:1}23%{bottom:100%;opacity:1}25%,100%{bottom:100%;opacity:0}}
 
     @media(max-width:720px){
+      body{overflow-y:auto!important}
+      .center{height:auto!important;min-height:100svh!important;overflow:visible!important;padding:58px 12px 18px!important}
+      .card{width:min(395px,94vw)!important;max-height:none!important;padding:20px 18px 18px!important}
+      .logoWrap{width:72%!important;max-width:245px!important}
       .techOrbit.left{width:330px;height:330px;left:-175px;top:18%}.techOrbit.right{width:280px;height:280px;right:-145px;top:12%}.techPanel{width:150px;height:105px;opacity:.55}.techBeam{opacity:.52}.techBeam.b4,.techBeam.b6{display:none}.techNode{width:7px;height:7px}
     }
-    @media(max-height:820px){
-      body{overflow-y:auto!important}
-      .center{place-items:start center!important;padding-top:64px!important;padding-bottom:32px!important}
-      .card{transform:none!important}
+    @media(max-height:800px) and (min-width:721px){
+      .top{top:10px!important}
+      .center{padding:44px 18px 10px!important}
+      .card{padding:14px 24px 12px!important;border-radius:20px!important}
+      .logoWrap{max-width:220px!important;margin-bottom:2px!important}
+      .slogan{font-size:11px!important}
+      .divider{margin:6px auto 9px!important}
+      label{margin:6px 0 4px!important}
+      .field input{height:42px!important}
+      .eye{top:4px!important;height:34px!important}
+      .row{margin-top:8px!important}
+      .go{height:44px!important;margin-top:10px!important}
+      .support{height:34px!important;margin-top:7px!important}
+      .locations{margin-top:8px!important;padding-top:7px!important}
+      .secure{margin-top:5px!important}
     }
-    @media(max-height:620px){
-      .center{padding-top:52px!important;padding-bottom:26px!important}
+    @media(max-height:680px) and (min-width:721px){
+      .top{top:6px!important}.topState span{padding:5px 8px!important}
+      .center{padding:34px 14px 7px!important}
+      .card{padding:10px 22px 9px!important;border-radius:18px!important}
+      .logoWrap{max-width:175px!important;margin-bottom:0!important}
+      .slogan{font-size:10px!important}
+      .divider{margin:4px auto 6px!important}
+      label{margin:4px 0 3px!important;font-size:9px!important}
+      .field input{height:38px!important}
+      .eye{top:3px!important;height:32px!important}
+      .row{margin-top:5px!important}
+      .go{height:39px!important;margin-top:7px!important;font-size:12px!important}
+      .support{height:30px!important;margin-top:5px!important}
+      .locations{margin-top:5px!important;padding-top:5px!important}
+      .secure{margin-top:4px!important}
     }
     @media(prefers-reduced-motion:reduce){.techDecor *,.loginBorderRunner *{animation:none!important}.scene:before{animation:none!important}}
   `;
