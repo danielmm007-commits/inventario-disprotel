@@ -1,167 +1,121 @@
 (()=>{
-  if(window.__disprotelSupervisorMobileCompactV2)return;
-  window.__disprotelSupervisorMobileCompactV2=true;
+  if(window.__disprotelSupervisorMobileLiveV1)return;
+  window.__disprotelSupervisorMobileLiveV1=true;
 
   const KEY='disprotel_login_general_v2';
-  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+  const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-panel-supervisor';
+  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toUpperCase();
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
-  if(!norm(me.rol).includes('SUPERVISOR TECNICO')||!matchMedia('(max-width:680px)').matches)return;
+  if(!norm(me.rol).includes('SUPERVISOR TECNICO')||!matchMedia('(max-width:680px)').matches||!me.session_token)return;
 
   const style=document.createElement('style');
-  style.id='supervisorMobileCompactV2Style';
+  style.id='supervisorMobileLiveV1Style';
   style.textContent=`
-    /* Encabezado general: mínimo y funcional */
-    body.supSupervisorMobile.panelMenu .topin{padding:3px 6px!important;gap:4px!important;min-height:44px!important}
-    body.supSupervisorMobile.panelMenu .logoBox{width:50px!important;height:29px!important;border-radius:7px!important;flex:0 0 50px!important}
-    body.supSupervisorMobile.panelMenu .brand{min-width:0!important;flex:1!important}
-    body.supSupervisorMobile.panelMenu .brand b{font-size:11px!important;line-height:1!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-    body.supSupervisorMobile.panelMenu .brand span{display:none!important}
-    body.supSupervisorMobile.panelMenu .panelTools{gap:3px!important;margin-left:auto!important}
-    body.supSupervisorMobile.panelMenu>.topbar .panelConnected{min-height:24px!important;padding:0 6px!important;font-size:7px!important;box-shadow:0 0 0 2px #36d47b18,0 0 8px #29d77645!important}
-    body.supSupervisorMobile.panelMenu .userAvatar{width:31px!important;height:31px!important;font-size:16px!important;border-width:2px!important}
-    body.supSupervisorMobile.panelMenu .logout{padding:5px 7px!important;font-size:9px!important;border-radius:8px!important;margin-left:1px!important}
+    body.supSupervisorMobile.panelMenu{background:#edf3f7!important;overflow:auto!important}
+    body.supSupervisorMobile.panelMenu .topin{padding:4px 7px!important;gap:5px!important;min-height:48px!important}
+    body.supSupervisorMobile.panelMenu .logoBox{width:58px!important;height:34px!important;flex:0 0 58px!important;border-radius:8px!important}
+    body.supSupervisorMobile.panelMenu .brand{min-width:0!important;flex:1!important}.brand span{display:none!important}
+    body.supSupervisorMobile.panelMenu .brand b{font-size:12px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+    body.supSupervisorMobile.panelMenu .panelTools{gap:4px!important;margin-left:auto!important}
+    body.supSupervisorMobile.panelMenu>.topbar .panelConnected{min-height:27px!important;padding:0 7px!important;font-size:7px!important}
+    body.supSupervisorMobile.panelMenu .userAvatar{width:34px!important;height:34px!important;font-size:17px!important;border-width:2px!important}
+    body.supSupervisorMobile.panelMenu .logout{padding:6px 8px!important;font-size:10px!important;border-radius:9px!important}
 
-    /* Menú ejecutivo */
-    body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard){overflow:auto!important;background:#eef5f8!important}
-    body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuShell{height:auto!important;min-height:calc(100dvh - 44px)!important;padding:7px!important;background:#eef5f8!important;overflow:visible!important}
-    body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuAside{position:relative!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-rows:auto!important;align-content:start!important;gap:9px!important;width:100%!important;height:auto!important;min-height:0!important;padding:14px 12px 13px!important;border-radius:20px!important;overflow:visible!important;background:linear-gradient(155deg,#06234a 0%,#084565 58%,#0b5968 100%)!important;box-shadow:0 18px 38px #082b5c2a!important}
-    body.supSupervisorMobile.panelMenu .menuAside .sideTitle{grid-column:1/-1!important;min-height:62px!important;margin:0 0 2px!important;padding:2px 98px 10px 2px!important;border-bottom:1px solid #ffffff24!important}
-    body.supSupervisorMobile.panelMenu .menuAside .sideTitle .navAvatar{width:36px!important;height:36px!important;margin:0 0 5px!important;border-radius:11px!important;font-size:19px!important}
-    body.supSupervisorMobile.panelMenu .menuAside .sideTitle b{display:block!important;font-size:16px!important;line-height:1!important;color:#fff!important}
-    body.supSupervisorMobile.panelMenu .menuAside .sideTitle small{display:block!important;font-size:9px!important;color:#b9d8ef!important;margin-top:4px!important}
-    body.supSupervisorMobile.panelMenu .menuAside .erpHomeButton{position:absolute!important;right:12px!important;top:15px!important;width:auto!important;min-height:36px!important;height:36px!important;padding:0 10px!important;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:5px!important;border:1px solid #ffffff45!important;border-radius:11px!important;background:#ffffff14!important;font-size:16px!important;box-shadow:none!important;z-index:4!important}
-    body.supSupervisorMobile.panelMenu .menuAside .erpHomeButton span:last-child{display:block!important;padding:0!important;background:transparent!important;font-size:9px!important;border-radius:0!important}
-    body.supSupervisorMobile.panelMenu .menuAside .navGroup{display:block!important;grid-column:1/-1!important;margin:2px 0 -1px!important;padding:5px 2px 1px!important;font-size:8px!important;letter-spacing:1.35px!important;color:#8dd8ef!important;text-align:left!important}
-
-    body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuAside button[data-href]{position:relative!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:7px!important;min-height:84px!important;padding:12px 11px!important;border:1px solid #ffffff22!important;border-radius:16px!important;background:linear-gradient(145deg,#ffffff13,#ffffff08)!important;color:#fff!important;text-align:left!important;transform:none!important;box-shadow:inset 0 1px 0 #ffffff10!important;overflow:hidden!important;animation:supExecCardIn .42s cubic-bezier(.2,.8,.2,1) both!important}
-    body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuAside button[data-href] span{display:block!important;max-width:100%!important;padding:0!important;border-radius:0!important;background:transparent!important;color:#fff!important;font-size:10px!important;line-height:1.22!important;font-weight:900!important;text-align:left!important}
-    body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuAside button[data-href]:active{transform:scale(.97)!important;filter:brightness(1.13)!important}
-    body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuAside button[data-href].supExecPrimary{grid-column:1/-1!important;min-height:92px!important;padding-right:102px!important;background:linear-gradient(120deg,#0b70b4,#0d9ab2 72%,#19b68d)!important;border-color:#72dff1!important;box-shadow:0 9px 23px #031b3840,0 0 0 1px #ffffff13 inset!important;animation:supExecCardIn .42s cubic-bezier(.2,.8,.2,1) both,supExecPriority 2.8s ease-in-out 1.1s infinite!important}
-    body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuAside button[data-href].supExecPrimary:after{content:'PRIORIDAD';position:absolute;right:12px;top:12px;padding:5px 7px;border-radius:999px;background:#e8fbff;color:#07567b;font-size:7px;font-weight:1000;letter-spacing:.7px;box-shadow:0 5px 12px #01294b25}
-    body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuAside button[data-href].supExecPrimary:before{content:'Atender activaciones y accesos de campo';position:absolute;left:11px;bottom:10px;color:#dff9ff;font-size:8px;font-weight:700;opacity:.9}
-    body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuAside button[data-href].supExecSupervision{animation-delay:.06s!important}
-    body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuAside button[data-href].supExecRequirements{animation-delay:.12s!important}
-    body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuAside button[data-href].supExecInventory{animation-delay:.18s!important}
-
-    body.supSupervisorMobile.panelMenu .menuAside .supExecChat{grid-column:auto!important;min-height:84px!important;margin:0!important;padding:11px!important;border:1px solid #ffffff22!important;border-radius:16px!important;background:linear-gradient(145deg,#ffffff13,#ffffff08)!important;color:#fff!important;overflow:hidden!important;animation:supExecCardIn .42s .24s cubic-bezier(.2,.8,.2,1) both!important}
-    body.supSupervisorMobile.panelMenu .menuAside .supExecChat *{max-width:100%!important}
-    body.supSupervisorMobile.panelMenu .menuAside .supExecChat button{min-height:40px!important;border-radius:11px!important}
-    body.supSupervisorMobile.panelMenu .menuAside .supExecChat .supExecHide{display:none!important}
-
-    /* Inicio: sin barra azul, controles integrados en el bloque verde */
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .menuStage{height:calc(100dvh - 44px)!important;overflow:auto!important;background:#eef5f8!important}
+    body.supSupervisorMobile.panelMenu.supMobileDashboard .menuAside{display:none!important}
+    body.supSupervisorMobile.panelMenu.supMobileDashboard .menuStage{display:block!important;width:100%!important;height:auto!important;min-height:calc(100dvh - 48px)!important;overflow:visible!important;border-radius:0!important;background:#edf3f7!important}
     body.supSupervisorMobile.panelMenu.supMobileDashboard .mobileModuleBar{display:none!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .menuHome{display:block!important;min-height:calc(100dvh - 44px)!important;padding:7px!important;background:#eef5f8!important}
+    body.supSupervisorMobile.panelMenu.supMobileDashboard .menuHome{display:block!important;min-height:calc(100dvh - 48px)!important;padding:8px!important;background:#edf3f7!important}
     body.supSupervisorMobile.panelMenu.supMobileDashboard .menuDashboard{display:block!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashHero{position:relative!important;padding:14px 13px 13px!important;padding-right:12px!important;border-radius:16px!important;gap:7px!important;animation:supHeroIn .38s ease both!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashHero small{font-size:7.5px!important;letter-spacing:.4px!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashHero h1{font-size:20px!important;line-height:1.05!important;margin:5px 0 5px!important;padding-right:0!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashHero p{font-size:10px!important;line-height:1.25!important;margin:0 0 9px!important;max-width:72%!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashHeroActions{width:100%!important;margin:0!important;display:flex!important;justify-content:flex-end!important;align-items:center!important;gap:6px!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashHeroActions .panelConnected{display:none!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashHeroActions button{min-height:32px!important;height:32px!important;padding:0 9px!important;font-size:9px!important;border-radius:9px!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .supHeroHome{margin-right:auto!important;width:34px!important;min-width:34px!important;padding:0!important;font-size:15px!important;background:#ffffff18!important;color:#fff!important;border-color:#ffffff55!important;box-shadow:none!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashGrid{margin-top:7px!important;gap:7px!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashPanel{padding:10px!important;border-radius:13px!important;animation:supPanelIn .34s ease both!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashPanel:nth-child(2){animation-delay:.05s!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashPanel:nth-child(3){animation-delay:.1s!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashPanel h2{font-size:14px!important;margin-bottom:2px!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashSub{font-size:9px!important;margin-bottom:7px!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashMetrics{gap:6px!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashMetric{padding:8px!important;border-radius:11px!important;min-height:83px!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashMetric strong{font-size:20px!important}
-    body.supSupervisorMobile.panelMenu.supMobileDashboard .dashMetric span{font-size:7.4px!important;line-height:1.15!important}
+    body.supSupervisorMobile.panelMenu.supMobileDashboard .menuFrame{display:none!important}
 
-    @keyframes supExecCardIn{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
-    @keyframes supExecPriority{0%,100%{box-shadow:0 9px 23px #031b3840,0 0 0 0 #49d8ee00}50%{box-shadow:0 11px 27px #031b3852,0 0 0 5px #49d8ee18}}
-    @keyframes supHeroIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-    @keyframes supPanelIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
-    @media(prefers-reduced-motion:reduce){body.supSupervisorMobile.panelMenu *{animation:none!important;transition:none!important}}
+    .supLive{display:grid;gap:9px;animation:supLiveIn .28s ease both}
+    .supLiveHero{background:linear-gradient(130deg,#082755,#155d9f 66%,#159f9b);color:#fff;border-radius:18px;padding:15px;box-shadow:0 12px 26px #0b2a5c25}
+    .supLiveTop{display:flex;align-items:flex-start;gap:8px}.supLiveTitle{flex:1;min-width:0}
+    .supLiveTitle small{font-size:8px;letter-spacing:.12em;color:#b9e8ff;font-weight:1000}.supLiveTitle h1{margin:4px 0 3px;font-size:21px;line-height:1.05}.supLiveTitle p{margin:0;color:#dcefff;font-size:10px;line-height:1.35}
+    .supLiveActions{display:flex;gap:6px}.supLiveActions button{border:1px solid #ffffff55;border-radius:10px;background:#ffffff18;color:#fff;min-width:36px;height:34px;padding:0 9px;font-size:10px;font-weight:1000}.supLiveActions button:active{transform:scale(.95)}
+    .supLiveUpdate{margin-top:10px;font-size:8px;color:#ccecff;display:flex;justify-content:space-between;gap:8px}
+
+    .supLiveKpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .supLiveKpi{background:#fff;border:1px solid #d8e5ec;border-radius:15px;padding:11px;min-height:91px;box-shadow:0 5px 16px #071a380b;position:relative;overflow:hidden}
+    .supLiveKpi i{font-style:normal;font-size:19px}.supLiveKpi strong{display:block;margin-top:6px;font-size:25px;color:#0b4d83;line-height:1}.supLiveKpi b{display:block;margin-top:5px;font-size:9px;color:#29485b}.supLiveKpi small{display:block;margin-top:3px;color:#7b8c95;font-size:7px}
+    .supLiveKpi.warn{border-color:#efd9a3;background:#fffdf7}.supLiveKpi.warn strong{color:#b96c00}.supLiveKpi.ok strong{color:#188254}.supLiveKpi.alert{border-color:#efc0c5}.supLiveKpi.alert strong{color:#c53042}
+
+    .supLivePanel{background:#fff;border:1px solid #d8e5ec;border-radius:16px;overflow:hidden;box-shadow:0 5px 16px #071a380b}
+    .supLiveHead{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid #e4ecef}.supLiveHead b{flex:1;color:#0d315b;font-size:13px}.supLiveHead small{font-size:7px;color:#738994}.supLiveHead button{border:0;background:#edf5fa;color:#0d5d9c;border-radius:8px;padding:6px 8px;font-size:8px;font-weight:1000}
+    .supAttention{display:grid;gap:7px;padding:9px}.supAttentionItem{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px;border:1px solid #e2e9ed;border-radius:11px;background:#f9fbfc}.supAttentionItem.alert{background:#fff8ed;border-color:#f1d29d}.supAttentionItem i{font-style:normal;font-size:18px}.supAttentionItem b{display:block;color:#173d5c;font-size:9px}.supAttentionItem span{display:block;color:#70838d;font-size:8px;margin-top:2px}.supAttentionItem em{font-style:normal;border-radius:999px;padding:4px 6px;background:#e7f2f8;color:#145f91;font-size:7px;font-weight:1000}
+    .supEmpty{padding:18px 12px;text-align:center;color:#758893;font-size:9px}
+
+    .supGroups{display:grid;gap:7px;padding:9px}.supGroup{border:1px solid #e0e9ed;border-radius:11px;padding:9px;background:#fbfdfe}.supGroupTop{display:flex;gap:8px;align-items:center}.supGroupTop b{flex:1;font-size:10px;color:#133f66}.supGroupTop strong{font-size:13px;color:#0a6b9a}.supGroupMeta{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}.supChip{font-size:7px;font-weight:900;padding:4px 6px;border-radius:999px;background:#e9f4fa;color:#245d7e}.supChip.warn{background:#fff1df;color:#9b6200}.supChip.ok{background:#e7f7ed;color:#20764d}
+
+    .supRecent{display:grid;gap:7px;padding:9px}.supRecentItem{padding:9px;border-bottom:1px solid #edf1f3}.supRecentItem:last-child{border-bottom:0}.supRecentItemTop{display:flex;gap:7px;align-items:center}.supRecentItemTop b{font-size:9px;color:#143e63}.supRecentItemTop em{margin-left:auto;font-style:normal;font-size:7px;padding:4px 6px;border-radius:999px;background:#eaf4fb;color:#155d91;font-weight:1000}.supRecentItem span{display:block;margin-top:3px;font-size:8px;color:#758893}
+
+    @keyframes supLiveIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+    @media(prefers-reduced-motion:reduce){.supLive{animation:none!important}}
   `;
   document.head.appendChild(style);
 
-  function goMenu(){
-    document.body.classList.remove('moduleOpen','supMobileDashboard','erpMobileMenuOpen');
-    const frame=document.querySelector('.menuFrame');
-    if(frame){frame.src='about:blank';frame.style.visibility='hidden';frame.removeAttribute('aria-busy')}
-    document.querySelectorAll('.menuAside button').forEach(x=>x.classList.remove('on'));
+  let lastData=null,loading=false;
+  function menuButton(label){
+    const wanted=norm(label),aside=document.querySelector('.menuAside');
+    return [...(aside?.querySelectorAll('button[data-href]')||[])].find(b=>norm(b.textContent).includes(wanted));
+  }
+  function openModule(label){const b=menuButton(label);if(b){document.body.classList.remove('supMobileDashboard');b.click()}}
+  function showMenu(){
+    document.body.classList.remove('supMobileDashboard','moduleOpen','erpMobileMenuOpen');
+    const frame=document.querySelector('.menuFrame');if(frame){frame.src='about:blank';frame.style.visibility='hidden'}
     window.scrollTo(0,0);
   }
+  function showDashboard(){
+    document.body.classList.remove('moduleOpen','erpMobileMenuOpen');
+    document.body.classList.add('supMobileDashboard');
+    const frame=document.querySelector('.menuFrame');if(frame){frame.src='about:blank';frame.style.visibility='hidden'}
+    render(lastData);window.scrollTo(0,0);
+  }
+  window.DisprotelSupervisorMobile={showDashboard,showMenu};
 
-  function openNewModule(btn){
-    const frame=document.querySelector('.menuFrame');
-    const bar=document.querySelector('.mobileModuleBar');
-    const title=bar?.querySelector('.mobileModuleTitle');
-    if(!frame)return;
-    if(title)title.textContent=btn.querySelector('span')?.textContent||'Módulo';
-    frame.style.visibility='hidden';frame.setAttribute('aria-busy','true');
-    frame.src=btn.dataset.href+(btn.dataset.href.includes('?')?'&':'?')+'v='+Date.now();
-    document.body.classList.remove('supMobileDashboard');
-    document.body.classList.add('moduleOpen');
-    document.querySelectorAll('.menuAside button').forEach(x=>x.classList.toggle('on',x===btn));
+  const statusText=s=>norm(s).replaceAll('_',' ');
+  const attentionIcon=t=>t==='ACCESO_REMOTO'?'📡':t==='REASIGNACION'?'↪️':'⚠️';
+  const attentionLabel=t=>t==='ACCESO_REMOTO'?'Acceso remoto':t==='REASIGNACION'?'Reasignación':'Novedad de OT';
+  function fmtTime(v){try{return new Date(v).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})}catch{return''}}
+
+  function render(d){
+    const dash=document.querySelector('.menuDashboard');if(!dash)return false;
+    const data=d||{};const r=data.resumen||{};const att=data.requiere_atencion||[];const groups=data.groups||[];const orders=data.orders||[];
+    const latest=orders.slice().sort((a,b)=>new Date(b.updated_at||0)-new Date(a.updated_at||0)).slice(0,5);
+    const novCount=(data.novedades||[]).length+(data.novedades_unidad||[]).length;
+    dash.innerHTML=`<div id="supervisorDashboardV1" class="supLive">
+      <section class="supLiveHero"><div class="supLiveTop"><div class="supLiveTitle"><small>SUPERVISIÓN TÉCNICA · EN VIVO</small><h1>Hola, Fernando</h1><p>Resumen de la operación actual y lo que necesita atención.</p></div><div class="supLiveActions"><button id="supLiveMenu" title="Menú">☰</button><button id="supLiveRefresh" title="Actualizar">↻</button></div></div><div class="supLiveUpdate"><span>● Sistema conectado</span><span id="supLiveClock">${data.fecha?esc(data.fecha):'Actualizando…'}</span></div></section>
+      <section class="supLiveKpis"><article class="supLiveKpi"><i>🚐</i><strong>${Number(r.en_campo||0)}</strong><b>Trabajos en campo</b><small>OT activas de hoy</small></article><article class="supLiveKpi ${att.length?'alert':'ok'}"><i>🔔</i><strong>${att.length}</strong><b>Requieren atención</b><small>Accesos, reasignaciones o novedades</small></article><article class="supLiveKpi ${novCount?'warn':''}"><i>⚠️</i><strong>${novCount}</strong><b>Novedades operativas</b><small>Personal y unidades</small></article><article class="supLiveKpi ok"><i>✅</i><strong>${Number(r.finalizadas||0)}</strong><b>Finalizadas hoy</b><small>${Number(r.creadas||0)} creadas en total</small></article></section>
+      <section class="supLivePanel"><header class="supLiveHead"><b>🔔 Atención inmediata</b><small>${att.length} pendientes</small><button id="supOpenSupervision">VER TODO</button></header><div class="supAttention">${att.length?att.slice(0,5).map(x=>`<div class="supAttentionItem ${x.tipo_atencion==='REASIGNACION'?'alert':''}"><i>${attentionIcon(x.tipo_atencion)}</i><div><b>${esc(attentionLabel(x.tipo_atencion))} · ${esc(x.id_orden||'OT')}</b><span>${esc(x.cliente_nombre||'Sin cliente')} · ${esc(x.grupo_asignado||x.grupo_actual||'Sin grupo')}</span></div><em>${esc(statusText(x.estado||''))}</em></div>`).join(''):'<div class="supEmpty">✓ No hay asuntos urgentes en este momento.</div>'}</div></section>
+      <section class="supLivePanel"><header class="supLiveHead"><b>👥 Grupos operativos</b><small>${groups.length} activos</small><button id="supOpenGroups">GESTIONAR</button></header><div class="supGroups">${groups.length?groups.map(g=>`<div class="supGroup"><div class="supGroupTop"><b>${esc(g.nombre)}</b><strong>${Number(g.ordenes_activas||0)}</strong></div><div class="supGroupMeta"><span class="supChip ok">${(g.miembros||[]).length} técnicos</span><span class="supChip">${Number(g.ordenes_activas||0)} OT activas</span>${g.unidad?.novedad?'<span class="supChip warn">⚠ Unidad con novedad</span>':'<span class="supChip ok">Unidad disponible</span>'}</div></div>`).join(''):'<div class="supEmpty">No hay grupos disponibles.</div>'}</div></section>
+      <section class="supLivePanel"><header class="supLiveHead"><b>🕒 Movimiento reciente</b><small>últimas actualizaciones</small></header><div class="supRecent">${latest.length?latest.map(o=>`<div class="supRecentItem"><div class="supRecentItemTop"><b>${esc(o.id_orden||'OT')} · ${esc(o.cliente_nombre||'Cliente')}</b><em>${esc(statusText(o.estado||''))}</em></div><span>${esc(o.tipo_trabajo||'Trabajo')} · ${esc(o.grupo_asignado||o.grupo_destino||'Sin grupo')} · ${fmtTime(o.updated_at)}</span></div>`).join(''):'<div class="supEmpty">Todavía no hay movimientos registrados hoy.</div>'}</div></section>
+    </div>`;
+    dash.querySelector('#supLiveMenu')?.addEventListener('click',showMenu);
+    dash.querySelector('#supLiveRefresh')?.addEventListener('click',load);
+    dash.querySelector('#supOpenSupervision')?.addEventListener('click',()=>openModule('SUPERVISIÓN TÉCNICA'));
+    dash.querySelector('#supOpenGroups')?.addEventListener('click',()=>openModule('SUPERVISIÓN TÉCNICA'));
+    return true;
   }
 
-  function ensureRequirements(aside){
-    let req=[...aside.querySelectorAll('button[data-href]')].find(b=>norm(b.textContent).includes('REQUERIMIENTOS A TECNICOS'));
-    if(req)return req;
-    req=document.createElement('button');
-    req.type='button';req.dataset.href='solicitudes-oficina.html';req.title='Requerimientos a técnicos';
-    req.innerHTML='📋 <span>Requerimientos a técnicos</span>';
-    req.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();openNewModule(req)},true);
-    const inv=[...aside.querySelectorAll('button[data-href]')].find(b=>String(b.dataset.href||'').includes('inventario-supervisor.html'));
-    if(inv)aside.insertBefore(req,inv);else aside.appendChild(req);
-    return req;
+  async function load(){
+    if(loading)return;loading=true;
+    try{
+      const r=await fetch(API,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','x-session':me.session_token},body:JSON.stringify({action:'dashboard'})});
+      const d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw new Error(d.error||'No se pudo cargar');
+      lastData=d;render(d);
+    }catch(e){
+      const dash=document.querySelector('.menuDashboard');if(dash&&!lastData)dash.innerHTML='<div id="supervisorDashboardV1" class="supLive"><section class="supLivePanel"><div class="supEmpty">No se pudo actualizar el tablero. Toca actualizar en unos segundos.</div></section></div>';
+    }finally{loading=false}
   }
 
-  function compactChat(aside){
-    const children=[...aside.children];
-    const chat=children.find(el=>!el.classList.contains('sideTitle')&&!el.classList.contains('navGroup')&&norm(el.textContent).includes('CONVERSACIONES'));
-    if(!chat)return;
-    chat.classList.add('supExecChat');
-    [...chat.querySelectorAll('*')].forEach(el=>{
-      if(el.children.length)return;
-      const t=norm(el.textContent);
-      if(t==='CHAT'||t==='ANCLADOS'||t.includes('LOS ANCLADOS SE ACTUALIZAN'))el.classList.add('supExecHide');
-    });
+  function boot(){
+    const dash=document.querySelector('.menuDashboard'),aside=document.querySelector('.menuAside');
+    if(!dash||!aside)return false;
+    document.body.classList.remove('moduleOpen','erpMobileMenuOpen');document.body.classList.add('supMobileDashboard');
+    render(lastData);load();return true;
   }
-
-  function enhanceMenu(){
-    const aside=document.querySelector('.menuAside');if(!aside)return;
-    const title=aside.querySelector('.sideTitle');
-    if(title){
-      const b=title.querySelector('b');const s=title.querySelector('small');
-      if(b&&b.textContent!=='Panel Supervisor')b.textContent='Panel Supervisor';
-      if(s&&s.textContent!=='Accesos principales de Fernando')s.textContent='Accesos principales de Fernando';
-    }
-    const group=aside.querySelector('.navGroup');if(group&&group.textContent!=='OPERACIÓN PRIORITARIA')group.textContent='OPERACIÓN PRIORITARIA';
-
-    const buttons=[...aside.querySelectorAll('button[data-href]')];
-    const ip=buttons.find(b=>String(b.dataset.href||'').includes('asignacion-ip.html')||norm(b.textContent).includes('ACTIVACIONES Y ACCESO REMOTO'));
-    const sup=buttons.find(b=>String(b.dataset.href||'').includes('panel-general-supervisor-visual.html')||norm(b.textContent).includes('SUPERVISION TECNICA'));
-    const inv=buttons.find(b=>String(b.dataset.href||'').includes('inventario-supervisor.html')||norm(b.textContent)==='INVENTARIO');
-    const req=ensureRequirements(aside);
-    ip?.classList.add('supExecPrimary');
-    sup?.classList.add('supExecSupervision');
-    req?.classList.add('supExecRequirements');
-    inv?.classList.add('supExecInventory');
-    compactChat(aside);
-  }
-
-  function enhanceDashboard(){
-    const root=document.getElementById('supervisorDashboardV1');if(!root)return;
-    const h=root.querySelector('.dashHero h1');if(h&&h.textContent!=='Hola, Fernando')h.textContent='Hola, Fernando';
-    const p=root.querySelector('.dashHero p');if(p&&p.textContent!=='Resumen rápido de supervisión técnica.')p.textContent='Resumen rápido de supervisión técnica.';
-    const actions=root.querySelector('.dashHeroActions');
-    if(actions&&!actions.querySelector('.supHeroHome')){
-      const home=document.createElement('button');home.type='button';home.className='supHeroHome';home.title='Volver al menú';home.setAttribute('aria-label','Volver al menú');home.textContent='⌂';
-      home.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();goMenu()});
-      actions.prepend(home);
-    }
-  }
-
-  let scheduled=false;
-  function apply(){scheduled=false;enhanceMenu();enhanceDashboard()}
-  function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(apply)}
-  const mo=new MutationObserver(schedule);mo.observe(document.documentElement,{childList:true,subtree:true});
-  [0,120,350,750,1500,2600].forEach(ms=>setTimeout(apply,ms));
+  let tries=0;const timer=setInterval(()=>{if(boot()||++tries>40)clearInterval(timer)},120);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('supMobileDashboard'))load()});
+  setInterval(()=>{if(!document.hidden&&document.body.classList.contains('supMobileDashboard'))load()},15000);
 })();
