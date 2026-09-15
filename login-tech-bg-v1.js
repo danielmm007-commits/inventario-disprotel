@@ -18,7 +18,7 @@
     .scene:before{content:""!important;position:absolute!important;inset:-8%!important;background-image:linear-gradient(rgba(91,203,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(91,203,255,.07) 1px,transparent 1px)!important;background-size:46px 46px!important;background-position:0 0!important;background-repeat:repeat!important;opacity:.34!important;transform:none!important;animation:techGridDrift 22s linear infinite!important;pointer-events:none!important;z-index:0!important}
     .scene:after{content:""!important;position:absolute!important;inset:0!important;background:radial-gradient(ellipse at 50% 48%,rgba(4,18,39,.05) 0%,rgba(3,14,32,.16) 36%,rgba(2,10,24,.42) 100%),linear-gradient(90deg,rgba(1,9,23,.18),transparent 28%,transparent 72%,rgba(1,9,23,.18))!important;pointer-events:none!important;z-index:2!important}
     .center{min-height:100svh!important;height:100svh!important;display:grid!important;place-items:center!important;padding:clamp(44px,7vh,74px) 18px clamp(12px,3vh,26px)!important;overflow:hidden!important}
-    .card{width:min(430px,92vw)!important;max-height:calc(100svh - 20px)!important;padding:clamp(14px,2.7vh,24px) 28px clamp(13px,2.5vh,22px)!important}
+    .card{width:min(455px,92vw)!important;max-height:calc(100svh - 20px)!important;padding:clamp(14px,2.7vh,24px) 28px clamp(13px,2.5vh,22px)!important}
     .logoWrap{width:76%!important;max-width:clamp(190px,34vh,300px)!important;margin:0 auto clamp(2px,1vh,7px)!important}
     .divider{margin:clamp(5px,1.6vh,12px) auto clamp(8px,2.2vh,17px)!important}
     label{margin:clamp(6px,1.5vh,11px) 0 clamp(3px,.8vh,6px)!important}
@@ -88,20 +88,20 @@
       .techOrbit.left{width:330px;height:330px;left:-175px;top:18%}.techOrbit.right{width:280px;height:280px;right:-145px;top:12%}.techPanel{width:150px;height:105px;opacity:.55}.techBeam{opacity:.52}.techBeam.b4,.techBeam.b6{display:none}.techNode{width:7px;height:7px}
     }
     @media(max-height:800px) and (min-width:721px){
-      .top{top:10px!important}
-      .center{padding:44px 18px 10px!important}
-      .card{padding:14px 24px 12px!important;border-radius:20px!important}
-      .logoWrap{max-width:220px!important;margin-bottom:2px!important}
-      .slogan{font-size:11px!important}
-      .divider{margin:6px auto 9px!important}
-      label{margin:6px 0 4px!important}
-      .field input{height:42px!important}
-      .eye{top:4px!important;height:34px!important}
-      .row{margin-top:8px!important}
-      .go{height:44px!important;margin-top:10px!important}
-      .support{height:34px!important;margin-top:7px!important}
-      .locations{margin-top:8px!important;padding-top:7px!important}
-      .secure{margin-top:5px!important}
+      .top{top:9px!important}
+      .center{padding:38px 18px 8px!important}
+      .card{padding:16px 26px 14px!important;border-radius:21px!important}
+      .logoWrap{max-width:245px!important;margin-bottom:3px!important}
+      .slogan{font-size:12px!important}
+      .divider{margin:7px auto 11px!important}
+      label{margin:7px 0 4px!important}
+      .field input{height:44px!important}
+      .eye{top:4px!important;height:36px!important}
+      .row{margin-top:9px!important}
+      .go{height:46px!important;margin-top:11px!important}
+      .support{height:35px!important;margin-top:7px!important}
+      .locations{margin-top:9px!important;padding-top:8px!important}
+      .secure{margin-top:6px!important}
     }
     @media(max-height:680px) and (min-width:721px){
       .top{top:6px!important}.topState span{padding:5px 8px!important}
