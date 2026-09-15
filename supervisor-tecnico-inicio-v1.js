@@ -4,9 +4,11 @@
 
   const KEY='disprotel_login_general_v2';
   const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+  const isMobile=()=>window.matchMedia('(max-width:680px)').matches;
   let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
   const rol=norm(me.rol);
   if(!rol.includes('SUPERVISOR')||!rol.includes('TECNICO'))return;
+  document.body.classList.add('supSupervisorMobile');
 
   function ensureStyle(){
     if(document.getElementById('supervisorTecnicoInicioV1Style'))return;
@@ -18,6 +20,48 @@
       .supZone{padding:11px 12px;border:1px solid #dce9ef;border-radius:13px;background:#f8fbfd}.supZone b{display:block;color:#0b3b68;font-size:12px}.supZone span{display:block;color:#70848f;font-size:10px;margin-top:3px}
       .supZoneGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.supMetricNote{display:block;margin-top:4px;color:#8798a1;font-size:8px;font-weight:700}
       @media(max-width:700px){.supZoneGrid{grid-template-columns:1fr}}
+
+      @media(max-width:680px){
+        body.supSupervisorMobile.panelMenu .topin{padding:7px 9px!important;gap:7px!important}
+        body.supSupervisorMobile.panelMenu .logoBox{width:72px!important;height:40px!important;border-radius:9px!important}
+        body.supSupervisorMobile.panelMenu .brand b{font-size:13px!important;line-height:1.05!important}
+        body.supSupervisorMobile.panelMenu .brand span{display:none!important}
+        body.supSupervisorMobile.panelMenu .panelTools{gap:5px!important}
+        body.supSupervisorMobile.panelMenu .panelConnected{min-height:30px!important;padding:0 8px!important;font-size:8px!important}
+        body.supSupervisorMobile.panelMenu .userAvatar{width:38px!important;height:38px!important;font-size:19px!important}
+        body.supSupervisorMobile.panelMenu .logout{padding:8px 9px!important;font-size:11px!important;border-radius:10px!important}
+
+        body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuShell{height:auto!important;min-height:calc(100dvh - 62px)!important;padding:7px!important;overflow:auto!important}
+        body.supSupervisorMobile.panelMenu:not(.moduleOpen):not(.supMobileDashboard) .menuAside{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;align-content:start!important;gap:8px!important;width:100%!important;height:auto!important;min-height:0!important;padding:11px!important;border-radius:17px!important;overflow:visible!important}
+        body.supSupervisorMobile.panelMenu .menuAside .sideTitle{grid-column:1/-1!important;padding:2px 3px 9px!important;margin:0 0 1px!important;min-height:52px!important}
+        body.supSupervisorMobile.panelMenu .menuAside .sideTitle .navAvatar{width:34px!important;height:34px!important;font-size:18px!important}
+        body.supSupervisorMobile.panelMenu .menuAside .sideTitle b{font-size:14px!important}
+        body.supSupervisorMobile.panelMenu .menuAside .sideTitle small{font-size:9px!important}
+        body.supSupervisorMobile.panelMenu .menuAside button{min-height:68px!important;padding:7px 6px!important;gap:5px!important;border-radius:13px!important;font-size:21px!important}
+        body.supSupervisorMobile.panelMenu .menuAside button span{font-size:10px!important;line-height:1.15!important;padding:3px 6px!important;border-radius:9px!important}
+        body.supSupervisorMobile.panelMenu .menuAside .erpHomeButton{grid-column:auto!important}
+
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .menuAside{display:none!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .menuStage{display:block!important;width:100%!important;height:calc(100dvh - 62px)!important;overflow:auto!important;border-radius:0!important;background:#eef5f8!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .mobileModuleBar{display:flex!important;height:46px!important;align-items:center!important;gap:8px!important;padding:6px 8px!important;background:linear-gradient(110deg,#0a3268,#1596c4)!important;color:#fff!important;position:sticky!important;top:0!important;z-index:20!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .mobileModuleTitle{font-size:12px!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .menuHome{display:block!important;min-height:calc(100dvh - 108px)!important;padding:8px!important;background:#eef5f8!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .menuDashboard{display:block!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .menuFrame{display:none!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashHero{border-radius:16px!important;padding:16px!important;gap:10px!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashHero h1{font-size:20px!important;margin:4px 0 5px!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashHero p{font-size:11px!important;line-height:1.35!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashHeroActions{width:100%!important;justify-content:space-between!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashHeroActions button{min-height:38px!important;padding:0 11px!important;font-size:12px!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashGrid{gap:9px!important;margin-top:9px!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashPanel{border-radius:14px!important;padding:12px!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashPanel h2{font-size:15px!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashMetrics{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashMetric{padding:10px!important;border-radius:12px!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashMetric strong{font-size:22px!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashMetric span{font-size:8px!important;line-height:1.2!important}
+        body.supSupervisorMobile.panelMenu.supMobileDashboard .dashItem{padding:9px!important;font-size:10px!important}
+      }
     `;
     document.head.appendChild(s);
   }
@@ -32,7 +76,7 @@
     title.insertAdjacentElement('afterend',b);
   }
 
-  function sameLabel(btn,label){return norm(btn?.textContent)===norm(label)}
+  function sameLabel(btn,label){return norm(btn?.querySelector('span')?.textContent||btn?.textContent)===norm(label)}
   function setBtn(btn,icon,label,href){
     if(!btn)return;
     if(String(btn.dataset.href||'')!==href)btn.dataset.href=href;
@@ -79,11 +123,31 @@
     const n=parseInt(raw,10);return Number.isFinite(n)?n:0;
   }
 
+  function showMobileMenu(){
+    if(!isMobile())return;
+    document.body.classList.remove('moduleOpen','supMobileDashboard','erpMobileMenuOpen');
+    const frame=document.querySelector('.menuFrame');
+    if(frame){frame.src='about:blank';frame.style.visibility='hidden';frame.removeAttribute('aria-busy')}
+    const aside=document.querySelector('.menuAside');
+    aside?.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    window.scrollTo(0,0);
+  }
+
+  function showMobileDashboard(){
+    if(!isMobile())return;
+    document.body.classList.remove('moduleOpen','erpMobileMenuOpen');
+    document.body.classList.add('supMobileDashboard');
+    const frame=document.querySelector('.menuFrame');
+    if(frame){frame.src='about:blank';frame.style.visibility='hidden';frame.removeAttribute('aria-busy')}
+    const title=document.querySelector('.mobileModuleTitle');if(title)title.textContent='Inicio';
+    renderDashboard();syncDashboard();window.scrollTo(0,0);
+  }
+
   function openMenu(label){
     const aside=document.querySelector('.menuAside');if(!aside)return;
     const wanted=norm(label);
     const b=[...aside.querySelectorAll('button[data-href]')].find(x=>norm(x.textContent).includes(wanted));
-    if(b)b.click();
+    if(b){document.body.classList.remove('supMobileDashboard');b.click()}
   }
 
   function syncDashboard(){
@@ -126,13 +190,23 @@
 
   let timer=null;
   function applyAll(){
-    clearTimeout(timer);timer=setTimeout(()=>{applyMenu();renderDashboard()},20);
+    clearTimeout(timer);timer=setTimeout(()=>{ensureStyle();applyMenu();renderDashboard()},20);
   }
 
   const mo=new MutationObserver(applyAll);
   mo.observe(document.documentElement,{childList:true,subtree:true});
+
+  window.addEventListener('click',e=>{
+    if(!isMobile())return;
+    const back=e.target.closest('.mobileModuleBack');
+    if(back){e.preventDefault();e.stopImmediatePropagation();showMobileMenu();return}
+    const home=e.target.closest('.erpHomeButton');
+    if(home){e.preventDefault();e.stopImmediatePropagation();showMobileDashboard();return}
+    if(e.target.closest('.menuAside button[data-href]'))document.body.classList.remove('supMobileDashboard');
+  },true);
+
   document.addEventListener('click',e=>{if(e.target.closest('.erpHomeButton'))setTimeout(renderDashboard,30)},true);
-  [0,120,320,700,1400,2500].forEach(ms=>setTimeout(()=>{applyMenu();renderDashboard();syncDashboard()},ms));
+  [0,120,320,700,1400,2500].forEach(ms=>setTimeout(()=>{ensureStyle();applyMenu();renderDashboard();syncDashboard()},ms));
 
   setInterval(syncDashboard,5000);
 })();
