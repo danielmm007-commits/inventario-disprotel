@@ -14,5 +14,13 @@
   s.id=id;
   s.src='supervisor-tecnico-inicio-v1.js?v='+Date.now();
   s.async=false;
+  s.onload=()=>{
+    if(document.getElementById('supervisorMobileCompactV1Loader'))return;
+    const m=document.createElement('script');
+    m.id='supervisorMobileCompactV1Loader';
+    m.src='supervisor-mobile-compact-v1.js?v='+Date.now();
+    m.async=false;
+    document.body.appendChild(m);
+  };
   document.body.appendChild(s);
 })();
