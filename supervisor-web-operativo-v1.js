@@ -18,6 +18,16 @@
     const span=tech.querySelector('span:last-child');if(span&&span.textContent!=='Supervisión técnica')span.textContent='Supervisión técnica';
     return true;
   }
+  function cleanPanelNav(d){
+    const actions=d.querySelector('.actions');if(!actions)return;
+    [...actions.querySelectorAll('a')].forEach(a=>{
+      const href=String(a.getAttribute('href')||'').toLowerCase();
+      if(href.includes('trabajos-tecnicos.html')||href==='index.html'||href.endsWith('/index.html')){a.remove();return}
+      if(href.includes('solicitudes-oficina.html'))a.textContent='➕ CREAR OT';
+      if(href.includes('asignacion-ip.html'))a.textContent='📡 SOPORTE / IP';
+    });
+    actions.style.gridTemplateColumns='repeat(2,minmax(0,1fr))';
+  }
   function injectEnhancerSafely(frame,w,d){
     if(d.getElementById('panelSupervisorDirectEnhanceLoader'))return true;
     const NativeMO=w.MutationObserver,captured=[];
@@ -49,6 +59,7 @@
       const path=String(w.location.pathname||'').toLowerCase();
       if(!path.endsWith('/panel-supervisor-vivo-v2.html'))return false;
       frame.dataset.supOrigin='live';
+      cleanPanelNav(d);
       return injectEnhancerSafely(frame,w,d);
     }catch{return false}
   }
@@ -65,7 +76,7 @@
       const w=frame.contentWindow,d=frame.contentDocument;if(!w||!d)return false;
       const path=String(w.location.pathname||'').toLowerCase();
       if(path.endsWith('/panel-supervisor-vivo-v2.html')){
-        frame.dataset.supOrigin='live';enhanceFrame(frame);return true;
+        frame.dataset.supOrigin='live';cleanPanelNav(d);enhanceFrame(frame);return true;
       }
       if(path.endsWith('/principal.html')&&frame.dataset.supOrigin==='live'){
         setTimeout(()=>returnToLive(frame),0);return true;
