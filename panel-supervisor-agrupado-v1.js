@@ -16,5 +16,15 @@
   s.id=id;
   s.src=(mobile?'supervisor-mobile-compact-v1.js':'supervisor-tecnico-inicio-v1.js')+'?v='+Date.now();
   s.async=false;
+  if(!mobile){
+    s.onload=()=>{
+      if(document.getElementById('supervisorWebOperativoV1Loader'))return;
+      const w=document.createElement('script');
+      w.id='supervisorWebOperativoV1Loader';
+      w.src='supervisor-web-operativo-v1.js?v='+Date.now();
+      w.async=false;
+      document.body.appendChild(w);
+    };
+  }
   document.body.appendChild(s);
 })();
