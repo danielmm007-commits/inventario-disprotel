@@ -20,7 +20,7 @@
     const tech=techButton();
     if(tech){if(tech.dataset.href!==TARGET)tech.dataset.href=TARGET;tech.title='Supervisión técnica · Operación en vivo';setButtonLabel(tech,'Supervisión técnica')}
     const mesa=mesaButton();
-    if(mesa){mesa.title='Mesa técnica de campo · solicitudes desde la ejecución';setButtonLabel(mesa,'Mesa técnica de campo')}
+    if(mesa){mesa.style.display='none';mesa.setAttribute('aria-hidden','true');mesa.dataset.supDuplicateHidden='1'}
     return !!tech;
   }
   function cleanPanelNav(d){
