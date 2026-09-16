@@ -18,14 +18,38 @@
     const span=tech.querySelector('span:last-child');if(span&&span.textContent!=='Supervisión técnica')span.textContent='Supervisión técnica';
     return true;
   }
+  function injectEnhancerSafely(frame,w,d){
+    if(d.getElementById('panelSupervisorDirectEnhanceLoader'))return true;
+    const NativeMO=w.MutationObserver,captured=[];
+    try{
+      w.MutationObserver=class extends NativeMO{
+        constructor(cb){super(cb);captured.push(this)}
+      };
+      const s=d.createElement('script');
+      s.id='panelSupervisorDirectEnhanceLoader';
+      s.src='panel-supervisor-direct-enhance-v1.js?v='+Date.now();
+      s.async=false;
+      s.onload=()=>{
+        captured.forEach(o=>{try{o.disconnect()}catch{}});
+        w.MutationObserver=NativeMO;
+        frame.dataset.supEnhancerSafe='1';
+      };
+      s.onerror=()=>{w.MutationObserver=NativeMO};
+      d.body.appendChild(s);
+      setTimeout(()=>{
+        captured.forEach(o=>{try{o.disconnect()}catch{}});
+        if(w.MutationObserver!==NativeMO)w.MutationObserver=NativeMO;
+      },1500);
+      return true;
+    }catch(e){w.MutationObserver=NativeMO;console.warn('Enhancer seguro:',e);return false}
+  }
   function enhanceFrame(frame){
     try{
       const w=frame.contentWindow,d=frame.contentDocument;if(!w||!d)return false;
       const path=String(w.location.pathname||'').toLowerCase();
       if(!path.endsWith('/panel-supervisor-vivo-v2.html'))return false;
       frame.dataset.supOrigin='live';
-      if(d.getElementById('panelSupervisorDirectEnhanceLoader'))return true;
-      const s=d.createElement('script');s.id='panelSupervisorDirectEnhanceLoader';s.src='panel-supervisor-direct-enhance-v1.js?v='+Date.now();s.async=false;d.body.appendChild(s);return true;
+      return injectEnhancerSafely(frame,w,d);
     }catch{return false}
   }
   function returnToLive(frame){
