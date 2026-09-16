@@ -67,5 +67,24 @@
   supportBtn.onclick=()=>{support.classList.add('show');install.classList.remove('active');supportBtn.classList.add('active');refreshSelection();support.scrollIntoView({behavior:'smooth',block:'nearest'})};
   grid.querySelectorAll('[data-type]').forEach(b=>b.onclick=()=>{const t=b.dataset.type;supportSelected.has(t)?supportSelected.delete(t):supportSelected.add(t);refreshSelection()});
   cont.onclick=openMultiSupport;
+
+  function resetSupportDraft(){
+    supportSelected.clear();
+    window.__supervisorSupportActivities=[];
+    support.classList.remove('show');
+    install.classList.remove('active');
+    supportBtn.classList.remove('active');
+    refreshSelection();
+    if(selected)selected.textContent='Selecciona INSTALACIÓN o SOPORTE para comenzar.';
+  }
+  const cerrarActividadBase=window.cerrarActividad;
+  if(typeof cerrarActividadBase==='function'){
+    window.cerrarActividad=function(...args){
+      const result=cerrarActividadBase.apply(this,args);
+      resetSupportDraft();
+      return result;
+    };
+  }
+
   if(selected)selected.textContent='Selecciona INSTALACIÓN o SOPORTE para comenzar.';
 })();
