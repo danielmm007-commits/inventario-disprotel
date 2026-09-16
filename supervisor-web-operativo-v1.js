@@ -2,7 +2,7 @@
   if(window.__supervisorWebOperativoV1)return;
   window.__supervisorWebOperativoV1=true;
   const KEY='disprotel_login_general_v2';
-  const TARGET='panel-supervisor-vivo-v4.html';
+  const TARGET='panel-supervisor-vivo-v2.html';
   const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
   let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
   if(!norm(me.rol).includes('SUPERVISOR TECNICO')||matchMedia('(max-width:680px)').matches)return;
