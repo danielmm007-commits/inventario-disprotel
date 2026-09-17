@@ -9,24 +9,26 @@
   if(!norm(me.rol).includes('SUPERVISOR TECNICO'))return;
 
   const mobile=matchMedia('(max-width:680px)').matches;
-  const id=mobile?'supervisorMobileFastV1Loader':'supervisorTecnicoInicioV1Loader';
-  if(document.getElementById(id))return;
-
-  const s=document.createElement('script');
-  s.id=id;
-  s.src=mobile?'supervisor-mobile-compact-v1.js?v=20260916-fernando-fast1':'supervisor-tecnico-inicio-v1.js?v='+Date.now();
-  s.async=false;
-
-  if(!mobile){
-    s.onload=()=>{
-      if(document.getElementById('supervisorWebOperativoV1Loader'))return;
-      const w=document.createElement('script');
-      w.id='supervisorWebOperativoV1Loader';
-      w.src='supervisor-web-operativo-v1.js?v='+Date.now();
-      w.async=false;
-      document.body.appendChild(w);
-    };
+  if(mobile){
+    if(!location.pathname.toLowerCase().endsWith('/supervisor-mobile.html')){
+      location.replace('supervisor-mobile.html');
+    }
+    return;
   }
 
+  const id='supervisorTecnicoInicioV1Loader';
+  if(document.getElementById(id))return;
+  const s=document.createElement('script');
+  s.id=id;
+  s.src='supervisor-tecnico-inicio-v1.js?v='+Date.now();
+  s.async=false;
+  s.onload=()=>{
+    if(document.getElementById('supervisorWebOperativoV1Loader'))return;
+    const w=document.createElement('script');
+    w.id='supervisorWebOperativoV1Loader';
+    w.src='supervisor-web-operativo-v1.js?v='+Date.now();
+    w.async=false;
+    document.body.appendChild(w);
+  };
   document.body.appendChild(s);
 })();
