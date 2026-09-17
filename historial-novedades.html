@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071a38">
+<title>Historial de novedades · DISPROTEL</title>
+<style>
+:root{--n:#071a38;--b:#176eb7;--l:#dbe5ec;--bg:#eef4f7;--ink:#183142;--m:#6f818b;--g:#237a52;--a:#a86b00;--r:#b84040}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:var(--bg);color:var(--ink)}button,input,select,textarea{font:inherit}
+.wrap{max-width:900px;margin:auto;padding:8px}
+.head{position:sticky;top:0;z-index:10;background:#fff;border:1px solid var(--l);border-radius:13px;padding:8px;box-shadow:0 4px 14px #071a3810}
+.title{display:flex;align-items:center;gap:7px}.title div{flex:1}.title h1{margin:0;font-size:14px}.title small{font-size:8px;color:var(--m)}
+.nav{display:grid;grid-template-columns:36px 1fr 36px;gap:5px;margin-top:7px}.nav button,.nav input{height:32px;border:1px solid var(--l);border-radius:8px;background:#fff}.nav button{font-weight:900;color:#245c7d}.nav input{padding:0 7px;font-size:10px;text-align:center}
+.tools{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:6px}.today,.refresh{border:0;border-radius:8px;padding:6px 8px;font-size:8px;font-weight:900}.today{background:#e9f4fa;color:#245c7d}.refresh{background:#0c5b8e;color:#fff}.stamp{font-size:7px;color:#7d909a}
+.list{display:grid;gap:6px;margin-top:7px}.item{background:#fff;border:1px solid var(--l);border-radius:11px;padding:8px;box-shadow:0 3px 10px #071a3807}.item.cancel{opacity:.65}.itemTop{display:flex;align-items:center;gap:6px}.itemTop>div{flex:1;min-width:0}.itemTop b{display:block;font-size:10px}.itemTop small{display:block;margin-top:2px;color:var(--m);font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ico{font-size:15px}.state{padding:4px 6px;border-radius:999px;font-size:6.5px;font-weight:1000;background:#e9f8ef;color:var(--g)}.state.programada{background:#eef4ff;color:#4361a8}.state.finalizada{background:#edf2f5;color:#5f737e}.state.cancelada{background:#fff0ec;color:var(--r)}
+.detail{margin-top:6px;padding-top:6px;border-top:1px dashed #dde6eb;font-size:7.5px;line-height:1.45;color:#526b78}.actions{display:flex;justify-content:flex-end;gap:5px;margin-top:7px}.actions button{border:0;border-radius:7px;padding:6px 8px;font-size:7px;font-weight:900}.edit{background:#eaf4fa;color:#215c7d}.cancelBtn{background:#fff0ec;color:#a53e3e}.empty{padding:30px 10px;text-align:center;color:#7b8d96;font-size:9px}
+.ov{display:none;position:fixed;inset:0;z-index:50;background:#071a386b;padding:8px;align-items:center;justify-content:center}.ov.show{display:flex}.modal{width:min(520px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:14px;padding:10px}.modalHead{display:flex;align-items:center;gap:8px}.modalHead h2{flex:1;margin:0;font-size:13px}.x{width:30px;height:30px;border:1px solid var(--l);border-radius:8px;background:#fff}.form{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.form label{font-size:8px;font-weight:900;color:#526b78}.form input,.form select,.form textarea{width:100%;margin-top:4px;border:1px solid #cbd9e1;border-radius:8px;padding:8px;background:#fff;font-size:9px}.form textarea{min-height:64px;resize:vertical}.full{grid-column:1/-1}.save{width:100%;border:0;border-radius:9px;padding:9px;background:#0c5b8e;color:#fff;font-weight:900;font-size:9px}.msg{min-height:14px;margin-top:6px;font-size:8px;color:#9b3434}
+@media(max-width:520px){.form{grid-template-columns:1fr}.full{grid-column:auto}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<section class="head">
+  <div class="title"><span>📋</span><div><h1>Historial de novedades</h1><small>Personal y unidades · consulta por día</small></div></div>
+  <div class="nav"><button id="prev">‹</button><input id="date" type="date"><button id="next">›</button></div>
+  <div class="tools"><button id="today" class="today">HOY</button><span id="stamp" class="stamp"></span><button id="refresh" class="refresh">↻ ACTUALIZAR</button></div>
+</section>
+<section id="list" class="list"><div class="empty">Cargando novedades…</div></section>
+</main>
+<div id="ov" class="ov">
+  <div class="modal">
+    <div class="modalHead"><h2 id="editTitle">Editar novedad</h2><button id="close" class="x">✕</button></div>
+    <div class="form">
+      <label id="whoLabel" class="full">Registro<input id="who" disabled></label>
+      <label>Tipo<select id="type"></select></label>
+      <label id="modeLabel">Duración<select id="mode"><option value="POR_HORAS">Por horas</option><option value="TODO_EL_DIA">Todo el día</option><option value="VARIOS_DIAS">Varios días</option></select></label>
+      <label>Desde<input id="from" type="datetime-local"></label>
+      <label>Hasta<input id="to" type="datetime-local"></label>
+      <label class="full">Motivo<textarea id="reason"></textarea></label>
+      <div class="full"><button id="save" class="save">GUARDAR CAMBIOS</button></div>
+    </div>
+    <div id="msg" class="msg"></div>
+  </div>
+</div>
+<script>
+(()=> {
+const NOV='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-novedades-operativas',KEY='disprotel_login_general_v2';
+let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
+if(!me.session_token){location.replace('login-general-v2.html');return}
+const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0'),fmtDay=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const ecToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Guayaquil',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const localInput=v=>{const d=new Date(v);if(!Number.isFinite(d.getTime()))return'';return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`};
+const fmtTime=v=>new Date(v).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
+let data=[],editing=null;
+async function call(action,payload={}){const r=await fetch(NOV,{method:'POST',headers:{'Content-Type':'application/json','x-session':me.session_token},body:JSON.stringify({action,...payload})}),d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok||d.error)throw new Error(d.error||'Error');return d}
+function stateClass(v){return String(v||'').toLowerCase()}
+function paint(){
+ const box=$('list');
+ if(!data.length){box.innerHTML='<div class="empty">No hay novedades registradas para este día.</div>';return}
+ box.innerHTML=data.map((x,i)=>{
+   const person=x.clase==='PERSONAL',name=person?x.responsable_nombre:x.unidad_nombre,icon=person?'👨‍🔧':'🚐';
+   const state=x.estado_visible||x.estado||'',cancel=state==='CANCELADA';
+   const extra=[x.grupo_nombre?`Grupo: ${esc(x.grupo_nombre)}`:'',`Horario: ${fmtTime(x.inicio)} – ${fmtTime(x.fin)}`,x.motivo?`Motivo: ${esc(x.motivo)}`:'',x.reemplazo_nombre?`Reemplazo: ${esc(x.reemplazo_nombre)}`:'',x.creado_por_nombre?`Registró: ${esc(x.creado_por_nombre)}`:''].filter(Boolean).join('<br>');
+   return `<article class="item ${cancel?'cancel':''}"><div class="itemTop"><span class="ico">${icon}</span><div><b>${esc(name)} · ${esc(String(x.tipo||'').replaceAll('_',' '))}</b><small>${esc(x.grupo_nombre||'Sin grupo')} · ${fmtTime(x.inicio)}–${fmtTime(x.fin)}</small></div><span class="state ${stateClass(state)}">${esc(state)}</span></div><div class="detail">${extra}</div>${cancel?'':`<div class="actions"><button class="edit" data-edit="${i}">✏️ EDITAR</button><button class="cancelBtn" data-cancel="${i}">✕ CANCELAR</button></div>`}</article>`;
+ }).join('');
+}
+async function load(){ $('stamp').textContent='Consultando…';try{const d=await call('history',{date:$('date').value});data=d.items||[];paint();$('stamp').textContent=`${data.length} registro${data.length===1?'':'s'}`}catch(e){$('list').innerHTML=`<div class="empty">⚠ ${esc(e.message)}</div>`;$('stamp').textContent='Error'}}
+function move(days){const [y,m,d]=$('date').value.split('-').map(Number),x=new Date(y,m-1,d);x.setDate(x.getDate()+days);$('date').value=fmtDay(x);load()}
+$('prev').onclick=()=>move(-1);$('next').onclick=()=>move(1);$('today').onclick=()=>{$('date').value=ecToday();load()};$('refresh').onclick=load;$('date').onchange=load;
+function typeOptions(x){return x.clase==='PERSONAL'?['PERMISO','VACACIONES','AUSENCIA','CAMBIO_TEMPORAL','OTRO']:['MANTENIMIENTO','FUERA_SERVICIO','SIN_CONDUCTOR','OPERATIVA_CON_NOVEDAD','OTRO']}
+function openEdit(x){editing=x;$('editTitle').textContent=x.clase==='PERSONAL'?'Editar novedad de personal':'Editar novedad de unidad';$('who').value=x.clase==='PERSONAL'?x.responsable_nombre:x.unidad_nombre;$('type').innerHTML=typeOptions(x).map(v=>`<option value="${v}">${v.replaceAll('_',' ')}</option>`).join('');$('type').value=x.tipo;$('modeLabel').style.display=x.clase==='PERSONAL'?'block':'none';$('mode').value=x.modalidad||'POR_HORAS';$('from').value=localInput(x.inicio);$('to').value=localInput(x.fin);$('reason').value=x.motivo||'';$('msg').textContent='';$('ov').classList.add('show')}
+$('close').onclick=()=>$('ov').classList.remove('show');$('ov').onclick=e=>{if(e.target===$('ov'))$('ov').classList.remove('show')};
+$('list').onclick=async e=>{const eb=e.target.closest('[data-edit]'),cb=e.target.closest('[data-cancel]');if(eb){openEdit(data[Number(eb.dataset.edit)]);return}if(cb){const x=data[Number(cb.dataset.cancel)];if(!confirm(`Cancelar esta novedad de ${x.clase==='PERSONAL'?x.responsable_nombre:x.unidad_nombre}?`))return;try{const d=await call(x.clase==='PERSONAL'?'cancel':'unidad-cancel',{id:x.id,date:$('date').value});data=d.items||[];paint()}catch(err){alert(err.message)}}};
+$('save').onclick=async()=>{if(!editing)return;$('msg').textContent='Guardando…';const payload={id:editing.id,date:$('date').value,tipo:$('type').value,inicio:$('from').value,fin:$('to').value,motivo:$('reason').value};if(editing.clase==='PERSONAL'){payload.modalidad=$('mode').value;payload.responsable_id=editing.responsable_id;payload.reemplazo_id=editing.reemplazo_id||null;payload.grupo_operativo_id=editing.grupo_operativo_id||editing.grupo_habitual_id||null}else payload.ubicacion_config_id=editing.ubicacion_config_id;try{const d=await call(editing.clase==='PERSONAL'?'update':'unidad-update',payload);data=d.items||[];$('ov').classList.remove('show');paint()}catch(err){$('msg').textContent='⚠ '+err.message}};
+$('date').value=ecToday();load();
+})();
+</script>
+</body></html>
