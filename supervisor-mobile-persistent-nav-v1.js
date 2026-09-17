@@ -11,11 +11,11 @@
   style.id='supervisorPersistentNavV1Style';
   style.textContent=`
     body.supSupervisorMobile .supOpsBottom{display:none!important}
-    #supPersistentNav{position:fixed;left:7px;right:7px;bottom:7px;z-index:2147483000;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:5px;border:1px solid #d0e0e8;border-radius:17px;background:#fffffff2;backdrop-filter:blur(13px);box-shadow:0 12px 32px #071a3838}
+    #supPersistentNav{position:fixed;left:7px;right:7px;bottom:7px;z-index:2147483000;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:5px;border:1px solid #d0e0e8;border-radius:17px;background:#fffffff2;backdrop-filter:blur(10px);box-shadow:0 8px 22px #071a382b}
     #supPersistentNav button{border:0;border-radius:11px;background:transparent;color:#607784;min-height:51px;padding:5px 2px;font-size:16px;line-height:1;touch-action:manipulation}
     #supPersistentNav button span{display:block;margin-top:4px;font-size:6.8px;font-weight:900;line-height:1.1}
-    #supPersistentNav button.on{background:linear-gradient(145deg,#0c4c82,#148ca4);color:#fff;box-shadow:0 5px 12px #0b5c8d35}
-    #supPersistentNav button:active{transform:scale(.94)}
+    #supPersistentNav button.on{background:linear-gradient(145deg,#0c4c82,#148ca4);color:#fff;box-shadow:0 4px 10px #0b5c8d2c}
+    #supPersistentNav button:active{transform:scale(.96)}
     body.supSupervisorMobile.panelMenu.moduleOpen .menuFrame{height:calc(100dvh - 156px)!important}
     body.supSupervisorMobile.panelMenu.moduleOpen .menuStage{padding-bottom:70px!important}
     body.supSupervisorMobile.panelMenu.supMobileDashboard .supLive{padding-bottom:82px!important}
@@ -87,15 +87,13 @@
   }
 
   function mount(){
-    if(!document.getElementById('supPersistentNav'))document.body.insertAdjacentHTML('beforeend',navHtml());
+    if(document.getElementById('supPersistentNav'))return true;
+    document.body.insertAdjacentHTML('beforeend',navHtml());
     const nav=document.getElementById('supPersistentNav');
-    if(nav.dataset.bound!=='1'){
-      nav.dataset.bound='1';
-      nav.addEventListener('click',e=>{
-        const b=e.target.closest('[data-sup-nav]');if(!b)return;
-        e.preventDefault();e.stopPropagation();openSection(b.dataset.supNav);
-      });
-    }
+    nav.addEventListener('click',e=>{
+      const b=e.target.closest('[data-sup-nav]');if(!b)return;
+      e.preventDefault();e.stopPropagation();openSection(b.dataset.supNav);
+    });
     setActive(active);
     return true;
   }
@@ -117,15 +115,14 @@
     const f=document.querySelector('.menuFrame');if(!f)return false;
     if(f.dataset.supPersistentNavHook!=='1'){
       f.dataset.supPersistentNavHook='1';
-      f.addEventListener('load',()=>setTimeout(inspectFrame,80));
+      f.addEventListener('load',()=>setTimeout(inspectFrame,40));
     }
     inspectFrame();return true;
   }
 
   window.addEventListener('popstate',()=>{
     if(!moduleActive)return;
-    setTimeout(()=>forceHome(true),0);
-    setTimeout(()=>forceHome(false),100);
+    forceHome(true);
   });
 
   window.addEventListener('click',e=>{
@@ -134,12 +131,12 @@
   },true);
 
   normalizeHomeState();
+  mount();
+  hookFrame();
+
   let tries=0;
   const timer=setInterval(()=>{
-    mount();hookFrame();
-    if(++tries>80)clearInterval(timer);
-  },100);
-
-  const observer=new MutationObserver(()=>{mount();hookFrame()});
-  observer.observe(document.documentElement,{childList:true,subtree:true});
+    mount();
+    if(hookFrame()||++tries>=12)clearInterval(timer);
+  },250);
 })();
