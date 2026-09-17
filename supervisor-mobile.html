@@ -6,16 +6,18 @@
 <meta name="theme-color" content="#071a38">
 <title>Fernando · Supervisor técnico</title>
 <style>
-:root{--navy:#071a38;--blue:#0d5f98;--ink:#173b5c;--muted:#71838e;--line:#d8e4ea;--bg:#eef3f6}
+:root{--navy:#071a38;--blue:#0d5f98;--ink:#173b5c;--muted:#71838e;--line:#d8e4ea;--bg:#eef3f6;--red:#b84040;--amber:#a86b00;--green:#237a52}
 *{box-sizing:border-box}html,body{margin:0;width:100%;min-height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}button{font:inherit}
 .top{height:52px;position:fixed;left:0;right:0;top:0;z-index:40;display:flex;align-items:center;gap:9px;padding:6px 10px;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 3px 12px #071a3809}.brand{flex:1;min-width:0}.brand b{display:block;font-size:12px;color:#0b315c}.brand span{display:block;margin-top:2px;font-size:8px;color:var(--muted)}.logout{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 9px;font-size:9px;font-weight:900;color:#425e70}
-.stage{position:fixed;left:0;right:0;top:52px;bottom:68px;overflow:auto;background:var(--bg)}.home{max-width:620px;margin:auto;padding:12px 10px 18px}.hero{background:linear-gradient(135deg,#071a38,#0e6397);color:#fff;border-radius:17px;padding:15px;box-shadow:0 8px 22px #0b315522}.hero small{font-size:8px;font-weight:1000;letter-spacing:.12em;color:#bdeaff}.hero h1{font-size:20px;margin:5px 0 4px}.hero p{font-size:9px;line-height:1.35;margin:0;color:#dbeaf5}.sectionTitle{margin:14px 2px 7px;font-size:10px;font-weight:1000;color:#284d65}.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px}.quick button{min-height:105px;border:1px solid var(--line);border-radius:15px;background:#fff;padding:12px;text-align:left;color:var(--ink);box-shadow:0 4px 12px #071a3808;touch-action:manipulation}.quick button:active{transform:scale(.98)}.quick i{display:block;font-style:normal;font-size:24px}.quick b{display:block;margin-top:8px;font-size:11px}.quick span{display:block;margin-top:4px;font-size:8px;line-height:1.3;color:var(--muted)}.note{margin-top:10px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;background:#f8fbfc;color:#72848e;font-size:8px;line-height:1.4}
+.stage{position:fixed;left:0;right:0;top:52px;bottom:68px;overflow:auto;background:var(--bg)}.home{max-width:620px;margin:auto;padding:9px 9px 18px}
+.homeHero{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#071a38,#0e6397);color:#fff;border-radius:14px;padding:10px 11px;box-shadow:0 7px 18px #0b31551c}.homeHeroText{flex:1;min-width:0}.homeHero small{display:block;font-size:7px;font-weight:1000;letter-spacing:.11em;color:#bdeaff}.homeHero h1{font-size:16px;margin:3px 0 2px}.homeHero p{font-size:8px;line-height:1.25;margin:0;color:#dbeaf5}.homeRefresh{flex:0 0 31px;width:31px;height:31px;border:1px solid #ffffff52;border-radius:9px;background:#ffffff16;color:#fff;font-size:15px;font-weight:1000}.homeStamp{margin:5px 2px 0;text-align:right;color:#7d909a;font-size:7px}
+.homeMetrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}.homeMetric{background:#fff;border:1px solid var(--line);border-radius:11px;padding:8px 9px;min-height:67px;box-shadow:0 3px 10px #071a3807}.homeMetricTop{display:flex;align-items:center;justify-content:space-between;gap:5px}.homeMetric i{font-style:normal;font-size:15px}.homeMetric strong{font-size:21px;line-height:1;color:#0c5b8e}.homeMetric b{display:block;margin-top:5px;font-size:7.5px;color:#496675}.homeMetric.alert strong{color:var(--red)}.homeMetric.warn strong{color:var(--amber)}.homeMetric.ok strong{color:var(--green)}
+.homeCard{margin-top:7px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 3px 10px #071a3807}.homeCardHead{display:flex;align-items:center;gap:6px;padding:8px 9px;border-bottom:1px solid #e7eef2}.homeCardHead b{flex:1;font-size:10px;color:#173f60}.homeCardHead button{border:0;background:#edf5f9;color:#245c7d;border-radius:8px;padding:5px 7px;font-size:7px;font-weight:900}.homeList{display:grid;gap:5px;padding:6px}.homeRow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:7px;align-items:center;padding:7px;border:1px solid #e3eaee;border-radius:9px;background:#fbfcfd}.homeRow.hot{background:#fff7f4;border-color:#efcfca}.homeRow i{font-style:normal;font-size:14px}.homeRow b{display:block;font-size:8.5px;color:#244761}.homeRow small{display:block;margin-top:2px;font-size:7px;color:#7b8d96;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.homePill{padding:4px 5px;border-radius:999px;background:#edf5f9;color:#27617f;font-size:6.5px;font-weight:1000}.homeEmpty{padding:13px 8px;text-align:center;color:#7a8d96;font-size:8px}.homeError{padding:10px;color:#a04343;font-size:8px;text-align:center}
 .module{display:none;height:100%}.module.open{display:flex;flex-direction:column}.moduleBar{height:36px;flex:0 0 36px;display:flex;align-items:center;gap:7px;padding:4px 7px;background:#fff;border-bottom:1px solid var(--line)}.moduleBar button{border:0;border-radius:8px;background:#edf4f8;color:#244d68;padding:6px 9px;font-size:8px;font-weight:900}.moduleBar strong{font-size:10px}.frame{display:block;flex:1;width:100%;border:0;background:#fff}
 .bottom{height:60px;position:fixed;left:7px;right:7px;bottom:calc(5px + env(safe-area-inset-bottom));z-index:1600;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:4px;background:#fffffff4;border:1px solid #cfdee6;border-radius:17px;box-shadow:0 8px 22px #071a382b;backdrop-filter:blur(10px)}.bottom button{border:0;border-radius:11px;background:transparent;color:#657b87;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:17px;line-height:1;touch-action:manipulation}.bottom button span{font-size:7px;font-weight:900}.bottom button.on{background:#0d5a89;color:#fff}.bottom button:active{transform:scale(.96)}
 #smPins{display:none;position:fixed;left:8px;right:8px;top:55px;z-index:1560;height:31px;align-items:center;gap:5px;padding:3px 5px;border:1px solid #d6e3e9;border-radius:10px;background:#fffffff5;box-shadow:0 4px 12px #071a3812;overflow-x:auto;overflow-y:hidden;white-space:nowrap}.smPinsLabel{flex:0 0 auto;font-size:7px;font-weight:1000;color:#6b7d87;padding:0 3px}.smPin{flex:0 0 auto;max-width:145px;height:23px;border:1px solid #d7e4ea;border-radius:8px;background:#f4f9fb;color:#214d69;padding:0 7px;font-size:8px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.smPin.unread{border-color:#e6a9ae;background:#fff2f3;color:#a72d3c}.smPinEmpty{font-size:8px;color:#8a9aa3;padding:0 4px}.chatMode #smPins{display:flex}
 .chatManagerButton{display:none!important}.chatManager{position:fixed!important;left:8px!important;right:8px!important;top:90px!important;bottom:74px!important;width:auto!important;max-height:none!important;z-index:1500!important;border-radius:13px!important;touch-action:auto!important;padding:7px!important}.chatManager .chatPanel{height:min(520px,calc(100vh - 285px))!important}
 .chatManager.smChatFocus{overflow:hidden!important;padding:4px!important}.chatManager.smChatFocus>.chatManagerHead,.chatManager.smChatFocus>.chatManagerTabs,.chatManager.smChatFocus>section,.chatManager.smChatFocus>.chatActiveTitle{display:none!important}.chatManager.smChatFocus .chatRoomStage{width:100%!important;height:100%!important;overflow:hidden!important;margin:0!important}.chatManager.smChatFocus .chatPanel{position:relative!important;inset:auto!important;display:flex!important;flex-direction:column!important;width:100%!important;height:100%!important;margin:0!important;border-radius:9px!important;overflow:hidden!important}.chatManager.smChatFocus .chatHead{display:flex!important;align-items:center!important;gap:3px!important;min-height:32px!important;padding:3px 5px!important;flex:0 0 32px!important;border-radius:9px 9px 0 0!important}.chatManager.smChatFocus .chatHead>div{flex:1!important;min-width:0!important}.chatManager.smChatFocus .chatHead b{display:block!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:10px!important;line-height:1.1!important}.chatManager.smChatFocus .chatHead small{display:none!important}.chatManager.smChatFocus .chatHead button{width:23px!important;height:23px!important;min-width:23px!important;padding:0!important;border-radius:6px!important;font-size:11px!important;box-shadow:none!important}.chatManager.smChatFocus .chatMessages{flex:1 1 auto!important;min-height:0!important;padding:7px!important;gap:5px!important}.chatManager.smChatFocus .chatMsg{padding:6px 8px!important;font-size:10px!important}.chatManager.smChatFocus .chatMsg>b{font-size:8px!important}.chatManager.smChatFocus .chatMsg small{font-size:7px!important}.chatManager.smChatFocus .chatForm{flex:0 0 auto!important;padding:5px 6px!important}.chatManager.smChatFocus .chatCompose{gap:4px!important}.chatManager.smChatFocus .chatForm input{padding:7px 8px!important;font-size:10px!important}.chatManager.smChatFocus .chatForm button{height:28px!important;min-width:28px!important;padding:0 7px!important;font-size:11px!important;box-shadow:none!important}.chatManager.smChatFocus .chatEmojiPicker{margin-bottom:4px!important;padding:4px!important}
-@media(max-width:360px){.quick{grid-template-columns:1fr}.quick button{min-height:86px}}
 </style>
 </head>
 <body>
@@ -23,32 +25,75 @@
 <div id="smPins"><span class="smPinsLabel">📌 ANCLADOS</span><div id="smPinsList"></div></div>
 <main id="stage" class="stage">
   <section id="home" class="home">
-    <div class="hero"><small>CENTRO TÉCNICO</small><h1>Fernando</h1><p>Accesos directos. Cada módulo se carga solamente cuando lo necesitas.</p></div>
-    <div class="sectionTitle">ACCIONES PRINCIPALES</div>
-    <div class="quick">
-      <button data-open="supervision"><i>🛠️</i><b>Supervisión técnica</b><span>Operación del día, grupos, OT y novedades.</span></button>
-      <button data-open="crear"><i>➕</i><b>Crear OT</b><span>Instalación o soporte con varias actividades.</span></button>
-      <button data-open="mesa"><i>📡</i><b>Mesa técnica</b><span>IP, scanner y acceso remoto.</span></button>
-      <button data-open="inventario"><i>📦</i><b>Inventario</b><span>Consulta y control de equipos y materiales.</span></button>
+    <div class="homeHero"><div class="homeHeroText"><small>RESUMEN OPERATIVO</small><h1>Hola, Fernando</h1><p>Lo que requiere atención antes de entrar al detalle.</p></div><button id="homeRefresh" class="homeRefresh" type="button" title="Actualizar">↻</button></div>
+    <div id="homeStamp" class="homeStamp">Cargando resumen…</div>
+    <div class="homeMetrics">
+      <article class="homeMetric alert"><div class="homeMetricTop"><i>🚨</i><strong id="hmAttention">—</strong></div><b>REQUIERE TU ATENCIÓN</b></article>
+      <article class="homeMetric"><div class="homeMetricTop"><i>🚐</i><strong id="hmActive">—</strong></div><b>OT ACTIVAS</b></article>
+      <article class="homeMetric ok"><div class="homeMetricTop"><i>✅</i><strong id="hmDone">—</strong></div><b>FINALIZADAS</b></article>
+      <article class="homeMetric warn"><div class="homeMetricTop"><i>⚠️</i><strong id="hmGroups">—</strong></div><b>GRUPOS CON NOVEDAD</b></article>
     </div>
-    <div class="note">Esta pantalla no consulta datos ni refresca información en segundo plano.</div>
+    <section class="homeCard">
+      <div class="homeCardHead"><b>🔔 Requiere tu atención</b><button id="homeOpenSupervision" type="button">VER SUPERVISIÓN →</button></div>
+      <div id="homeAttention" class="homeList"><div class="homeEmpty">Consultando operación…</div></div>
+    </section>
+    <section class="homeCard">
+      <div class="homeCardHead"><b>👥 Estado de grupos</b></div>
+      <div id="homeGroups" class="homeList"><div class="homeEmpty">Consultando grupos…</div></div>
+    </section>
   </section>
   <section id="module" class="module"><div class="moduleBar"><button id="backHome">← Inicio</button><strong id="moduleTitle">Módulo</strong></div><iframe id="frame" class="frame" title="Módulo DISPROTEL"></iframe></section>
 </main>
 <nav class="bottom" aria-label="Navegación principal"><button class="on" data-nav="inicio">🏠<span>Inicio</span></button><button data-nav="supervision">🛠️<span>Supervisión</span></button><button data-nav="inventario">📦<span>Inventario</span></button><button data-nav="chat">💬<span>Chat</span></button></nav>
 <script>
 (()=>{
- const KEY='disprotel_login_general_v2',VERSION='20260916-sm3',CHAT='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/chat-interno';
+ const KEY='disprotel_login_general_v2',VERSION='20260916-sm4',CHAT='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/chat-interno',SUP='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-panel-supervisor';
  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toUpperCase();
+ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
  if(!me.session_token&&!me.pin){location.replace('login-general-v2.html');return}
  if(!norm(me.rol).includes('SUPERVISOR TECNICO')){location.replace('principal.html');return}
+ const shortName=String(me.nombre||'Fernando').split(' ')[0]||'Fernando';
  document.getElementById('userName').textContent=me.nombre||'Fernando';
+ const heroName=document.querySelector('.homeHero h1');if(heroName)heroName.textContent='Hola, '+shortName;
  const home=document.getElementById('home'),module=document.getElementById('module'),frame=document.getElementById('frame'),title=document.getElementById('moduleTitle'),pinsList=document.getElementById('smPinsList');
- let view='inicio',chatLoading=false,chatObserver=null,pins=[];
+ let view='inicio',chatLoading=false,chatObserver=null,pins=[],homeData=null,homeLoading=false,homeLoadedAt=0;
  const setActive=name=>document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('on',b.dataset.nav===name));
  const closeChat=()=>{document.querySelector('.chatManager')?.classList.remove('open');document.body.classList.remove('chatMode')};
- function showHome(push=false){closeChat();view='inicio';home.style.display='block';module.classList.remove('open');setActive('inicio');if(push)history.pushState({sm:'home'},'',location.pathname);else history.replaceState({sm:'home'},'',location.pathname);window.scrollTo(0,0)}
+ const terminal=s=>['COMPLETADA','FINALIZADA','CANCELADA','CANCELADA EN SITIO','CANCELADA_EN_SITIO','NO EJECUTADA CLIENTE','NO_EJECUTADA_CLIENTE'].includes(norm(s));
+ function groupHasNovelty(g,data){const unit=!!g?.unidad?.novedad;const n=(data?.novedades||[]).some(x=>x.grupo_habitual_id===g.id||x.grupo_operativo_id===g.id);return unit||n}
+ function paintHome(data){
+   if(!data)return;
+   const orders=data.orders||[],attention=data.requiere_atencion||[],groups=data.groups||[];
+   const active=orders.filter(o=>!terminal(o.estado)).length;
+   const done=orders.filter(o=>['COMPLETADA','FINALIZADA'].includes(norm(o.estado))).length;
+   const novelty=groups.filter(g=>groupHasNovelty(g,data)).length;
+   document.getElementById('hmAttention').textContent=attention.length;
+   document.getElementById('hmActive').textContent=active;
+   document.getElementById('hmDone').textContent=done;
+   document.getElementById('hmGroups').textContent=novelty;
+   const att=document.getElementById('homeAttention');
+   att.innerHTML=attention.length?attention.slice(0,4).map(o=>`<div class="homeRow hot"><i>${o.acceso_remoto?'📡':'⚠️'}</i><span><b>${esc(o.id_orden||'OT')} · ${esc(o.cliente_nombre||'Cliente')}</b><small>${esc(o.acceso_remoto?.estado||o.estado||'Pendiente')}</small></span><em class="homePill">REVISAR</em></div>`).join(''):'<div class="homeEmpty">✓ No hay requerimientos pendientes en este momento.</div>';
+   const gl=document.getElementById('homeGroups');
+   gl.innerHTML=groups.length?groups.slice(0,6).map(g=>{const nov=groupHasNovelty(g,data);return `<div class="homeRow"><i>${nov?'⚠️':'🟢'}</i><span><b>${esc(g.nombre||'Grupo')}</b><small>${Number(g.ordenes_activas||0)} OT activas${g.unidad?.nombre?' · '+esc(g.unidad.nombre):''}</small></span><em class="homePill">${nov?'NOVEDAD':'OK'}</em></div>`}).join(''):'<div class="homeEmpty">Sin grupos operativos.</div>';
+   document.getElementById('homeStamp').textContent='Actualizado '+new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
+ }
+ async function loadHome(force=false){
+   if(homeLoading)return;
+   if(!force&&homeData&&Date.now()-homeLoadedAt<60000){paintHome(homeData);return}
+   if(!me.session_token){document.getElementById('homeStamp').textContent='Resumen disponible con sesión segura.';return}
+   homeLoading=true;document.getElementById('homeRefresh').disabled=true;
+   try{
+     const r=await fetch(SUP,{method:'POST',headers:{'Content-Type':'application/json','x-session':me.session_token},body:'{}'});
+     const d=await r.json().catch(()=>({}));
+     if(!r.ok||d.error)throw new Error(d.error||'No se pudo cargar');
+     homeData=d;homeLoadedAt=Date.now();paintHome(d);
+   }catch(e){
+     document.getElementById('homeStamp').textContent='No se pudo actualizar el resumen';
+     document.getElementById('homeAttention').innerHTML='<div class="homeError">No se pudo cargar el resumen. Puedes entrar a Supervisión normalmente.</div>';
+   }finally{homeLoading=false;document.getElementById('homeRefresh').disabled=false}
+ }
+ function showHome(push=false){closeChat();view='inicio';home.style.display='block';module.classList.remove('open');setActive('inicio');if(push)history.pushState({sm:'home'},'',location.pathname);else history.replaceState({sm:'home'},'',location.pathname);window.scrollTo(0,0);setTimeout(()=>loadHome(false),0)}
  function compactSupervisor(d){
    if(d.getElementById('smSupervisorCompactCss'))return;
    const s=d.createElement('style');s.id='smSupervisorCompactCss';s.textContent=`@media(max-width:700px){.wrap{padding:6px!important}.hero{border-radius:12px!important;padding:8px!important}.hero .row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:5px!important;align-items:center!important}.hero .row>div>div:first-child{font-size:6.5px!important;letter-spacing:.08em!important}.hero h1{font-size:14px!important;line-height:1.05!important;margin:2px 0!important}.hero .row>div>div:last-child{font-size:7.5px!important;line-height:1.15!important}.zone{margin:0!important;width:auto!important;max-width:118px!important;padding:5px 6px!important;border-radius:7px!important;font-size:8px!important}.actions{grid-template-columns:1fr 1fr!important;gap:5px!important;margin-top:6px!important}.actions a{padding:6px 5px!important;border-radius:8px!important;font-size:8px!important;line-height:1.1!important}.grid{gap:6px!important;margin-top:6px!important}.card{padding:8px!important;border-radius:11px!important}.head{gap:5px!important}.head h2{font-size:11px!important}.sub{font-size:7.5px!important}.groups,.works,.stats{gap:5px!important;margin-top:6px!important}.group,.work,.stat,.att{padding:7px!important;border-radius:9px!important}.members,.events{font-size:8px!important}.num{font-size:16px!important}.lbl{font-size:7px!important}}`;(d.head||d.documentElement).appendChild(s);
@@ -69,8 +114,13 @@
  pinsList.addEventListener('click',e=>{const b=e.target.closest('[data-pin]');if(!b)return;const p=pins[Number(b.dataset.pin)];if(p)openPinned(p)});
  function afterChatReady(){document.body.classList.add('chatMode');watchChat();loadPins();setTimeout(normalizeChat,120)}
  function openChat(){setActive('chat');document.body.classList.add('chatMode');const manager=document.querySelector('.chatManager');if(manager){loadCurrentChatUi(()=>{if(!manager.classList.contains('open'))triggerOriginalChat();setTimeout(afterChatReady,180)});return}if(chatLoading)return;chatLoading=true;const s=document.createElement('script');s.src='chat-interno-v1.js?v=20260914-lazy1';s.onload=()=>{loadCurrentChatUi(()=>{chatLoading=false;setTimeout(()=>{triggerOriginalChat();afterChatReady()},40)})};s.onerror=()=>{chatLoading=false;alert('No se pudo abrir Chat. Revisa la conexión.')};document.body.appendChild(s)}
- document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>{const x=b.dataset.open;if(x==='supervision')openModule('panel-supervisor-vivo-v2.html','Supervisión técnica','supervision');if(x==='crear')openModule('solicitudes-oficina.html','Crear OT','supervision');if(x==='mesa')openModule('asignacion-ip.html','Mesa técnica de campo','supervision');if(x==='inventario')openModule('inventario-supervisor.html','Inventario','inventario')}));
- document.querySelector('[data-nav="inicio"]').onclick=()=>showHome(true);document.querySelector('[data-nav="supervision"]').onclick=()=>openModule('panel-supervisor-vivo-v2.html','Supervisión técnica','supervision');document.querySelector('[data-nav="inventario"]').onclick=()=>openModule('inventario-supervisor.html','Inventario','inventario');document.querySelector('[data-nav="chat"]').onclick=openChat;document.getElementById('backHome').onclick=()=>history.back();
+ document.querySelector('[data-nav="inicio"]').onclick=()=>showHome(true);
+ document.querySelector('[data-nav="supervision"]').onclick=()=>openModule('panel-supervisor-vivo-v2.html','Supervisión técnica','supervision');
+ document.querySelector('[data-nav="inventario"]').onclick=()=>openModule('inventario-supervisor.html','Inventario','inventario');
+ document.querySelector('[data-nav="chat"]').onclick=openChat;
+ document.getElementById('homeRefresh').onclick=()=>loadHome(true);
+ document.getElementById('homeOpenSupervision').onclick=()=>openModule('panel-supervisor-vivo-v2.html','Supervisión técnica','supervision');
+ document.getElementById('backHome').onclick=()=>history.back();
  document.getElementById('logout').onclick=()=>{sessionStorage.removeItem(KEY);location.replace('login-general-v2.html')};
  addEventListener('popstate',()=>showHome(false));
  showHome(false);
