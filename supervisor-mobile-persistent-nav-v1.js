@@ -3,6 +3,7 @@
   window.__disprotelSupervisorPersistentNavV1=true;
 
   const KEY='disprotel_login_general_v2';
+  const FRAME_VERSION='20260916-mobile-nav3';
   const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toUpperCase();
   let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
   if(!norm(me.rol).includes('SUPERVISOR TECNICO')||!matchMedia('(max-width:680px)').matches)return;
@@ -57,32 +58,66 @@
     if(updateHistory)normalizeHomeState();
   }
 
-  function clickExisting(name){
-    const hidden=document.querySelector(`.menuDashboard [data-main="${name}"]`);
-    if(hidden){hidden.click();return true}
-    return false;
+  function setModuleTitle(text){
+    const el=document.querySelector('.mobileModuleTitle');
+    if(el)el.textContent=text||'Módulo';
   }
 
-  function openSection(name){
-    if(name==='inicio'){
-      forceHome(true);
-      return;
-    }
-    if(name==='chat'){
-      setActive('chat');
-      const btn=document.querySelector('.chatManagerButton');
-      if(btn){btn.click();return}
-      const hidden=document.querySelector('.menuDashboard [data-main="chat"]');
-      if(hidden){hidden.click();return}
-      alert('Conversaciones todavía está cargando. Intenta nuevamente en unos segundos.');
+  function openFrame(name,href,title,attempt=0){
+    const f=document.querySelector('.menuFrame');
+    if(!f){
+      if(attempt<8){setTimeout(()=>openFrame(name,href,title,attempt+1),100);return}
       return;
     }
     moduleActive=true;
     setActive(name);
     markModuleState(name);
-    if(!clickExisting(name)){
-      if(name==='supervision')location.href='panel-supervisor-vivo-v2.html';
-      if(name==='inventario')location.href='inventario-supervisor.html';
+    f.dataset.supMobileOrigin=name;
+    setModuleTitle(title);
+    f.style.visibility='hidden';
+    f.setAttribute('aria-busy','true');
+    const sep=href.includes('?')?'&':'?';
+    f.src=href+sep+'v='+FRAME_VERSION;
+    document.body.classList.remove('supMobileDashboard','erpMobileMenuOpen');
+    document.body.classList.add('moduleOpen');
+  }
+
+  function triggerChatButton(btn){
+    try{
+      const EventCtor=window.PointerEvent||window.MouseEvent;
+      btn.dispatchEvent(new EventCtor('pointerup',{bubbles:true,cancelable:true,pointerId:77,clientX:0,clientY:0}));
+      return true;
+    }catch{
+      try{btn.dispatchEvent(new Event('pointerup',{bubbles:true,cancelable:true}));return true}catch{return false}
+    }
+  }
+
+  function openChat(attempt=0){
+    setActive('chat');
+    const manager=document.querySelector('.chatManager');
+    if(manager?.classList.contains('open'))return;
+    const btn=document.querySelector('.chatManagerButton');
+    if(btn){
+      triggerChatButton(btn);
+      setTimeout(()=>{
+        if(!document.querySelector('.chatManager')?.classList.contains('open')&&attempt<2)openChat(attempt+1);
+      },120);
+      return;
+    }
+    if(attempt<12){setTimeout(()=>openChat(attempt+1),150);return}
+    setActive(moduleActive?active:'inicio');
+    alert('Conversaciones todavía está cargando. Intenta nuevamente en unos segundos.');
+  }
+
+  function openSection(name){
+    if(name==='inicio'){forceHome(true);return}
+    if(name==='chat'){openChat();return}
+    if(name==='supervision'){
+      openFrame('supervision','panel-supervisor-vivo-v2.html','Supervisión técnica');
+      return;
+    }
+    if(name==='inventario'){
+      openFrame('inventario','inventario-supervisor.html','Inventario');
     }
   }
 
