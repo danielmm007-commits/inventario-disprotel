@@ -21,7 +21,7 @@
       if(document.getElementById('supervisorMobilePersistentNavV1Loader'))return;
       const p=document.createElement('script');
       p.id='supervisorMobilePersistentNavV1Loader';
-      p.src='supervisor-mobile-persistent-nav-v1.js?v=20260916-mobile4';
+      p.src='supervisor-mobile-persistent-nav-v1.js?v=20260916-mobile5';
       p.async=false;
       document.body.appendChild(p);
     };
