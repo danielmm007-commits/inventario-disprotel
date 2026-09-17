@@ -16,7 +16,16 @@
   s.id=id;
   s.src=(mobile?'supervisor-mobile-compact-v1.js':'supervisor-tecnico-inicio-v1.js')+'?v='+Date.now();
   s.async=false;
-  if(!mobile){
+  if(mobile){
+    s.onload=()=>{
+      if(document.getElementById('supervisorMobilePersistentNavV1Loader'))return;
+      const p=document.createElement('script');
+      p.id='supervisorMobilePersistentNavV1Loader';
+      p.src='supervisor-mobile-persistent-nav-v1.js?v='+Date.now();
+      p.async=false;
+      document.body.appendChild(p);
+    };
+  }else{
     s.onload=()=>{
       if(document.getElementById('supervisorWebOperativoV1Loader'))return;
       const w=document.createElement('script');
