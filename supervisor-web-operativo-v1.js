@@ -78,6 +78,8 @@
       if(path.endsWith('/solicitudes-oficina.html')&&frame.dataset.supOrigin==='live'){installBackGuard(frame,d);injectScript(d,'supervisorOtFamiliasLoader','supervisor-ot-familias-v1.js');return true}
       if(path.endsWith('/asignacion-ip.html')){decorateMesa(d);if(frame.dataset.supOrigin==='live')installBackGuard(frame,d);return true}
       if(path.endsWith('/historial-novedades.html')&&frame.dataset.supOrigin==='live'){installBackGuard(frame,d);return true}
+      if(path.endsWith('/informes-tecnicos-supervisor.html')&&frame.dataset.supOrigin==='live'){installBackGuard(frame,d);return true}
+      if(path.endsWith('/resumen-diario-tecnico.html')&&frame.dataset.supOrigin==='live'){installBackGuard(frame,d);return true}
       return false;
     }catch{return false}
   }
