@@ -47,7 +47,7 @@
 <nav class="bottom" aria-label="Navegación principal"><button class="on" data-nav="inicio">🏠<span>Inicio</span></button><button data-nav="supervision">🛠️<span>Supervisión</span></button><button data-nav="inventario">📦<span>Inventario</span></button><button data-nav="chat">💬<span>Chat</span></button></nav>
 <script>
 (()=>{
- const KEY='disprotel_login_general_v2',VIEWKEY='disprotel_supervisor_mobile_view_v1',VERSION='20260917-sm7',CHAT='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/chat-interno',SUP='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-panel-supervisor';
+ const KEY='disprotel_login_general_v2',VIEWKEY='disprotel_supervisor_mobile_view_v1',VERSION='20260918-sm8',CHAT='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/chat-interno',SUP='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-panel-supervisor';
  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toUpperCase();
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
