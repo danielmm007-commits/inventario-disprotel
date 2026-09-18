@@ -31,7 +31,7 @@
       if(href.includes('solicitudes-oficina.html'))a.textContent='➕ CREAR OT';
       if(href.includes('asignacion-ip.html'))a.textContent='🧰 MESA TÉCNICA DE CAMPO';
     });
-    actions.style.gridTemplateColumns='repeat(2,minmax(0,1fr))';
+    if(!actions.querySelector('a[href="historial-novedades.html"]')){const h=d.createElement('a');h.href='historial-novedades.html';h.textContent='📋 HISTORIAL DE NOVEDADES';h.style.gridColumn='1/-1';actions.appendChild(h)}actions.style.gridTemplateColumns='repeat(2,minmax(0,1fr))';
   }
   function injectScript(d,id,src){
     if(d.getElementById(id))return true;
@@ -77,6 +77,7 @@
       if(path.endsWith('/principal.html')&&frame.dataset.supOrigin==='live'){setTimeout(()=>returnToLive(frame),0);return true}
       if(path.endsWith('/solicitudes-oficina.html')&&frame.dataset.supOrigin==='live'){installBackGuard(frame,d);injectScript(d,'supervisorOtFamiliasLoader','supervisor-ot-familias-v1.js');return true}
       if(path.endsWith('/asignacion-ip.html')){decorateMesa(d);if(frame.dataset.supOrigin==='live')installBackGuard(frame,d);return true}
+      if(path.endsWith('/historial-novedades.html')&&frame.dataset.supOrigin==='live'){installBackGuard(frame,d);return true}
       return false;
     }catch{return false}
   }
