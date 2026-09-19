@@ -20,7 +20,10 @@
   function materialesGuardados(){const fn=window.cantidadArticulosInstalacionGuardados;if(typeof fn==='function')return Number(fn())>0;return /GUARDADO|ARTÍCULOS REGISTRADOS|ARTICULOS REGISTRADOS/.test(texto('stTrabajo')+' '+texto('resumenGuardado'))&&!/NO SE ENCONTRARON LÍNEAS|NO SE ENCONTRARON LINEAS|SIN ARTÍCULOS|SIN ARTICULOS/.test(texto('resumenGuardado'))}
   function ipConfirmada(){
     const ip=texto('stIp')+' '+texto('ipEstado');
-    return materialesGuardados()&&/IP DEFINITIVA|IP CONFIRMADA|✅/.test(ip)&&!/SOLICITUD ENVIADA|ESPERANDO IP|IP TENTATIVA|PENDIENTE|IP AÚN NO SOLICITADA|IP AUN NO SOLICITADA/.test(ip);
+    const onu=texto('estadoOnuTecnico');
+    const ipOk=/IP DEFINITIVA|IP CONFIRMADA|ACTIVACIÓN COMPLETA|ACTIVACION COMPLETA/.test(ip)&&!/SOLICITUD ENVIADA|ESPERANDO IP|IP TENTATIVA|PENDIENTE/.test(ip);
+    const onuOk=/ONU ACTIVADA/.test(onu);
+    return materialesGuardados()&&ipOk&&onuOk;
   }
   function evidenciasCompletas(){return /✅\s*COMPLETO|^COMPLETO$/.test(texto('stEvidencias').trim())}
   function pasoPermitido(id){if(id==='accIp')return materialesGuardados();if(id==='accEvidencias')return ipConfirmada();if(id==='accFinalizarReporte')return evidenciasCompletas();return true}
