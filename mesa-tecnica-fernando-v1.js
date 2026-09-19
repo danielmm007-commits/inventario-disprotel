@@ -1,185 +1,47 @@
 (()=>{
-if(window.__mesaTecnicaFernandoV6)return;window.__mesaTecnicaFernandoV6=true;
-
-const API_REMOTE='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-acceso-remoto';
-const API_IP='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-ip-candidatos';
+if(window.__mesaTecnicaFernandoV7)return;window.__mesaTecnicaFernandoV7=true;
+const BASE='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/';
+const API_MESA=BASE+'inventario-mesa-tecnica',API_IP=BASE+'inventario-ip-candidatos',API_AR=BASE+'inventario-acceso-remoto';
 const KEY='disprotel_login_general_v2';
-
+const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const up=v=>String(v??'').toLocaleUpperCase('es-EC');
-const ses=()=>{try{return JSON.parse(sessionStorage.getItem(KEY)||'null')||{}}catch{return{}}};
 const fmt=v=>{if(!v)return'—';try{return new Date(v).toLocaleString('es-EC')}catch{return String(v)}};
-
-async function post(url,action,p={}){
-  const s=ses();
-  const r=await fetch(url+'?t='+Date.now(),{
-    method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({session_token:s.session_token||'',usuario:s.usuario||'',pin:'',action,...p})
-  });
-  const d=await r.json().catch(()=>({error:'Respuesta inválida'}));
-  if(!r.ok)throw new Error(d.error||'Error');
-  return d;
-}
-const apiRemote=(action,p={})=>post(API_REMOTE,action,p);
-const apiIp=(action,p={})=>post(API_IP,action,p);
-
-function ocultarLegacy(){
-  const sec=document.getElementById('secPend');if(sec)sec.style.display='none';
-  const viejo=document.getElementById('accesoRemotoFernando');if(viejo)viejo.style.display='none';
-}
-function style(){
-  if(document.getElementById('mesaCampoV6Style'))return;
-  const s=document.createElement('style');s.id='mesaCampoV6Style';s.textContent=`
-    #mesaTecnicaFernando{border:2px solid #2d7fd1;background:#f8fbff}
-    .mesaHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    .mesaHead h2{margin:0;color:#0b356f}
-    .mesaHead p{margin:5px 0 0}
-    .mesaStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
-    .mesaStat{padding:10px 12px;border:1px solid #d7e1e5;border-radius:12px;background:#fff}
-    .mesaStat b{display:block;font-size:22px;color:#0b356f}.mesaStat span{font-size:10px;font-weight:800;color:#60737c}
-    .campoReq{border:1px solid #d7e1e5;border-left:5px solid #2d7fd1;border-radius:14px;padding:13px;margin-top:10px;background:#fff}
-    .campoReq.remote{border-left-color:#e68a00}.campoReq.wait{border-left-color:#9aaab3;background:#fafcfd}
-    .campoTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
-    .campoType{font-size:12px;font-weight:1000;color:#0b356f}.campoReq.remote .campoType{color:#9a5c00}
-    .campoMeta{font-size:11px;color:#60737c;margin-top:4px}.campoTitle{font-size:15px;font-weight:900;margin-top:3px}
-    .campoBadge{display:inline-block;padding:5px 8px;border-radius:999px;background:#e8f2fb;color:#0b5d9b;font-size:9px;font-weight:1000}
-    .campoBadge.remote{background:#fff1d9;color:#925900}.campoBadge.wait{background:#edf1f3;color:#5f6f77}
-    .campoActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
-    .campoReq button{margin-top:7px}.campoActions button{margin-top:0}
-    .candMini{margin-top:9px;padding:10px;border:1px solid #d7e1e5;border-radius:11px;background:#f9fcfd}
-    .ipBig{font-size:19px;font-weight:1000;margin:4px 0}
-    .remoteLinks{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
-    .remoteLinks a{display:block;text-align:center;text-decoration:none;border-radius:10px;padding:10px;background:#17313d;color:#fff;font-weight:800}
-    .remoteLinks a:last-child{background:#167348}
-    .eviBox{margin-top:9px;padding:10px;border:1px solid #e4b341;border-radius:11px;background:#fffaf0}
-    .eviRow{display:flex;gap:9px;align-items:center}.eviRow img{width:90px;height:64px;object-fit:cover;border-radius:8px;border:2px solid #e4b341;cursor:pointer}
-    .emptyMesa{padding:22px 10px;text-align:center;color:#60737c}
-    @media(max-width:650px){.mesaStats{grid-template-columns:1fr}.campoActions,.remoteLinks{grid-template-columns:1fr}}
-  `;document.head.appendChild(s);
-}
-function crear(){
-  const app=document.getElementById('app'),ref=document.getElementById('secPend');if(!app||!ref)return;
-  style();ocultarLegacy();
-  let box=document.getElementById('mesaTecnicaFernando');
-  if(!box){
-    box=document.createElement('section');box.className='card';box.id='mesaTecnicaFernando';
-    box.innerHTML=`
-      <div class="mesaHead"><div><h2>🧰 MESA TÉCNICA · REQUERIMIENTOS DE CAMPO</h2>
-      <p class="muted">Aquí aparecen únicamente las solicitudes que requieren intervención de Fernando desde campo.</p></div>
-      <button id="recargarMesa" class="secondary" style="width:auto;margin:0">🔄 ACTUALIZAR</button></div>
-      <div class="mesaStats">
-        <div class="mesaStat"><b id="mesaTotal">0</b><span>REQUIEREN ACCIÓN</span></div>
-        <div class="mesaStat"><b id="mesaIpCount">0</b><span>SOLICITUDES DE IP</span></div>
-        <div class="mesaStat"><b id="mesaRemoteCount">0</b><span>ACCESOS REMOTOS</span></div>
-      </div>
-      <div id="listaMesa"></div>`;
-    ref.parentNode.insertBefore(box,ref);
-    document.getElementById('recargarMesa').onclick=()=>cargar(true);
-    cargar(true);
-  }
-  if(!document.body.dataset.mesaTabsV6){
-    document.body.dataset.mesaTabsV6='1';
-    document.getElementById('tabPend')?.addEventListener('click',()=>setTimeout(()=>{box.style.display='';ocultarLegacy();cargar(true)},0));
-    document.getElementById('tabHist')?.addEventListener('click',()=>setTimeout(()=>{box.style.display='none'},0));
-  }
-}
-function scannerInfo(s){
-  const h=s.scanner_heartbeat||{};
-  if(!h.updated_at)return'Scanner sin latido registrado para este router';
-  const mins=Number(h.minutos_sin_latido||0);
-  const estado=h.estado_operativo==='OPERATIVO'?'🟢 Scanner operativo':'🔴 Scanner sin señal';
-  return estado+' · último latido '+(mins<=0?'hace menos de 1 min':'hace '+mins+' min');
-}
-function ipCard(s){
-  const o=s.orden||{},sol=s.solicitante||{},cs=s.candidatos||[];
-  const cands=cs.length?cs.map(c=>`
-    <div class="candMini"><div class="muted">IP detectada por scanner</div><div class="ipBig">${esc(c.address)}</div>
-    <div class="muted">${esc(c.queue_name||c.comentario||'Sin comentario')}</div>
-    <button onclick="confirmarIpMesa('${o.id}','${c.id}')" style="background:#167348">✅ CONFIRMAR ESTA IP</button></div>`).join(''):
-    `<div class="candMini"><div class="muted">⏳ Aún sin candidata confiable.</div><div class="muted" style="margin-top:4px">${esc(scannerInfo(s))}</div></div>`;
-  return `<article class="campoReq"><div class="campoTop"><div><div class="campoType">🌐 SOLICITUD DE IP</div>
-    <div class="campoTitle">${esc(o.id_orden||'')} · ${esc(up(o.cliente_nombre||''))}</div>
-    <div class="campoMeta">Solicitó: ${esc(up(sol.nombre||'—'))} · Grupo: ${esc(up(o.grupo_asignado||sol.unidad_grupo||'—'))}</div>
-    <div class="campoMeta">${esc(fmt(s.solicitado_at))}</div></div><span class="campoBadge">PENDIENTE FERNANDO</span></div>
-    ${cands}
-    <button class="secondary" onclick="corregirIpMesa('${s.id}','${o.id}','${esc(cs[0]?.address||'')}')">✏️ INGRESAR / CORREGIR IP MANUAL</button>
-  </article>`;
-}
-function remoteEvidence(x){
-  const ev=x.evidencia;
-  return `<div class="eviBox"><b>📸 Evidencia de acceso remoto</b>
-    ${ev?.url?`<div class="eviRow" style="margin-top:8px"><img src="${esc(ev.url)}" onclick="window.open(this.src,'_blank')"><div><b>✅ Evidencia cargada</b><div class="muted">${esc(ev.registrado_por||'usuario autorizado')}</div></div></div>`:'<div class="muted" style="margin-top:5px">Sin evidencia adjunta.</div>'}
-    <label class="secondary" style="display:flex;align-items:center;justify-content:center;border-radius:11px;padding:11px;font-weight:800;cursor:pointer;margin-top:8px">🖼️ CARGAR EVIDENCIA<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="subirArMesa(event,'${x.orden_id}')"></label>
-  </div>`;
-}
-function remoteCard(x){
-  const espera=x.estado==='REQUIERE_CORRECCION';
-  const links=x.ip_asignada&&x.urls_acceso?`<div class="remoteLinks"><a href="${esc(x.urls_acceso.http)}" target="_blank" rel="noopener">🔗 ABRIR HTTP</a><a href="${esc(x.urls_acceso.https)}" target="_blank" rel="noopener">🔒 ABRIR HTTPS</a></div>`:
-    '<div class="muted" style="margin-top:8px">La OT todavía no tiene una IP definitiva para abrir acceso.</div>';
-  return `<article class="campoReq remote ${espera?'wait':''}"><div class="campoTop"><div><div class="campoType">🔐 ACCESO REMOTO</div>
-    <div class="campoTitle">${esc(x.id_orden||'')} · ${esc(up(x.cliente_nombre||''))}</div>
-    <div class="campoMeta">Grupo: ${esc(up(x.grupo_asignado||'—'))} · ${esc(fmt(x.solicitado_at))}</div>
-    ${x.ip_asignada?`<div class="campoMeta">IP: <b>${esc(x.ip_asignada)}</b> · puerto 5000</div>`:''}</div>
-    <span class="campoBadge ${espera?'wait':'remote'}">${espera?'ESPERANDO CORRECCIÓN EN CAMPO':'PENDIENTE FERNANDO'}</span></div>
-    ${x.observacion?`<div class="msg ${espera?'err':'ok'}">${esc(x.observacion)}</div>`:''}
-    ${links}${remoteEvidence(x)}
-    ${espera?'':`<div class="campoActions"><button onclick="confirmarRemotoMesa('${x.orden_id}')" style="background:#167348">✅ CONFIRMAR ACCESO</button><button class="secondary" onclick="corregirRemotoMesa('${x.orden_id}')">⚠️ PEDIR CORRECCIÓN</button></div>`}
-  </article>`;
-}
-async function cargar(forzar=false){
-  const out=document.getElementById('listaMesa');if(!out)return;
-  try{
-    ocultarLegacy();
-    const [ipd,ard]=await Promise.all([apiIp('pending-review'),apiRemote('pending')]);
-    const ips=ipd.solicitudes||[],remotos=ard.solicitudes||[];
-    const accionesRemoto=remotos.filter(x=>x.estado==='SOLICITADO');
-    document.getElementById('mesaIpCount').textContent=ips.length;
-    document.getElementById('mesaRemoteCount').textContent=accionesRemoto.length;
-    document.getElementById('mesaTotal').textContent=ips.length+accionesRemoto.length;
-    const items=[
-      ...ips.map(x=>({t:new Date(x.solicitado_at||0).getTime(),html:ipCard(x)})),
-      ...accionesRemoto.map(x=>({t:new Date(x.solicitado_at||0).getTime(),html:remoteCard(x)})),
-      ...remotos.filter(x=>x.estado==='REQUIERE_CORRECCION').map(x=>({t:new Date(x.solicitado_at||0).getTime()+1e15,html:remoteCard(x)}))
-    ].sort((a,b)=>a.t-b.t);
-    const sig=JSON.stringify([ips.map(x=>[x.id,x.detector_estado,x.candidatos?.map(c=>[c.id,c.address])]),remotos.map(x=>[x.orden_id,x.estado,x.observacion,x.evidencia?.id,x.ip_asignada])]);
-    if(!forzar&&out.dataset.sig===sig)return;
-    out.dataset.sig=sig;
-    out.innerHTML=items.length?items.map(x=>x.html).join(''):'<div class="emptyMesa">✅ No hay requerimientos de campo pendientes.<br><span class="muted">Cuando un técnico solicite IP o confirmación de acceso remoto, aparecerá aquí.</span></div>';
-  }catch(e){out.innerHTML='<div class="msg err">'+esc(e.message)+'</div>'}
-}
-window.confirmarIpMesa=async(orden,cand)=>{
-  if(!confirm('¿Confirmar esta IP como definitiva?'))return;
-  try{const d=await apiIp('confirm',{orden_id:orden,candidato_id:cand});if(typeof show==='function')show('✅ IP '+(d.ip||'')+' confirmada.','ok');await cargar(true)}
-  catch(e){if(typeof show==='function')show(e.message,'err');else alert(e.message)}
-};
-window.corregirIpMesa=async(sol,orden,actual)=>{
-  if(!sol){alert('La solicitud de IP aún no está disponible para edición manual.');return}
-  const ip=prompt('IP correcta:',actual||'');if(!ip)return;
-  const observacion=prompt('Observación opcional:','')||'';
-  if(!confirm('¿Confirmar '+ip.trim()+' como IP definitiva?'))return;
-  try{const d=await apiIp('assign-manual',{orden_id:orden,solicitud_id:sol,ip:ip.trim(),observacion});if(typeof show==='function')show('✅ IP '+(d.ip||ip.trim())+' confirmada.','ok');await cargar(true)}
-  catch(e){if(typeof show==='function')show(e.message,'err');else alert(e.message)}
-};
+const ses=()=>{try{return JSON.parse(sessionStorage.getItem(KEY)||'null')||{}}catch{return{}}};
+let TAB='INSTALACIONES',DATA={instalaciones:[],soportes:[]},LOADING=false;
+async function post(url,action,p={}){const s=ses(),r=await fetch(url+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','x-session':s.session_token||''},body:JSON.stringify({session_token:s.session_token||'',action,...p})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error');return d}
+const mesa=(a,p={})=>post(API_MESA,a,p),ipApi=(a,p={})=>post(API_IP,a,p),arApi=(a,p={})=>post(API_AR,a,p);
+function ocultarLegacy(){const sec=$('secPend');if(sec)sec.style.display='none';const old=$('accesoRemotoFernando');if(old)old.style.display='none'}
+function css(){if($('mesaCampoV7Style'))return;const s=document.createElement('style');s.id='mesaCampoV7Style';s.textContent=`
+#mesaTecnicaFernando{border:2px solid #2d7fd1;background:#f8fbff;padding:15px}
+.mesaHead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}.mesaHead h2{margin:0;color:#0b356f;font-size:20px}.mesaHead p{margin:4px 0 0}
+.mesaTabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.mesaTab{margin:0!important;background:#e8eef1!important;color:#17313d!important}.mesaTab.on{background:#17313d!important;color:#fff!important}
+.mesaStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.mesaStat{padding:9px 11px;border:1px solid #d7e1e5;border-radius:11px;background:#fff}.mesaStat b{display:block;font-size:21px;color:#0b356f}.mesaStat span{font-size:9px;font-weight:900;color:#60737c}
+.otMesa{background:#fff;border:1px solid #d7e1e5;border-radius:14px;margin-top:10px;overflow:hidden}.otMesa.need{border-left:5px solid #e68a00}.otMesa.wait{border-left:5px solid #8ba0aa}
+.otHead{padding:12px 13px;display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}.otTitle{font-weight:1000;font-size:15px}.otMeta{font-size:10px;color:#60737c;margin-top:4px}.statusBadge{font-size:9px;font-weight:1000;border-radius:999px;padding:5px 8px;background:#fff1d9;color:#925900}.statusBadge.ok{background:#e8f6ed;color:#17643e}.statusBadge.wait{background:#edf1f3;color:#5f6f77}
+.otSteps{border-top:1px solid #e3eaee;display:grid;grid-template-columns:repeat(4,1fr)}.step{padding:11px;border-right:1px solid #e3eaee;min-height:94px}.step:last-child{border-right:0}.step b{font-size:11px}.stepState{font-size:10px;color:#60737c;margin-top:6px;line-height:1.4}.step button,.step label.btnMini{width:100%;border:0;border-radius:8px;padding:8px;margin-top:7px;background:#17313d;color:#fff;font-size:10px;font-weight:900;cursor:pointer;text-align:center;display:block}.step button.secondary{background:#e8eef1!important;color:#17313d!important}.step img{width:80px;height:55px;object-fit:cover;border-radius:7px;border:1px solid #ccd8de;margin-top:6px;cursor:pointer}
+.ipCandidate{padding:7px;border:1px solid #d5e2e8;border-radius:8px;margin-top:6px;background:#f8fbfc}.ipCandidate strong{font-size:15px}.emptyMesa{text-align:center;padding:24px;color:#60737c}.manualIp{margin-top:6px}
+@media(max-width:780px){.otSteps{grid-template-columns:1fr 1fr}.step:nth-child(2){border-right:0}.step{border-bottom:1px solid #e3eaee}.mesaStats{grid-template-columns:1fr 1fr 1fr}}@media(max-width:480px){.otSteps,.mesaStats{grid-template-columns:1fr}.step{border-right:0}}
+`;document.head.appendChild(s)}
+function crear(){const app=$('app'),ref=$('secPend');if(!app||!ref)return;css();ocultarLegacy();let box=$('mesaTecnicaFernando');if(!box){box=document.createElement('section');box.className='card';box.id='mesaTecnicaFernando';box.innerHTML=`<div class="mesaHead"><div><h2>🧰 MESA TÉCNICA DE CAMPO</h2><p class="muted">Fernando trabaja cada OT completa: activación del servicio y luego acceso remoto cuando el técnico lo solicite.</p></div><button id="recargarMesa" class="secondary" style="width:auto;margin:0">🔄 ACTUALIZAR</button></div><div class="mesaTabs"><button id="mtInst" class="mesaTab on">📡 INSTALACIONES</button><button id="mtSop" class="mesaTab">🛠️ SOPORTES</button></div><div class="mesaStats"><div class="mesaStat"><b id="mTotal">0</b><span>OT EN MESA</span></div><div class="mesaStat"><b id="mAccion">0</b><span>REQUIEREN ACCIÓN</span></div><div class="mesaStat"><b id="mEspera">0</b><span>ESPERANDO TÉCNICO</span></div></div><div id="listaMesa"></div>`;ref.parentNode.insertBefore(box,ref);$('recargarMesa').onclick=()=>cargar(true);$('mtInst').onclick=()=>{TAB='INSTALACIONES';render()};$('mtSop').onclick=()=>{TAB='SOPORTES';render()};cargar(true)}
+if(!document.body.dataset.mesaTabsV7){document.body.dataset.mesaTabsV7='1';$('tabPend')?.addEventListener('click',()=>setTimeout(()=>{box.style.display='';ocultarLegacy();cargar(true)},0));$('tabHist')?.addEventListener('click',()=>setTimeout(()=>{box.style.display='none'},0))}}
+function badge(txt,ok=false,wait=false){return '<span class="statusBadge '+(ok?'ok':wait?'wait':'')+'">'+esc(txt)+'</span>'}
+function clienteStep(o){const ok=!!o.mesa?.cliente_registrado;return `<div class="step"><b>👤 CLIENTE / SERVICIO</b><div class="stepState">${ok?'✅ Registrado por Mesa técnica':'⏳ Pendiente de registrar/activar en sistema'}</div>${ok?'':'<button onclick="confirmarClienteMesa(\''+o.id+'\')">✅ MARCAR REGISTRADO</button>'}</div>`}
+function onuStep(o){const x=o.onu;if(!x)return `<div class="step"><b>📡 ONU</b><div class="stepState">⚪ No solicitada</div></div>`;const ok=x.estado==='CONFIRMADO',corr=x.estado==='REQUIERE_CORRECCION';return `<div class="step"><b>📡 ONU</b><div class="stepState">${ok?'✅ Activada y confirmada':corr?'⚠️ Requiere corrección: '+esc(x.observacion||''):'⏳ Solicitada a Mesa técnica'}</div>${x.evidencia_url?'<img src="'+esc(x.evidencia_url)+'" onclick="window.open(this.src,\'_blank\')">':''}${ok?'':`<label class="btnMini">📷 CONFIRMAR ONU<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="subirOnuMesa(event,'${o.id}')"></label>`}</div>`}
+function ipStep(o){const q=o.ip?.solicitud,cs=o.ip?.candidatos||[];if(!q)return `<div class="step"><b>🌐 IP</b><div class="stepState">⚪ No solicitada</div></div>`;if(q.estado==='ASIGNADA')return `<div class="step"><b>🌐 IP</b><div class="stepState">✅ IP definitiva</div><div style="font-size:18px;font-weight:1000;margin-top:5px">${esc(q.ip_asignada||'—')}</div></div>`;const c=cs[0];return `<div class="step"><b>🌐 IP</b><div class="stepState">${c?'🟡 Scanner propone':'⏳ Esperando scanner / validación'}</div>${c?`<div class="ipCandidate"><strong>${esc(c.address)}</strong><div class="stepState">${esc(c.queue_name||c.comentario||'')}</div><button onclick="confirmarIpMesa('${o.id}','${c.id}')">✅ CONFIRMAR IP</button></div>`:''}<button class="secondary manualIp" onclick="ipManualMesa('${o.id}','${q.id}','${esc(c?.address||'')}')">✏️ IP MANUAL</button></div>`}
+function remotoStep(o){const a=o.acceso||{estado:'PENDIENTE'},ip=o.ip?.solicitud?.ip_asignada||'';if(a.estado==='CONFIRMADO')return `<div class="step"><b>🔐 ACCESO REMOTO</b><div class="stepState">✅ Confirmado por Mesa técnica</div></div>`;if(a.estado==='REQUIERE_CORRECCION')return `<div class="step"><b>🔐 ACCESO REMOTO</b><div class="stepState">⚠️ Devuelto al técnico: ${esc(a.observacion||'')}</div></div>`;if(a.estado!=='SOLICITADO')return `<div class="step"><b>🔐 ACCESO REMOTO</b><div class="stepState">⚪ Aún no solicitado por el técnico</div></div>`;return `<div class="step"><b>🔐 ACCESO REMOTO</b><div class="stepState">⏳ Técnico solicita confirmación${ip?' · IP '+esc(ip):''}</div>${ip?`<a class="btnMini" style="text-decoration:none;background:#17313d" href="http://${esc(ip)}:5000" target="_blank" rel="noopener">🔗 ABRIR ACCESO</a>`:''}<button onclick="confirmarRemotoMesa('${o.id}')">✅ CONFIRMAR</button><button class="secondary" onclick="corregirRemotoMesa('${o.id}')">⚠️ PEDIR CORRECCIÓN</button></div>`}
+function card(o,inst){const estado=o.requiere_accion?'REQUIERE ACCIÓN':o.espera_tecnico?'ESPERANDO TÉCNICO':'SIN ACCIÓN PENDIENTE';const cls=o.requiere_accion?'need':'wait';const steps=(inst?clienteStep(o):'')+onuStep(o)+ipStep(o)+remotoStep(o);return `<article class="otMesa ${cls}"><div class="otHead"><div><div class="otTitle">${esc(o.id_orden||'')} · ${esc(up(o.cliente_nombre_final||o.cliente_nombre||''))}</div><div class="otMeta">${inst?'INSTALACIÓN':'SOPORTE'} · Grupo: ${esc(up(o.grupo_asignado||o.grupo_destino||'—'))} · ${esc(fmt(o.mesa?.solicitado_at))}</div></div>${badge(estado,!o.requiere_accion&&!o.espera_tecnico,o.espera_tecnico)}</div><div class="otSteps" style="grid-template-columns:repeat(${inst?4:3},1fr)">${steps}</div></article>`}
+function render(){const list=TAB==='INSTALACIONES'?DATA.instalaciones||[]:DATA.soportes||[];$('mtInst')?.classList.toggle('on',TAB==='INSTALACIONES');$('mtSop')?.classList.toggle('on',TAB==='SOPORTES');$('mTotal').textContent=list.length;$('mAccion').textContent=list.filter(x=>x.requiere_accion).length;$('mEspera').textContent=list.filter(x=>x.espera_tecnico).length;const out=$('listaMesa');if(!out)return;out.innerHTML=list.length?list.sort((a,b)=>(b.requiere_accion?1:0)-(a.requiere_accion?1:0)||new Date(a.mesa?.solicitado_at||0)-new Date(b.mesa?.solicitado_at||0)).map(x=>card(x,TAB==='INSTALACIONES')).join(''):'<div class="emptyMesa">✅ No hay '+(TAB==='INSTALACIONES'?'instalaciones':'soportes')+' en Mesa técnica en este momento.</div>'}
+async function cargar(force=false){if(LOADING)return;LOADING=true;try{ocultarLegacy();const d=await mesa('board');const sig=JSON.stringify(d);if(force||$('listaMesa')?.dataset.sig!==sig){DATA=d;$('listaMesa').dataset.sig=sig;render()}}catch(e){if($('listaMesa'))$('listaMesa').innerHTML='<div class="msg err">'+esc(e.message)+'</div>'}finally{LOADING=false}}
+window.confirmarClienteMesa=async id=>{if(!confirm('¿Confirmar que el cliente/servicio ya fue registrado o activado en el sistema?'))return;try{await mesa('confirm-client',{orden_id:id});await cargar(true)}catch(e){alert(e.message)}};
 async function dataUrl(f){return await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result||''));r.onerror=rej;r.readAsDataURL(f)})}
-window.subirArMesa=async(e,id)=>{
-  const f=e.target.files?.[0];if(!f)return;
-  try{await apiRemote('upload',{orden_id:id,mime_type:f.type||'image/jpeg',base64:await dataUrl(f)});if(typeof show==='function')show('✅ Evidencia cargada.','ok');await cargar(true)}
-  catch(err){if(typeof show==='function')show(err.message,'err');else alert(err.message)}
-  finally{e.target.value=''}
-};
-window.confirmarRemotoMesa=async id=>{
-  if(!confirm('¿Confirmar que el acceso remoto funciona correctamente?'))return;
-  try{await apiRemote('confirm',{orden_id:id});await cargar(true);if(typeof show==='function')show('✅ Acceso remoto confirmado.','ok')}
-  catch(e){if(typeof show==='function')show(e.message,'err');else alert(e.message)}
-};
-window.corregirRemotoMesa=async id=>{
-  const observacion=prompt('¿Qué debe corregir el técnico?');if(!observacion)return;
-  try{await apiRemote('correction',{orden_id:id,observacion});await cargar(true);if(typeof show==='function')show('⚠️ Corrección enviada al técnico.','ok')}
-  catch(e){if(typeof show==='function')show(e.message,'err');else alert(e.message)}
-};
-
-const obs=new MutationObserver(()=>{ocultarLegacy();if(!document.getElementById('app')?.classList.contains('hidden'))crear()});
-const iniciar=()=>{obs.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});setTimeout(crear,250)};
+window.subirOnuMesa=async(e,id)=>{const f=e.target.files?.[0];if(!f)return;try{await mesa('onu-upload',{orden_id:id,mime_type:f.type||'image/jpeg',base64:await dataUrl(f)});await cargar(true)}catch(err){alert(err.message)}finally{e.target.value=''}};
+window.confirmarIpMesa=async(id,candidato)=>{if(!confirm('¿Confirmar esta IP como definitiva?'))return;try{await ipApi('confirm',{orden_id:id,candidato_id:candidato});await cargar(true)}catch(e){alert(e.message)}};
+window.ipManualMesa=async(id,sol,actual)=>{const ip=prompt('IP correcta:',actual||'');if(!ip)return;const obs=prompt('Observación opcional:','')||'';try{await ipApi('assign-manual',{orden_id:id,solicitud_id:sol,ip:ip.trim(),observacion:obs});await cargar(true)}catch(e){alert(e.message)}};
+window.confirmarRemotoMesa=async id=>{if(!confirm('¿Confirmar que el acceso remoto funciona correctamente?'))return;try{await arApi('confirm',{orden_id:id});await cargar(true)}catch(e){alert(e.message)}};
+window.corregirRemotoMesa=async id=>{const obs=prompt('¿Qué debe corregir el técnico?');if(!obs)return;try{await arApi('correction',{orden_id:id,observacion:obs});await cargar(true)}catch(e){alert(e.message)}};
+const obs=new MutationObserver(()=>{ocultarLegacy();if(!$('app')?.classList.contains('hidden'))crear()});
+const iniciar=()=>{obs.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});setTimeout(crear,220)};
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',iniciar):iniciar();
-setInterval(()=>{ocultarLegacy();const box=document.getElementById('mesaTecnicaFernando');if(box&&box.style.display!=='none')cargar(false)},8000);
+setInterval(()=>{ocultarLegacy();const box=$('mesaTecnicaFernando');if(box&&box.style.display!=='none')cargar(false)},7000);
 })();
