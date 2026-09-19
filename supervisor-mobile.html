@@ -47,13 +47,13 @@
 <nav class="bottom" aria-label="Navegación principal"><button class="on" data-nav="inicio">🏠<span>Inicio</span></button><button data-nav="supervision">🛠️<span>Supervisión</span></button><button data-nav="inventario">📦<span>Inventario</span></button><button data-nav="chat">💬<span>Chat</span></button></nav>
 <script>
 (()=>{
- const KEY='disprotel_login_general_v2',VIEWKEY='disprotel_supervisor_mobile_view_v1',VERSION='20260918-sm9',CHAT='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/chat-interno',SUP='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-panel-supervisor';
+ const KEY='disprotel_login_general_v2',VIEWKEY='disprotel_supervisor_mobile_view_v1',VERSION='20260918-sm10',CHAT='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/chat-interno',SUP='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-panel-supervisor';
  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toUpperCase();
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
  if(!me.session_token&&!me.pin){location.replace('login-general-v2.html');return}
  if(!norm(me.rol).includes('SUPERVISOR TECNICO')){location.replace('principal.html');return}
- const shortName=String(me.nombre||'Fernando').split(' ')[0]||'Fernando';document.getElementById('userName').textContent=me.nombre||'Fernando';document.querySelector('.homeHero h1').textContent='Hola, '+shortName;
+ const visibleName=norm(me.nombre).includes('LUIS FERNANDO MOLINA')?'Fernando':(String(me.nombre||'Fernando').split(' ')[0]||'Fernando');document.getElementById('userName').textContent=visibleName;document.querySelector('.homeHero h1').textContent='Hola, '+visibleName;
  const home=document.getElementById('home'),module=document.getElementById('module'),frame=document.getElementById('frame'),title=document.getElementById('moduleTitle'),pinsList=document.getElementById('smPinsList');
  let chatLoading=false,chatObserver=null,pins=[],homeData=null,homeLoading=false,homeLoadedAt=0,preChatView=null;
  const setActive=name=>document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('on',b.dataset.nav===name));
