@@ -1,71 +1,45 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mantenimiento de nodos · DISPROTEL</title>
 <style>
 :root{--n:#071a38;--b:#176eb7;--g:#237a52;--a:#b77900;--r:#b84040;--bg:#eef4f7;--l:#d7e3e9;--m:#667b87}
-*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:#183142}button,input,select,textarea{font:inherit}
-.wrap{max-width:1180px;margin:auto;padding:18px}.hero{background:linear-gradient(125deg,#071a38,#0c3470 58%,#176eb7);color:#fff;border-radius:20px;padding:18px}
-.hero h1{margin:4px 0}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.back{border:1px solid #ffffff40;background:#ffffff12;color:#fff;border-radius:10px;padding:10px 12px;font-weight:900;cursor:pointer}
-.notice{margin-top:12px;padding:11px 13px;border-radius:12px;background:#fff7dc;color:#725000;font-size:12px;font-weight:800}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}.card{background:#fff;border:1px solid var(--l);border-radius:16px;padding:14px}.card h3{margin:0 0 5px}.muted{font-size:11px;color:var(--m)}.count{font-size:28px;font-weight:1000;margin:8px 0}
-.list{display:grid;gap:10px;margin-top:14px}.item{background:#fff;border:1px solid var(--l);border-left:5px solid var(--b);border-radius:14px;padding:13px;display:grid;grid-template-columns:1.2fr .9fr auto;gap:12px;align-items:center}.item.due{border-left-color:var(--r)}.item.soon{border-left-color:var(--a)}
-.badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:1000;background:#e9f4fa;color:#0b356f}.badge.due{background:#fff0ec;color:var(--r)}.badge.soon{background:#fff6df;color:var(--a)}
-.action{border:0;background:var(--n);color:#fff;border-radius:10px;padding:10px 12px;font-weight:900;cursor:pointer}
-.overlay{position:fixed;inset:0;background:#071a3870;display:none;align-items:center;justify-content:center;padding:16px;z-index:50}.overlay.show{display:flex}.modal{width:min(760px,100%);max-height:92vh;overflow:auto;background:#f8fbfd;border-radius:20px;padding:16px}.head{display:flex;justify-content:space-between;gap:10px;align-items:center}.close{border:1px solid var(--l);background:#fff;border-radius:9px;padding:8px;cursor:pointer}.checks{display:grid;gap:8px;margin-top:12px}.checks label{display:flex;gap:9px;align-items:flex-start;background:#fff;border:1px solid var(--l);border-radius:10px;padding:10px}.checks input{margin-top:2px}.form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.form label{font-size:11px;font-weight:900;color:#526b78}.form input,.form select,.form textarea{width:100%;margin-top:5px;padding:10px;border:1px solid #cbd9e1;border-radius:10px;background:#fff}.wide{grid-column:1/-1}.save{border:0;background:var(--g);color:#fff;border-radius:10px;padding:11px 14px;font-weight:900;cursor:pointer}.msg{margin-top:8px;font-size:12px;font-weight:800}
-@media(max-width:760px){.grid{grid-template-columns:1fr}.item{grid-template-columns:1fr}.form{grid-template-columns:1fr}.wide{grid-column:auto}}
-</style>
-</head>
-<body>
-<main class="wrap">
-<section class="hero">
-  <div class="top"><div><div style="font-size:10px;font-weight:1000;letter-spacing:.13em;color:#a8ddff">MANTENIMIENTO PROGRAMADO</div><h1>🔧 Nodos DISPROTEL</h1><div style="font-size:12px;color:#d8e9f7">Rutinas cortas, sin apagar equipos de comunicación.</div></div><button class="back" onclick="location.href='panel-supervisor-vivo-v2.html'">← VOLVER A SUPERVISIÓN</button></div>
-  <div class="notice">⚠️ Router, switch y equipos activos permanecen en servicio. Las pruebas de respaldo deben hacerse de forma controlada.</div>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:#183142}button,input,select,textarea{font:inherit}.wrap{max-width:1120px;margin:auto;padding:16px}
+.hero{background:linear-gradient(125deg,#071a38,#0c3470 58%,#176eb7);color:#fff;border-radius:18px;padding:15px 17px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.hero h1{margin:3px 0;font-size:23px}.back,.activate{border:1px solid #ffffff40;background:#ffffff12;color:#fff;border-radius:10px;padding:9px 11px;font-weight:900;cursor:pointer}.activate{background:#14834f;border-color:#4cd08d}
+.notice{margin-top:10px;padding:10px 12px;border-radius:11px;background:#fff7dc;color:#725000;font-size:11px;font-weight:800}.planOff{margin-top:14px;background:#fff;border:1px solid #d7e3e9;border-radius:16px;padding:18px;text-align:center}.planOff h2{margin:0 0 6px;color:#0b356f}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}.card{background:#fff;border:1px solid var(--l);border-radius:14px;padding:12px}.count{font-size:25px;font-weight:1000;margin:5px 0}.muted{font-size:11px;color:var(--m)}.list{display:grid;gap:9px;margin-top:12px}.item{background:#fff;border:1px solid var(--l);border-left:5px solid var(--r);border-radius:13px;padding:12px;display:grid;grid-template-columns:1.15fr .9fr 1fr;gap:10px;align-items:center}.badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:1000;background:#fff0ec;color:var(--r)}.assign{display:grid;grid-template-columns:1fr auto;gap:7px}.assign select{padding:9px;border:1px solid #cbd9e1;border-radius:9px;background:#fff}.action{border:0;background:var(--n);color:#fff;border-radius:9px;padding:9px 11px;font-weight:900;cursor:pointer}.done{background:var(--g)}
+.empty{margin-top:12px;background:#fff;border:1px dashed #b8cbd5;border-radius:14px;padding:22px;text-align:center;color:#5d7480}.overlay{position:fixed;inset:0;background:#071a3870;display:none;align-items:center;justify-content:center;padding:16px;z-index:50}.overlay.show{display:flex}.modal{width:min(760px,100%);max-height:92vh;overflow:auto;background:#f8fbfd;border-radius:18px;padding:15px}.head{display:flex;justify-content:space-between;gap:10px;align-items:center}.close{border:1px solid var(--l);background:#fff;border-radius:9px;padding:8px;cursor:pointer}.checks{display:grid;gap:7px;margin-top:11px}.checks label{display:flex;gap:8px;align-items:flex-start;background:#fff;border:1px solid var(--l);border-radius:9px;padding:9px}.checks input{margin-top:2px}.form{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:11px}.form label{font-size:11px;font-weight:900;color:#526b78}.form input,.form select,.form textarea{width:100%;margin-top:5px;padding:9px;border:1px solid #cbd9e1;border-radius:9px;background:#fff}.wide{grid-column:1/-1}.msg{margin-top:8px;font-size:12px;font-weight:800}
+@media(max-width:760px){.grid{grid-template-columns:1fr 1fr 1fr}.item{grid-template-columns:1fr}.form{grid-template-columns:1fr}.wide{grid-column:auto}.assign{grid-template-columns:1fr}}@media(max-width:520px){.grid{grid-template-columns:1fr}}
+</style></head>
+<body><main class="wrap">
+<section class="hero"><div class="top"><div><div style="font-size:9px;font-weight:1000;letter-spacing:.13em;color:#a8ddff">MANTENIMIENTO PROGRAMADO</div><h1>🔧 Nodos DISPROTEL</h1><div style="font-size:11px;color:#d8e9f7">Aquí aparecen únicamente las rutinas que ya corresponden por fecha.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="activateBtn" class="activate" style="display:none" onclick="activatePlan()">▶ ACTIVAR PLAN</button><button class="back" onclick="history.back()">← VOLVER</button></div></div><div class="notice">⚠️ Los equipos de comunicación permanecen operativos. Fernando programa y asigna; el técnico ejecuta y registra.</div></section>
+
+<section id="off" class="planOff" style="display:none"><h2>Plan de mantenimiento aún no iniciado</h2><div class="muted">Las rutinas están preparadas, pero no se mostrarán ni vencerán hasta que Supervisión active oficialmente el plan.</div></section>
+
+<section id="stats" class="grid" style="display:none">
+<article class="card"><h3>🔵 Quincenal</h3><div class="count" id="c15">0</div><div class="muted">Pendientes que ya corresponde ejecutar.</div></article>
+<article class="card"><h3>🟠 Mensual</h3><div class="count" id="c30">0</div><div class="muted">Pendientes que ya corresponde ejecutar.</div></article>
+<article class="card"><h3>🔴 Mayor</h3><div class="count" id="c180">0</div><div class="muted">Pendientes que ya corresponde ejecutar.</div></article>
 </section>
+<div id="list" class="list"></div></main>
 
-<section class="grid">
-  <article class="card"><h3>🔵 Quincenal</h3><div class="count" id="c15">0</div><div class="muted">Inspección general, AC, UPS, baterías y generador.</div></article>
-  <article class="card"><h3>🟠 Mensual</h3><div class="count" id="c30">0</div><div class="muted">Énfasis en banco de baterías y prueba del generador.</div></article>
-  <article class="card"><h3>🔴 Mayor</h3><div class="count" id="c180">0</div><div class="muted">Preventivo semestral/anual de respaldo e infraestructura.</div></article>
-</section>
-
-<div id="list" class="list"></div>
-</main>
-
-<div id="ov" class="overlay"><section class="modal">
-  <div class="head"><div><h2 id="mtitle" style="margin:0"></h2><div id="msub" class="muted"></div></div><button class="close" onclick="closeModal()">✕</button></div>
-  <div id="checks" class="checks"></div>
-  <div id="extra" class="form"></div>
-  <div class="form">
-    <label>Estado general<select id="estado"><option>NORMAL</option><option>CON NOVEDAD</option><option>REQUIERE CORRECTIVO</option></select></label>
-    <label class="wide">Observaciones<textarea id="obs" placeholder="Novedades encontradas, acción recomendada o trabajo pendiente..."></textarea></label>
-    <div class="wide"><button class="save" onclick="save()">✅ REGISTRAR MANTENIMIENTO</button><div id="msg" class="msg"></div></div>
-  </div>
-</section></div>
+<div id="ov" class="overlay"><section class="modal"><div class="head"><div><h2 id="mtitle" style="margin:0"></h2><div id="msub" class="muted"></div></div><button class="close" onclick="closeModal()">✕</button></div><div id="checks" class="checks"></div><div id="extra" class="form"></div><div class="form"><label>Estado general<select id="estado"><option>NORMAL</option><option>CON NOVEDAD</option><option>REQUIERE CORRECTIVO</option></select></label><label class="wide">Observaciones<textarea id="obs" placeholder="Novedades encontradas, acción recomendada o trabajo pendiente..."></textarea></label><div class="wide"><button class="action done" onclick="save()">✅ FINALIZAR MANTENIMIENTO</button><div id="msg" class="msg"></div></div></div></section></div>
 
 <script>
 const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-mantenimiento-nodos',KEY='disprotel_login_general_v2';
 const $=x=>document.getElementById(x),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let DATA=[],CUR=null;
+let DATA=[],CUR=null,ME=null,PLAN=null,TECHS=[];
 function ses(){try{return JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{return{}}}
 async function call(action,body={}){const token=ses().session_token||'';if(!token){location.replace('login-general-v2.html?return='+encodeURIComponent('mantenimiento-nodos.html'));throw new Error('Sesión requerida')}const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-session':token},body:JSON.stringify({action,...body})}),j=await r.json();if(!r.ok)throw new Error(j.error||'No se pudo completar');return j}
-function days(d){const today=new Date();today.setHours(0,0,0,0);const x=new Date(d+'T00:00:00');return Math.round((x-today)/86400000)}
 function label(t){return t==='QUINCENAL'?'QUINCENAL · 15 DÍAS':t==='MENSUAL'?'MENSUAL':'MAYOR · SEMESTRAL'}
-function render(){const due=t=>DATA.filter(x=>x.tipo===t&&days(x.proxima_fecha)<=0).length;$('c15').textContent=due('QUINCENAL');$('c30').textContent=due('MENSUAL');$('c180').textContent=due('MAYOR');$('list').innerHTML=DATA.map(x=>{const d=days(x.proxima_fecha),cl=d<=0?'due':d<=3?'soon':'',txt=d<0?Math.abs(d)+' día(s) vencido':d===0?'TOCA HOY':d===1?'MAÑANA':'EN '+d+' DÍAS';return '<article class="item '+cl+'"><div><b>'+esc(x.nodo?.nombre||'NODO')+'</b><div class="muted">'+esc((x.nodo?.tipo==='PRINCIPAL'?'NODO PRINCIPAL':'NODO AUXILIAR')+(x.nodo?.zona?' · '+x.nodo.zona:''))+'</div><div class="muted">'+esc(label(x.tipo))+'</div></div><div><span class="badge '+cl+'">'+txt+'</span><div class="muted" style="margin-top:5px">Próxima: '+esc(x.proxima_fecha)+(x.ultima_fecha?' · Última: '+esc(x.ultima_fecha):' · Sin registro previo')+'</div></div><button class="action" onclick="openM(\''+x.id+'\')">ABRIR RUTINA</button></article>'}).join('')||'<div class="card">No hay programaciones.</div>'}
-async function load(){const d=await call('list');DATA=d.programaciones||[];render()}
-const baseChecks=[
- ['rack','Estado general del rack / orden / limpieza'],
- ['com','Router y switch operativos, sin alarmas visibles'],
- ['ac','Temperatura y unidad AC en condición normal'],
- ['ups','UPS sin alarmas'],
- ['bat_visual','Banco de baterías sin anomalías visibles'],
- ['gen_visual','Generador disponible, combustible y sin fugas']
-];
+function techOptions(selected=''){return '<option value="">Selecciona técnico...</option>'+TECHS.map(t=>'<option value="'+t.id+'" '+(t.id===selected?'selected':'')+'>'+esc(t.nombre)+' · '+esc(t.unidad_grupo||'')+'</option>').join('')}
+function render(){const active=PLAN?.activo;$('off').style.display=active?'none':'block';$('stats').style.display=active?'grid':'none';$('activateBtn').style.display=ME?.supervisor&&!active?'inline-block':'none';if(!active){$('list').innerHTML='';return}const due=t=>DATA.filter(x=>x.tipo===t).length;$('c15').textContent=due('QUINCENAL');$('c30').textContent=due('MENSUAL');$('c180').textContent=due('MAYOR');if(!DATA.length){$('list').innerHTML='<div class="empty">✅ No hay rutinas pendientes en este momento.<br><span class="muted">La siguiente aparecerá automáticamente cuando llegue su fecha.</span></div>';return}$('list').innerHTML=DATA.map(x=>{const tech=x.tecnico?.nombre||'';const left='<div><b>'+esc(x.nodo?.nombre||'NODO')+'</b><div class="muted">'+esc((x.nodo?.tipo==='PRINCIPAL'?'NODO PRINCIPAL':'NODO AUXILIAR')+(x.nodo?.zona?' · '+x.nodo.zona:''))+'</div><div class="muted">'+esc(label(x.tipo))+'</div></div>';const mid='<div><span class="badge">PENDIENTE</span><div class="muted" style="margin-top:5px">Fecha: '+esc(x.proxima_fecha)+(tech?' · Asignado a '+esc(tech):' · Sin asignar')+'</div></div>';let act='';if(ME?.supervisor){act='<div class="assign"><select id="tech_'+x.id+'">'+techOptions(x.asignado_a_id||'')+'</select><button class="action" onclick="assign(\''+x.id+'\')">'+(x.asignado_a_id?'REASIGNAR':'ASIGNAR')+'</button></div>'}else{act='<button class="action done" onclick="openM(\''+x.id+'\')">INICIAR RUTINA →</button>'}return '<article class="item">'+left+mid+act+'</article>'}).join('')}
+async function load(){const d=await call('list');ME=d.usuario;PLAN=d.plan;DATA=d.programaciones||[];TECHS=d.tecnicos||[];render()}
+async function activatePlan(){if(!confirm('¿Activar oficialmente el plan de mantenimiento de nodos? Desde hoy empezarán a liberarse las rutinas de forma escalonada.'))return;try{await call('activate');await load()}catch(e){alert(e.message)}}
+async function assign(id){const s=$('tech_'+id),tech=s?.value;if(!tech)return alert('Selecciona el técnico que ejecutará esta rutina.');try{await call('assign',{programacion_id:id,tecnico_id:tech});await load()}catch(e){alert(e.message)}}
+const baseChecks=[['rack','Estado general del rack / orden / limpieza'],['com','Router y switch operativos, sin alarmas visibles'],['ac','Temperatura y unidad AC en condición normal'],['ups','UPS sin alarmas'],['bat_visual','Banco de baterías sin anomalías visibles'],['gen_visual','Generador disponible, combustible y sin fugas']];
 function openM(id){CUR=DATA.find(x=>x.id===id);if(!CUR)return;$('mtitle').textContent='🔧 '+CUR.nodo.nombre;$('msub').textContent=label(CUR.tipo);$('estado').value='NORMAL';$('obs').value='';$('msg').textContent='';$('checks').innerHTML=baseChecks.map(x=>'<label><input type="checkbox" data-k="'+x[0]+'"> <span>'+esc(x[1])+'</span></label>').join('');let ex='';if(CUR.tipo!=='QUINCENAL')ex+='<label>Voltaje banco / referencia<input id="voltaje" placeholder="Ej.: 52.8 V"></label><label>Bornes / sulfatación<select id="bornes"><option>NORMAL</option><option>REQUIERE LIMPIEZA</option><option>CON NOVEDAD</option></select></label><label>Prueba generador<select id="gen"><option>ARRANCÓ NORMAL</option><option>NO ARRANCÓ</option><option>NO PROBADO</option><option>CON NOVEDAD</option></select></label><label>Combustible<select id="fuel"><option>SUFICIENTE</option><option>BAJO</option><option>REQUIERE ABASTECER</option></select></label>';if(CUR.tipo==='MAYOR')ex+='<label>Prueba de respaldo / transferencia<select id="transfer"><option>CORRECTA</option><option>CON NOVEDAD</option><option>NO REALIZADA</option></select></label><label>Estado puesta a tierra / infraestructura<select id="infra"><option>NORMAL</option><option>CON NOVEDAD</option></select></label>';$('extra').innerHTML=ex;$('ov').classList.add('show')}
 function closeModal(){$('ov').classList.remove('show');CUR=null}
-async function save(){if(!CUR)return;const detalle={};document.querySelectorAll('#checks input[data-k]').forEach(x=>detalle[x.dataset.k]=x.checked);for(const id of ['voltaje','bornes','gen','fuel','transfer','infra']){const e=$(id);if(e)detalle[id]=e.value}try{$('msg').textContent='Guardando…';await call('complete',{programacion_id:CUR.id,estado_general:$('estado').value,detalle,observaciones:$('obs').value});$('msg').textContent='✅ Mantenimiento registrado';await load();setTimeout(closeModal,700)}catch(e){$('msg').textContent='⚠ '+e.message}}
-load().catch(e=>$('list').innerHTML='<div class="card">⚠ '+esc(e.message)+'</div>');
-</script>
-</body></html>
+async function save(){if(!CUR)return;const detalle={};document.querySelectorAll('#checks input[data-k]').forEach(x=>detalle[x.dataset.k]=x.checked);for(const id of ['voltaje','bornes','gen','fuel','transfer','infra']){const e=$(id);if(e)detalle[id]=e.value}try{$('msg').textContent='Guardando…';await call('complete',{programacion_id:CUR.id,estado_general:$('estado').value,detalle,observaciones:$('obs').value});$('msg').textContent='✅ Mantenimiento registrado';await load();setTimeout(closeModal,650)}catch(e){$('msg').textContent='⚠ '+e.message}}
+load().catch(e=>$('list').innerHTML='<div class="empty">⚠ '+esc(e.message)+'</div>');
+</script></body></html>
