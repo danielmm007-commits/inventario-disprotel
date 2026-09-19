@@ -16,18 +16,20 @@
   ];
   const labels=Object.fromEntries(opts.map(x=>[x[0],x[2]]));
   const style=document.createElement('style');style.id='supervisorOtFamiliasStyle';style.textContent=`
-    .otFamilyGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.otFamily{min-height:150px!important;border-width:2px!important}.otFamily .requestIcon{font-size:38px}.otFamily strong{font-size:19px!important}.otSupportOptions{display:none;margin-top:15px;padding-top:15px;border-top:1px solid #d8e7ee}.otSupportOptions.show{display:block}.otSupportOptions h3{margin:0 0 5px;color:#0b356f}.otSupportOptions>p{margin:0 0 12px}.otSupportGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.otSupportGrid .requestType{position:relative;min-height:105px;padding:13px}.otSupportGrid .requestIcon{font-size:23px;margin-bottom:5px}.otSupportGrid strong{font-size:13px}.otSupportGrid small{font-size:10px}.otSupportGrid .requestType.active:after{content:'✓';position:absolute;right:10px;top:9px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:#168b57;color:#fff;font-weight:1000}.otFamily.supportFamily{--accent:#e47d16}.otFamily.installFamily{--accent:#168bc0}.otIpHint{margin-top:10px;padding:10px 12px;border-radius:11px;background:#eef7ff;border:1px solid #c9e1f2;color:#24566f;font-size:12px;font-weight:700}.otSupportSummary{margin-top:12px;padding:12px 14px;border-radius:12px;background:#f4f9fc;border:1px solid #d6e5ed;color:#214b63;font-size:12px}.otSupportSummary b{color:#0b356f}.otContinue{margin-top:10px;background:linear-gradient(135deg,#0b356f,#168bc0)}.otContinue:disabled{opacity:.45;cursor:not-allowed}.multiPanel{display:grid;gap:12px}.multiBlock{padding:14px;border:1px solid #cfe0e8;border-radius:14px;background:#fff}.multiBlock h4{margin:0 0 8px;color:#0b356f}.multiGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.multiGrid .wide{grid-column:1/-1}.multiGrid label{margin:0;color:#214b63;font-size:12px}.multiGrid input,.multiGrid select,.multiGrid textarea{margin-top:5px}.multiGrid textarea{min-height:72px}.multiChecks{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.multiChecks label{display:flex;gap:7px;align-items:center;padding:9px;border:1px solid #d7e3e9;border-radius:9px;background:#f9fbfc}.multiChecks input{width:auto;margin:0}@media(max-width:850px){.otSupportGrid{grid-template-columns:1fr 1fr}}@media(max-width:650px){.multiGrid,.multiChecks{grid-template-columns:1fr}}@media(max-width:560px){.otFamilyGrid,.otSupportGrid{grid-template-columns:1fr}}
+    .otFamilyGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.otFamily{min-height:86px!important;padding:11px!important;border-width:1px!important}.otFamily .requestIcon{font-size:24px;margin-bottom:4px}.otFamily strong{font-size:14px!important}.otFamily small{font-size:10px!important;margin-top:3px!important}.hero{padding:13px 16px!important;border-radius:16px!important}.hero h1{font-size:22px!important;margin:2px 0!important}.hero p{font-size:11px!important}.heroEyebrow{font-size:9px!important}.heroTools button{padding:8px 10px!important}.requestChooser{padding:12px 14px!important}.requestChooser>p{margin:3px 0 9px!important}.requestChooser h2{font-size:18px!important}.otSupportOptions{display:none;margin-top:15px;padding-top:15px;border-top:1px solid #d8e7ee}.otSupportOptions.show{display:block}.otSupportOptions h3{margin:0 0 5px;color:#0b356f}.otSupportOptions>p{margin:0 0 12px}.otSupportGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.otSupportGrid .requestType{position:relative;min-height:76px;padding:9px}.otSupportGrid .requestIcon{font-size:19px;margin-bottom:3px}.otSupportGrid strong{font-size:12px}.otSupportGrid small{font-size:9px}.otSupportGrid .requestType.active:after{content:'✓';position:absolute;right:10px;top:9px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:#168b57;color:#fff;font-weight:1000}.otFamily.supportFamily{--accent:#e47d16}.otFamily.installFamily{--accent:#168bc0}.otIpHint{margin-top:10px;padding:10px 12px;border-radius:11px;background:#eef7ff;border:1px solid #c9e1f2;color:#24566f;font-size:12px;font-weight:700}.otSupportSummary{margin-top:12px;padding:12px 14px;border-radius:12px;background:#f4f9fc;border:1px solid #d6e5ed;color:#214b63;font-size:12px}.otSupportSummary b{color:#0b356f}.otContinue{margin-top:10px;background:linear-gradient(135deg,#0b356f,#168bc0)}.otContinue:disabled{opacity:.45;cursor:not-allowed}.multiPanel{display:grid;gap:12px}.multiBlock{padding:14px;border:1px solid #cfe0e8;border-radius:14px;background:#fff}.multiBlock h4{margin:0 0 8px;color:#0b356f}.multiGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.multiGrid .wide{grid-column:1/-1}.multiGrid label{margin:0;color:#214b63;font-size:12px}.multiGrid input,.multiGrid select,.multiGrid textarea{margin-top:5px}.multiGrid textarea{min-height:72px}.multiChecks{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.multiChecks label{display:flex;gap:7px;align-items:center;padding:9px;border:1px solid #d7e3e9;border-radius:9px;background:#f9fbfc}.multiChecks input{width:auto;margin:0}@media(max-width:850px){.otSupportGrid{grid-template-columns:1fr 1fr}}@media(max-width:650px){.multiGrid,.multiChecks{grid-template-columns:1fr}}@media(max-width:900px){.otFamilyGrid{grid-template-columns:1fr 1fr}}@media(max-width:560px){.otFamilyGrid,.otSupportGrid{grid-template-columns:1fr 1fr}}
   `;document.head.appendChild(style);
   chooser.querySelector('h2').textContent='¿Qué tipo de OT vamos a crear?';
   const p=chooser.querySelector('h2+p');if(p)p.textContent='Primero elige si es una instalación nueva o un trabajo sobre un servicio existente.';
   box.className='requestTypes otFamilyGrid';
   box.innerHTML=`
-    <button type="button" class="requestType otFamily installFamily" id="otFamilyInstall"><span class="requestIcon">📡</span><strong>INSTALACIÓN</strong><small>Alta de un servicio nuevo. Mantiene el flujo de instalación, documentos y plan.</small></button>
-    <button type="button" class="requestType otFamily supportFamily" id="otFamilySupport"><span class="requestIcon">🛠️</span><strong>SOPORTE</strong><small>Una sola OT puede incluir varias actividades sobre el mismo servicio.</small></button>`;
+    <button type="button" class="requestType otFamily installFamily" id="otFamilyInstall"><span class="requestIcon">📡</span><strong>INSTALACIÓN</strong><small>Servicio nuevo.</small></button>
+    <button type="button" class="requestType otFamily supportFamily" id="otFamilySupport"><span class="requestIcon">🛠️</span><strong>SOPORTE CLIENTE</strong><small>Una o varias actividades.</small></button>
+    <button type="button" class="requestType otFamily" id="otFamilyTroncal"><span class="requestIcon">🧵</span><strong>TRONCAL</strong><small>Daño o reparación de red.</small></button>
+    <button type="button" class="requestType otFamily" id="otFamilyNodo"><span class="requestIcon">🗼</span><strong>NODO</strong><small>Intervención correctiva.</small></button>`;
   const support=document.createElement('section');support.id='otSupportOptions';support.className='otSupportOptions';support.innerHTML=`<h3>Actividades del soporte</h3><p class="muted">Marca una o varias actividades que el técnico deberá realizar en la misma visita.</p><div class="otSupportGrid"></div><div id="otSupportSummary" class="otSupportSummary">Todavía no has seleccionado actividades.</div><div id="otIpHint" class="otIpHint hidden"></div><button type="button" id="otSupportContinue" class="otContinue" disabled>CONTINUAR CON EL SOPORTE →</button>`;box.insertAdjacentElement('afterend',support);
   const grid=support.querySelector('.otSupportGrid');
   grid.innerHTML=opts.map(([t,i,n,d])=>`<button type="button" class="requestType" data-type="${t}"><span class="requestIcon">${i}</span><strong>${n}</strong><small>${d}</small></button>`).join('');
-  const install=document.getElementById('otFamilyInstall'),supportBtn=document.getElementById('otFamilySupport'),hint=document.getElementById('otIpHint'),summary=document.getElementById('otSupportSummary'),cont=document.getElementById('otSupportContinue');
+  const install=document.getElementById('otFamilyInstall'),supportBtn=document.getElementById('otFamilySupport'),troncalBtn=document.getElementById('otFamilyTroncal'),nodoBtn=document.getElementById('otFamilyNodo'),hint=document.getElementById('otIpHint'),summary=document.getElementById('otSupportSummary'),cont=document.getElementById('otSupportContinue');
 
   function refreshSelection(){
     grid.querySelectorAll('[data-type]').forEach(b=>b.classList.toggle('active',supportSelected.has(b.dataset.type)));
@@ -63,8 +65,11 @@
     window.__supervisorSupportActivities=[...supportSelected];
   }
 
-  install.onclick=()=>{supportSelected.clear();refreshSelection();support.classList.remove('show');hint.classList.add('hidden');window.elegirTipo('INSTALACION_INTERNET');install.classList.add('active');supportBtn.classList.remove('active')};
-  supportBtn.onclick=()=>{support.classList.add('show');install.classList.remove('active');supportBtn.classList.add('active');refreshSelection();support.scrollIntoView({behavior:'smooth',block:'nearest'})};
+  function clearFamilies(){[install,supportBtn,troncalBtn,nodoBtn].forEach(x=>x&&x.classList.remove('active'))}
+  install.onclick=()=>{supportSelected.clear();refreshSelection();support.classList.remove('show');hint.classList.add('hidden');clearFamilies();window.elegirTipo('INSTALACION_INTERNET');install.classList.add('active')};
+  supportBtn.onclick=()=>{support.classList.add('show');clearFamilies();supportBtn.classList.add('active');refreshSelection();support.scrollIntoView({behavior:'smooth',block:'nearest'})};
+  troncalBtn.onclick=()=>{supportSelected.clear();refreshSelection();support.classList.remove('show');clearFamilies();troncalBtn.classList.add('active');window.elegirTipo('REPARACION_TRONCAL')};
+  nodoBtn.onclick=()=>{supportSelected.clear();refreshSelection();support.classList.remove('show');clearFamilies();nodoBtn.classList.add('active');window.elegirTipo('INTERVENCION_NODO')};
   grid.querySelectorAll('[data-type]').forEach(b=>b.onclick=()=>{const t=b.dataset.type;supportSelected.has(t)?supportSelected.delete(t):supportSelected.add(t);refreshSelection()});
   cont.onclick=openMultiSupport;
 
@@ -72,10 +77,9 @@
     supportSelected.clear();
     window.__supervisorSupportActivities=[];
     support.classList.remove('show');
-    install.classList.remove('active');
-    supportBtn.classList.remove('active');
+    [install,supportBtn,troncalBtn,nodoBtn].forEach(x=>x&&x.classList.remove('active'));
     refreshSelection();
-    if(selected)selected.textContent='Selecciona INSTALACIÓN o SOPORTE para comenzar.';
+    if(selected)selected.textContent='Selecciona el tipo de OT para comenzar.';
   }
   const cerrarActividadBase=window.cerrarActividad;
   if(typeof cerrarActividadBase==='function'){
@@ -86,5 +90,5 @@
     };
   }
 
-  if(selected)selected.textContent='Selecciona INSTALACIÓN o SOPORTE para comenzar.';
+  if(selected)selected.textContent='Selecciona el tipo de OT para comenzar.';
 })();
