@@ -5,8 +5,33 @@
   const KEY='disprotel_producto_creado_desde_inventario';
 
   if(path.endsWith('/index.html')||path.endsWith('/index')){
-    // Inventario inicial ya tiene su propio creador de producto.
-    // No interceptar #newProd ni navegar a Compras e ingresos.
+    document.addEventListener('click',e=>{
+      const b=e.target.closest?.('#newProd');
+      if(!b)return;
+      e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+      const serial=document.getElementById('inventarioInicialCard')?.dataset.mode==='serial';
+      location.href='compras-ingresos.html?crear_producto=1&volver_inventario=1&serial='+(serial?'1':'0');
+    },true);
+
+    async function recuperar(){
+      const id=sessionStorage.getItem(KEY);
+      if(!id)return;
+      sessionStorage.removeItem(KEY);
+      const tab=document.getElementById('tabCarga');
+      if(!tab)return;
+      tab.click();
+      let n=0;
+      const t=setInterval(()=>{
+        const sel=document.getElementById('iniProd');
+        if(sel&&[...sel.options].some(o=>o.value===id)){
+          sel.value=id;
+          sel.dispatchEvent(new Event('change',{bubbles:true}));
+          clearInterval(t);
+        }else if(++n>60)clearInterval(t);
+      },150);
+    }
+    addEventListener('pageshow',()=>setTimeout(recuperar,80));
+    setTimeout(recuperar,300);
     return;
   }
 
@@ -14,15 +39,8 @@
     const q=new URLSearchParams(location.search);
     if(q.get('crear_producto')!=='1')return;
     const volver=q.get('volver_inventario')==='1';
-    const embedded=q.get('embedded')==='1';
     const serial=q.get('serial')==='1';
     let savedId='';
-    if(embedded){
-      document.documentElement.classList.add('embeddedProductCreator');
-      const st=document.createElement('style');
-      st.textContent='.embeddedProductCreator body{background:transparent!important}.embeddedProductCreator .top,.embeddedProductCreator main,.embeddedProductCreator #msg{display:none!important}.embeddedProductCreator dialog{max-width:min(900px,94vw)!important;max-height:88vh!important}.embeddedProductCreator dialog::backdrop{background:rgba(7,29,56,.10)!important}';
-      document.head.appendChild(st);
-    }
 
     function abrir(){
       if(typeof window.openProduct!=='function'||!document.getElementById('productDlg'))return false;
@@ -36,20 +54,23 @@
       return true;
     }
 
-    window.addEventListener('disprotel:producto-guardado',e=>{
-      const id=String(e?.detail?.id||'').trim();
-      if(id){savedId=id;sessionStorage.setItem(KEY,id)}
-      if(embedded){parent.postMessage({type:'disprotel:producto-guardado',id},location.origin);return}
-      if(volver)setTimeout(()=>history.back(),180);
-    },{once:true});
+    const originalApi=window.api;
+    if(typeof originalApi==='function'){
+      window.api=async function(body){
+        const d=await originalApi.apply(this,arguments);
+        if(body?.action==='save_product'&&!body?.product?.id&&d?.id){savedId=String(d.id);sessionStorage.setItem(KEY,savedId)}
+        return d;
+      };
+    }
 
-    productDlg?.addEventListener('close',()=>{
-      if(embedded&&!savedId){parent.postMessage({type:'disprotel:producto-cancelado'},location.origin);return}
-      if(!volderPendiente()&&volver&&!savedId)setTimeout(()=>history.back(),80);
-    },{once:true});
-
-    function volderPendiente(){
-      return !!sessionStorage.getItem(KEY);
+    const originalSave=window.saveProduct;
+    if(typeof originalSave==='function'){
+      window.saveProduct=async function(){
+        savedId='';
+        const r=await originalSave.apply(this,arguments);
+        if(volver&&savedId)setTimeout(()=>history.back(),180);
+        return r;
+      };
     }
 
     let n=0;const t=setInterval(()=>{if(abrir()||++n>50)clearInterval(t)},150);
