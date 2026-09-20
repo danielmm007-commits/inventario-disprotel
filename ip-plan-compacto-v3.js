@@ -1,6 +1,6 @@
 (()=>{
  const $=id=>document.getElementById(id);
- const API_ROUTER=B+'inventario-router-cobertura',API_MESA=B+'inventario-mesa-tecnica';
+ const API_ROUTER=B+'inventario-router-cobertura';
  let ROUTERS=[],ROUTER_ACTUAL=null,actualizando=false,ultimaVista='',routersCargados=false;
  function routerKey(){return 'disprotel_router_cobertura_'+ordenId()}
  function recordarRouter(id){if(!id)return;ROUTER_ACTUAL=id;const r=ROUTERS.find(x=>x.id===id);if(r){O.router_cobertura_id=id;O.router=r;try{sessionStorage.setItem(INSTKEY,JSON.stringify(O))}catch{}}try{localStorage.setItem(routerKey(),id)}catch{}try{document.dispatchEvent(new CustomEvent('disprotel:router-cambiado'))}catch{}}
@@ -57,7 +57,7 @@
    if(actualizando)return;
    actualizando=true;
    try{
-     const [d,mesa]=await Promise.all([post(API_IP,'status',{orden_id:ordenId()}),post(API_MESA,'status',{orden_id:ordenId()})]),q=d.solicitud,cs=d.candidatos||[],c=mejor(cs),onu=mesa.onu||null;
+     const d=await post(API_IP,'status',{orden_id:ordenId()}),q=d.solicitud,cs=d.candidatos||[],c=mejor(cs);
      if(d.orden){O.plan_final=d.orden.plan_final??O.plan_final;O.plan_solicitado=d.orden.plan_solicitado??O.plan_solicitado;O.tv_final=d.orden.tv_final??O.tv_final;sessionStorage.setItem(INSTKEY,JSON.stringify(O))}
      const estado=$('ipEstado'),cand=$('candidatos'),sol=$('solicitar'),act=$('actualizar');if(!estado||!cand)return;
      const firma=JSON.stringify({q:q?{id:q.id,estado:q.estado,ip:q.ip_asignada,fecha:q.solicitado_at}:null,c:c?{id:c.id,address:c.address,plan:c.plan_detectado,parent:c.queue_parent}:null,heartbeat:d.scanner_heartbeat?{at:d.scanner_heartbeat.updated_at,estado:d.scanner_heartbeat.estado_operativo,total:d.scanner_heartbeat.total_permitidos}:null,router:ROUTER_ACTUAL,routers:ROUTERS.length});
@@ -67,16 +67,17 @@
      cand.innerHTML='';
      if(!q){
        if(!routersCargados)await cargarRouters();
-       estado.innerHTML=`<div style="font-size:16px;font-weight:900">⚙️ ACTIVACIÓN DEL SERVICIO</div><div class="muted" style="margin-top:8px">Selecciona el router y solicita a Mesa técnica. Fernando gestionará cliente/servicio, ONU e IP.</div>${selectorRouter()}`;
+       estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><div class="muted" style="margin-top:8px">Selecciona el router de cobertura y luego solicita la asignación de IP.</div>${selectorRouter()}`;
        const sel=$('routerCoberturaIp');if(sel)sel.onchange=()=>recordarRouter(String(sel.value||'').trim());
-       if(sol){sol.classList.remove('hidden');sol.textContent='📡 SOLICITAR ACTIVACIÓN A MESA TÉCNICA'}
+       if(sol){sol.classList.remove('hidden');sol.textContent='📡 SOLICITAR ASIGNACIÓN DE IP'}
        if(act)act.classList.add('hidden');
        $('stIp').textContent='PENDIENTE';return;
      }
      if(sol)sol.classList.add('hidden');
      if(q.estado==='ASIGNADA'){
        if(act)act.classList.add('hidden');
-       const onuOk=onu?.estado==='CONFIRMADO';estado.innerHTML=`<div style="font-size:16px;font-weight:900">⚙️ ACTIVACIÓN DEL SERVICIO</div><span class="badge okb" style="margin-top:9px">✅ IP DEFINITIVA</span><div class="ip">${esc(q.ip_asignada||'—')}</div>${detalleAsignacion(q)}${avisoPlan(c)}<div class="msg ${onuOk?'ok':'warn'}" style="margin-top:10px"><b>${onuOk?'✅ ONU ACTIVADA':'⏳ ONU PENDIENTE DE FERNANDO'}</b></div>`;$('stIp').textContent=onuOk?'✅ ACTIVACIÓN COMPLETA':'⏳ IP LISTA · ONU PENDIENTE';return;
+       estado.innerHTML=`<div style="font-size:16px;font-weight:900">🌐 ASIGNACIÓN DE IP</div><span class="badge okb" style="margin-top:9px">✅ IP DEFINITIVA</span><div class="ip">${esc(q.ip_asignada||'—')}</div>${detalleAsignacion(q)}${avisoPlan(c)}`;
+       $('stIp').textContent='✅ IP DEFINITIVA · '+String(q.ip_asignada||'');return;
      }
      if(act){act.classList.remove('hidden');act.textContent='🔄 ACTUALIZAR ESTADO'}
      if(c?.address){
@@ -99,8 +100,8 @@
      const guardado=await post(API_ROUTER,'set-order',{orden_id:ordenId(),router_id:routerId});
      recordarRouter(guardado.router?.id||routerId);
      O.router_cobertura_id=ROUTER_ACTUAL;O.router=guardado.router||O.router;sessionStorage.setItem(INSTKEY,JSON.stringify(O));
-     await post(API_MESA,'request-installation',{orden_id:ordenId()});
-     show('✅ Solicitud de activación enviada a Mesa técnica.');
+     await post(API_O,'request-ip',{orden_id:ordenId(),plan_final:'',tv_final:Boolean(O.tv_final??O.tv_solicitada)});
+     show('✅ Router de cobertura guardado y solicitud de IP enviada.');
      await compactEstado();
    }catch(e){show(e.message,'err')}
    finally{if(b)b.disabled=false}
@@ -113,7 +114,7 @@
    if(a)a.onclick=compactEstado;
    const viejo=$('planCatalogoBox');if(viejo)viejo.remove();
  }
- function enlazar(){tomarControl();const s=document.querySelector('#accIp>summary');if(s)s.childNodes[0].textContent='4. Activación del servicio · ONU e IP ';compactEstado()}
+ function enlazar(){tomarControl();compactEstado()}
  document.readyState==='loading'?document.addEventListener('DOMContentLoaded',()=>setTimeout(enlazar,0)):setTimeout(enlazar,0);
  [100,300,700,1200,2200,4000].forEach(ms=>setTimeout(()=>{tomarControl();compactEstado()},ms));
  setInterval(()=>{if(window.estadoIp!==compactEstado||window.solicitarIp!==compactSolicitar)tomarControl();const viejo=$('planCatalogoBox');if(viejo)viejo.remove()},1000);
