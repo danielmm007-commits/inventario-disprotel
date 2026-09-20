@@ -5,59 +5,8 @@
   const KEY='disprotel_producto_creado_desde_inventario';
 
   if(path.endsWith('/index.html')||path.endsWith('/index')){
-    function closeCreator(){
-      document.getElementById('inventoryProductCreatorOverlay')?.remove();
-      document.body.style.overflow='';
-    }
-    function openCreator(serial){
-      closeCreator();
-      const wrap=document.createElement('div');
-      wrap.id='inventoryProductCreatorOverlay';
-      wrap.style.cssText='position:fixed;inset:0;z-index:70000;background:rgba(7,29,56,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:14px';
-      const frame=document.createElement('iframe');
-      frame.title='Crear producto';
-      frame.src='compras-ingresos.html?crear_producto=1&embedded=1&serial='+(serial?'1':'0');
-      frame.style.cssText='width:min(980px,96vw);height:min(90vh,820px);border:0;border-radius:18px;background:transparent;box-shadow:0 24px 70px rgba(3,18,40,.35)';
-      wrap.appendChild(frame);
-      document.body.appendChild(wrap);
-      document.body.style.overflow='hidden';
-    }
-    document.addEventListener('click',e=>{
-      const b=e.target.closest?.('#newProd');
-      if(!b)return;
-      e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
-      const serial=document.getElementById('inventarioInicialCard')?.dataset.mode==='serial';
-      openCreator(serial);
-    },true);
-
-    async function recuperar(){
-      const id=sessionStorage.getItem(KEY);
-      if(!id)return;
-      sessionStorage.removeItem(KEY);
-      let n=0;
-      const t=setInterval(()=>{
-        const sel=document.getElementById('iniProd');
-        if(sel&&[...sel.options].some(o=>o.value===id)){
-          sel.value=id;
-          sel.dispatchEvent(new Event('change',{bubbles:true}));
-          clearInterval(t);
-        }else if(++n>60)clearInterval(t);
-      },150);
-    }
-    addEventListener('message',e=>{
-      if(e.origin!==location.origin||!e.data)return;
-      if(e.data.type==='disprotel:producto-guardado'){
-        const id=String(e.data.id||'').trim();
-        if(id)sessionStorage.setItem(KEY,id);
-        closeCreator();
-        setTimeout(()=>{
-          document.getElementById('tabCarga')?.click();
-          setTimeout(recuperar,120);
-        },50);
-      }
-      if(e.data.type==='disprotel:producto-cancelado')closeCreator();
-    });
-    setTimeout(recuperar,300);
+    // Inventario inicial ya tiene su propio creador de producto.
+    // No interceptar #newProd ni navegar a Compras e ingresos.
     return;
   }
 
