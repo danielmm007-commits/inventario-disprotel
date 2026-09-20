@@ -54,23 +54,18 @@
       return true;
     }
 
-    const originalApi=window.api;
-    if(typeof originalApi==='function'){
-      window.api=async function(body){
-        const d=await originalApi.apply(this,arguments);
-        if(body?.action==='save_product'&&!body?.product?.id&&d?.id){savedId=String(d.id);sessionStorage.setItem(KEY,savedId)}
-        return d;
-      };
-    }
+    window.addEventListener('disprotel:producto-guardado',e=>{
+      const id=String(e?.detail?.id||'').trim();
+      if(id){savedId=id;sessionStorage.setItem(KEY,id)}
+      if(volver)setTimeout(()=>history.back(),180);
+    },{once:true});
 
-    const originalSave=window.saveProduct;
-    if(typeof originalSave==='function'){
-      window.saveProduct=async function(){
-        savedId='';
-        const r=await originalSave.apply(this,arguments);
-        if(volver&&savedId)setTimeout(()=>history.back(),180);
-        return r;
-      };
+    productDlg?.addEventListener('close',()=>{
+      if(!volderPendiente()&&volver&&!savedId)setTimeout(()=>history.back(),80);
+    },{once:true});
+
+    function volderPendiente(){
+      return !!sessionStorage.getItem(KEY);
     }
 
     let n=0;const t=setInterval(()=>{if(abrir()||++n>50)clearInterval(t)},150);
