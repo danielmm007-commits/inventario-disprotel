@@ -65,5 +65,10 @@ sincronizarCapas();
 <script src="supervisor-ot-progreso-v1.js?v=20260913-direct"></script>
 <script src="alertas-inventario-ui-v1.js?v=20260913-direct"></script>
 <script src="informes-finalizados-v1.js?v=20260913-direct"></script>
+<script>
+/* Failsafe de carga: el prepaint evita parpadeos, pero nunca debe dejar el panel oculto
+   si una validación secundaria tarda o falla. */
+setTimeout(()=>{document.documentElement.style.visibility=''},900);
+</script>
 
 </body></html>
