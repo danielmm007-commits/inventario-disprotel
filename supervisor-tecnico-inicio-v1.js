@@ -167,6 +167,16 @@
     list.innerHTML=rows.join('');
   }
 
+  function markHomeActive(){
+    const aside=document.querySelector('.menuAside');if(!aside)return;
+    const frame=document.querySelector('.menuFrame');
+    const framePath=(()=>{try{return String(frame?.contentWindow?.location?.pathname||'').toLowerCase()}catch{return''}})();
+    const homeVisible=!document.body.classList.contains('moduleOpen')&&(!framePath||framePath==='about:blank'||framePath.endsWith('/principal.html'));
+    if(!homeVisible)return;
+    const home=aside.querySelector('.erpHomeButton');if(!home)return;
+    aside.querySelectorAll('button').forEach(b=>{const active=b===home;b.classList.toggle('on',active);b.classList.toggle('erpNavActive',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+  }
+
   function renderDashboard(){
     const dash=document.querySelector('.menuDashboard');if(!dash)return false;
     if(dash.querySelector('#supervisorDashboardV1')){syncDashboard();return true}
@@ -185,6 +195,7 @@
     dash.querySelectorAll('[data-open]').forEach(x=>x.addEventListener('click',()=>openMenu(x.dataset.open)));
     const refresh=dash.querySelector('#supRefresh');if(refresh)refresh.addEventListener('click',()=>{refresh.disabled=true;refresh.textContent='↻ Actualizando…';syncDashboard();setTimeout(()=>{refresh.disabled=false;refresh.textContent='✓ Actualizado';setTimeout(()=>refresh.textContent='↻ Actualizar',800)},180)});
     syncDashboard();
+    markHomeActive();
     return true;
   }
 
