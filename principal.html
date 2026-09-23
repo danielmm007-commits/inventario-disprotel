@@ -69,6 +69,24 @@ sincronizarCapas();
 /* Failsafe de carga: el prepaint evita parpadeos, pero nunca debe dejar el panel oculto
    si una validación secundaria tarda o falla. */
 setTimeout(()=>{document.documentElement.style.visibility=''},900);
+
+/* Recuperación exclusiva del perfil técnico.
+   La sesión ya está validada: si los scripts del tablero no terminan de hidratar,
+   se retira la cortina y se conserva el panel base navegable. */
+setTimeout(()=>{
+  let sesion={};try{sesion=JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'{}')}catch{}
+  const rol=String(sesion.rol||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+  if(rol!=='TECNICO')return;
+  document.documentElement.style.visibility='visible';
+  document.body.classList.add('panelAtomicReady');
+  document.body.classList.remove('supMobileAtomicWait','supMobileAtomicSlow','moduleOpen');
+  document.getElementById('principalDirectPrepaint')?.remove();
+  document.getElementById('panelAtomicPaint')?.remove();
+  const tablero=document.getElementById('principalMenuDashboard');
+  if(!tablero||!tablero.textContent.trim()){
+    document.body.classList.remove('panelMenu');
+  }
+},1800);
 </script>
 
 </body></html>
