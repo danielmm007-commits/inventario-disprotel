@@ -127,19 +127,5 @@ function ensureMenuShell(){
   tools.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{prefs.panel_vista=b.dataset.view;save()});
   const menu=tools.querySelector('.avatarMenu');tools.querySelector('.userAvatar').onclick=()=>menu.classList.toggle('show');tools.querySelectorAll('[data-avatar]').forEach(b=>b.onclick=()=>{prefs.avatar_tipo=b.dataset.avatar;menu.classList.remove('show');save()});document.addEventListener('click',e=>{if(!tools.querySelector('.avatarWrap').contains(e.target))menu.classList.remove('show')});
   paint();
-  if(role==='TECNICO'){
-    document.body.classList.remove('moduleOpen','erpMobileMenuOpen');
-    if(menuFrame){
-      menuFrame.src='about:blank';
-      menuFrame.style.visibility='hidden';
-      menuFrame.removeAttribute('aria-busy');
-    }
-    document.querySelectorAll('.menuAside button').forEach(x=>x.classList.remove('on'));
-    const dash=document.getElementById('principalMenuDashboard');
-    if(dash&&!dash.children.length){
-      menuShell=null;
-      ensureMenuShell();
-    }
-  }
   call({action:'get_preferences'}).then(d=>{prefs={panel_vista:'COMPACTA',avatar_tipo:d.avatar_tipo||'NEUTRO'};save()}).catch(()=>{});
 })();
