@@ -48,7 +48,7 @@
   top.insertBefore(tools,logout);if(isRubi){const techCard=[...document.querySelectorAll('.module')].find(x=>norm(x.querySelector('h3')?.textContent).includes('AREA TECNICA'));if(techCard){const link=techCard.querySelector('a.btn'),desc=techCard.querySelector('p');if(link){link.href='panel-general-supervisor-visual.html?v='+Date.now();link.textContent='Abrir supervisión técnica →'}if(desc)desc.textContent='Consulta de órdenes, grupos, novedades y actividad técnica en modo de solo lectura.'}}
   const rubiMenuKey='disprotel_rubi_menu_v1';let prefs={panel_vista:'COMPACTA',avatar_tipo:me.avatar_tipo||'NEUTRO'};localStorage.setItem('disprotel_panel_vista','COMPACTA')
   const avatarEmoji={MASCULINO:'👨',FEMENINO:'👩',NEUTRO:'🧑'};
-  const menuPilot=true;let menuShell=null,menuHome=null,menuFrame=null;
+  const menuPilot=true,moduleStateKey='disprotel_last_module_v1';let menuShell=null,menuHome=null,menuFrame=null;
   function directModuleUrl(raw){try{const u=new URL(raw,location.href);if(u.pathname.endsWith('/modulo-integrado.html')){const src=u.searchParams.get('src');return src?src+(src.includes('?')?'&':'?')+'menu=1&v='+Date.now():raw}return u.pathname.split('/').pop()+u.search}catch{return raw}}
   function metricByLabel(label){const stat=[...document.querySelectorAll('.main .stat')].find(x=>norm(x.querySelector('.lbl')?.textContent).includes(norm(label)));return stat?.querySelector('.num')?.textContent?.trim()||'0'}
   function syncAttentionIndicators(){const count=id=>Number(String(document.getElementById(id)?.textContent||'0').replace(/[^\d.-]/g,''))||0,mark=id=>document.getElementById(id)?.closest('.dashMetric')?.classList.toggle('metricAttention',count(id)>0);if(isRubi){['dashTransfers','dashSerialsPending','dashSupport'].forEach(mark)}else{['dashAvailable','dashPending','dashTransfers'].forEach(mark);document.getElementById('dashProcess')?.closest('.dashMetric')?.classList.remove('metricAttention')}const technicalPending=isRubi?count('dashSupport')>0:count('dashAvailable')>0,transferPending=count('dashTransfers')>0;document.querySelectorAll('.menuAside button[data-href]').forEach(button=>{const title=norm(button.textContent),technical=title.includes('AREA TECNICA')||title.includes('ATENCION CLIENTES'),transfer=title.includes('TRANSFERENCIAS');button.classList.toggle('navAttention',(technical&&technicalPending)||(transfer&&transferPending))})}
@@ -103,6 +103,7 @@ function ensureMenuShell(){
     syncTechnicalMetrics();
 
     const goMenuHome=()=>{
+      localStorage.removeItem(moduleStateKey);
       document.body.classList.remove('moduleOpen');
       menuFrame.src='about:blank';
       menuFrame.style.visibility='hidden';
@@ -115,10 +116,13 @@ function ensureMenuShell(){
       try{const d=menuFrame.contentDocument,path=menuFrame.contentWindow.location.pathname;if(/login-general|principal\.html/.test(path)){goMenuHome();return}d.addEventListener('click',e=>{const control=e.target.closest('button,a');if(control&&norm(control.textContent).includes('ATRAS')){e.preventDefault();e.stopImmediatePropagation();goMenuHome()}},true)}catch(e){console.warn('Navegación interna:',e)}
     };
     aside.querySelectorAll('[data-href]').forEach(btn=>btn.onclick=()=>{
-      mobileBar.querySelector('.mobileModuleTitle').textContent=btn.querySelector('span')?.textContent||'Módulo';
+      const moduleTitle=btn.querySelector('span')?.textContent||'Módulo';
+      localStorage.setItem(moduleStateKey,JSON.stringify({href:btn.dataset.href,title:moduleTitle}));
+      mobileBar.querySelector('.mobileModuleTitle').textContent=moduleTitle;
       menuFrame.style.visibility='hidden';menuFrame.setAttribute('aria-busy','true');menuFrame.src=directModuleUrl(btn.dataset.href);
       document.body.classList.add('moduleOpen');aside.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===btn))
     });
+    try{const saved=JSON.parse(localStorage.getItem(moduleStateKey)||'null');if(saved?.href){const wanted=new URL(saved.href,location.href).pathname,restore=[...aside.querySelectorAll('[data-href]')].find(btn=>new URL(btn.dataset.href,location.href).pathname===wanted);if(restore)setTimeout(()=>restore.click(),60)}}catch{}
     document.documentElement.dataset.panelStaticHydrated='1';
   }
 
