@@ -103,7 +103,7 @@
   function ensure(){
     const grid=document.querySelector('.workGrid'),catalog=document.querySelector('.catalogPanel');if(!grid||!catalog)return null;
     let nav=document.getElementById('attentionSwitch');
-    const all=document.getElementById('familyAll');if(all&&!all.dataset.detailsToggle){all.dataset.detailsToggle='1';all.addEventListener('click',()=>{const wasAll=all.classList.contains('on');allDetailsOpen=wasAll?!allDetailsOpen:true;if(!allDetailsOpen){window.__disprotelOpenJobId='';[...document.querySelectorAll('.job.expanded')].forEach(job=>job.classList.remove('expanded'))}setTimeout(apply,0)},true)}if(!nav){nav=document.createElement('section');nav.id='attentionSwitch';nav.className='attentionSwitch';nav.innerHTML=`
+    if(!nav){nav=document.createElement('section');nav.id='attentionSwitch';nav.className='attentionSwitch';nav.innerHTML=`
       <button class="attentionTab" data-view="available">🔔 <strong>Disponibles</strong><small>Órdenes libres para tomar</small><span class="attentionCount">0</span></button>
       <button class="attentionTab" data-view="assigned">📥 <strong>Asignados</strong><small>Pendientes de recibir</small><span class="attentionCount">0</span></button>
       <button class="attentionTab" data-view="active">🛠️ <strong>En ejecución</strong><small>Aceptados o en proceso</small><span class="attentionCount">0</span></button>
@@ -139,6 +139,7 @@
     else if(!mode){if(title&&title.textContent!=='Trabajos activos')title.textContent='Trabajos activos';if(desc&&desc.textContent!=='Órdenes recibidas o tomadas por tu grupo.')desc.textContent='Órdenes recibidas o tomadas por tu grupo.'}
     busy=false;
   }
+  window.__toggleAllTechDetails=function(wasAll){allDetailsOpen=wasAll?!allDetailsOpen:true;if(!allDetailsOpen){window.__disprotelOpenJobId='';document.querySelectorAll('.job.expanded').forEach(job=>job.classList.remove('expanded'))}apply()};
   window.__setTechWorkView=function(nextView,openId){
     if(nextView)view=nextView;
     if(openId)window.__disprotelOpenJobId=openId;
