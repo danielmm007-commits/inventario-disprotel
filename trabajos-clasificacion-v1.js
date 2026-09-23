@@ -137,6 +137,7 @@
     const title=mine?.querySelector('h2'),desc=mine?.querySelector('.workHead p');
     if(mode&&view==='active'){if(title&&title.textContent!=='Trabajos en ejecución')title.textContent='Trabajos en ejecución';if(desc&&desc.textContent!=='Órdenes aceptadas, en camino, en sitio o en proceso.')desc.textContent='Órdenes aceptadas, en camino, en sitio o en proceso.'}
     else if(!mode){if(title&&title.textContent!=='Trabajos activos')title.textContent='Trabajos activos';if(desc&&desc.textContent!=='Órdenes recibidas o tomadas por tu grupo.')desc.textContent='Órdenes recibidas o tomadas por tu grupo.'}
+    document.documentElement.dataset.techPracticalReady='1';document.body.style.visibility='visible';document.getElementById('techPracticalPrepaint')?.remove();
     busy=false;
   }
   window.__toggleAllTechDetails=function(wasAll){allDetailsOpen=wasAll?!allDetailsOpen:true;if(!allDetailsOpen){window.__disprotelOpenJobId='';document.querySelectorAll('.job.expanded').forEach(job=>job.classList.remove('expanded'))}apply()};
