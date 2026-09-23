@@ -79,7 +79,7 @@ setTimeout(()=>{
   if(rol!=='TECNICO')return;
   document.documentElement.style.visibility='visible';
   document.body.classList.add('panelAtomicReady');
-  document.body.classList.remove('supMobileAtomicWait','supMobileAtomicSlow','moduleOpen');
+  document.body.classList.remove('supMobileAtomicWait','supMobileAtomicSlow');
   document.getElementById('principalDirectPrepaint')?.remove();
   document.getElementById('panelAtomicPaint')?.remove();
   const tablero=document.getElementById('principalMenuDashboard');
