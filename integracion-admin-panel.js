@@ -1,27 +1,10 @@
 (()=>{
-  const session=(()=>{try{return JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'{}')}catch{return{}}})();
-  const role=String(session?.rol||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toUpperCase();
-  const mobileSupervisor=window.matchMedia('(max-width:680px)').matches&&role.includes('SUPERVISOR TECNICO');
-  if(mobileSupervisor)document.body.classList.add('supMobileAtomicWait');
-
   document.getElementById('panelBootCover')?.remove();
 
   if(!document.getElementById('panelAtomicPaint')){
     const st=document.createElement('style');
     st.id='panelAtomicPaint';
-    st.textContent=`
-      body{visibility:hidden!important}
-      body.panelAtomicReady{visibility:visible!important}
-      body.supMobileAtomicWait::before{
-        content:'Cargando supervisión en vivo…';
-        visibility:visible!important;
-        position:fixed;inset:0;z-index:99999;
-        display:grid;place-items:center;
-        background:linear-gradient(145deg,#061a39,#0b356f 62%,#116d83);
-        color:#eaf8ff;font:800 13px Arial,sans-serif;letter-spacing:.02em
-      }
-      body.supMobileAtomicWait.supMobileAtomicSlow::before{content:'Conectando con la operación en vivo…'}
-    `;
+    st.textContent='body{visibility:hidden!important}body.panelAtomicReady{visibility:visible!important}';
     document.head.appendChild(st);
   }
 
@@ -52,18 +35,10 @@
   const reveal=()=>{
     if(finished)return;
     finished=true;
-    document.body.classList.remove('supMobileAtomicWait','supMobileAtomicSlow');
-    document.body.classList.add('panelAtomicReady');
-    document.getElementById('principalDirectPrepaint')?.remove();
+    document.body.classList.add('panelAtomicReady');document.getElementById('principalDirectPrepaint')?.remove();
     requestAnimationFrame(()=>document.getElementById('panelAtomicPaint')?.remove())
   };
   const ready=()=>{
-    if(mobileSupervisor){
-      const dash=document.querySelector('#supervisorDashboardV1.supLive');
-      if(!window.__disprotelSupervisorMobileLiveV1||!document.body.classList.contains('supMobileDashboard')||!dash)return false;
-      const r=dash.getBoundingClientRect();
-      return r.width>200&&r.height>180&&getComputedStyle(dash).display!=='none'
-    }
     if(!document.body.classList.contains('panelMenu')||document.documentElement.dataset.panelStaticHydrated!=='1')return false;
     const shell=document.querySelector('.menuShell');
     const aside=document.querySelector('.menuAside');
@@ -80,8 +55,7 @@
     requestAnimationFrame(paint)
   };
   requestAnimationFrame(paint);
-  setTimeout(()=>{if(finished)return;if(mobileSupervisor)document.body.classList.add('supMobileAtomicSlow');else reveal()},4500);
-  setTimeout(()=>{if(!finished)reveal()},12000);
+  setTimeout(reveal,4500);
 
   const v='20260823-2048';
   const map={"Administración de usuarios":"admin-usuarios-visual.html?v="+v,"Perfiles y módulos":"perfiles-modulos-visual.html?v="+v,"Grupos y minibodegas":"grupos-minibodegas-visual.html?v="+v};
