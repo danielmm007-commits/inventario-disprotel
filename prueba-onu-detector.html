@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DISPROTEL · Prueba detector ONU</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f5f7fb;margin:0;padding:24px;color:#172033}.wrap{max-width:850px;margin:auto}.box{background:white;border:1px solid #dbe2ea;border-radius:14px;padding:18px;margin-top:14px;box-shadow:0 2px 8px #0000000d}.muted{color:#667085;font-size:14px}.ok{color:#167348}.warn{color:#a15c00}.onu{border:2px solid #f59e0b;background:#fffaf0;border-radius:12px;padding:14px;margin-top:10px}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#fff1c7;font-size:12px;font-weight:700}button{padding:9px 12px;border:0;border-radius:8px;cursor:pointer}code{word-break:break-all}.grid{display:grid;grid-template-columns:140px 1fr;gap:7px;margin-top:10px}@media(max-width:600px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body><div class="wrap">
+<h2>📡 DISPROTEL · Monitor de ONU</h2>
+<div class="muted">Página de diagnóstico. Solo consulta el detector; no autoriza, elimina ni configura ONU.</div>
+<div class="box"><b>OLT</b><div style="margin-top:8px">DISPROTEL SALCEDO · <code>SALCEDO</code></div><div id="estado" class="muted" style="margin-top:8px">Consultando backend...</div><button onclick="cargar()" style="margin-top:10px">Actualizar</button></div>
+<div id="lista"></div>
+</div>
+<script>
+const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-onu-detector';
+const KEY='disprotel_login_general_v2';
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=v=>{if(!v)return'—';try{return new Date(v).toLocaleString('es-EC')}catch{return String(v)}};
+function ses(){try{return JSON.parse(sessionStorage.getItem(KEY)||'null')||JSON.parse(sessionStorage.getItem('disprotel_trabajos_test')||'null')||{}}catch{return{}}}
+async function cargar(){
+ const e=document.getElementById('estado'),l=document.getElementById('lista');e.textContent='Consultando...';
+ try{
+  const s=ses(),r=await fetch(API+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','x-session':s.session_token||''},body:JSON.stringify({action:'pending-list',olt_codigo:'SALCEDO'})});
+  const d=await r.json();if(!r.ok)throw new Error(d.error||'Error backend');
+  const a=d.items||d.onts||[];e.innerHTML='<span class="ok">● Backend conectado</span> · '+a.length+' ONU pendiente(s)';
+  if(!a.length){l.innerHTML='<div class="box"><b>⚪ Sin ONU pendientes</b><div class="muted" style="margin-top:6px">El scanner no reporta ONU presentes en autofind.</div></div>';return}
+  l.innerHTML=a.map(o=>'<div class="onu"><span class="pill">PENDIENTE DE AUTORIZACIÓN</span><h3>'+esc(o.modelo||o.model||'ONU')+'</h3><div class="grid"><b>SN</b><code>'+esc(o.onu_sn_display||o.sn_id||o.onu_sn||o.sn||'—')+'</code><b>SN completo</b><code>'+esc(o.onu_sn||o.sn||'—')+'</code><b>PON</b><span>'+esc(o.pon||o.fsp||'—')+'</span><b>Fabricante</b><span>'+esc(o.vendor||'—')+'</span><b>Versión</b><span>'+esc(o.version||'—')+'</span><b>Software</b><span>'+esc(o.software||'—')+'</span><b>Detectada</b><span>'+esc(fmt(o.detectada_at||o.detected_at))+'</span></div><div class="muted" style="margin-top:10px">Visualización únicamente. La vinculación se probará después con una OT controlada.</div></div>').join('');
+ }catch(x){e.innerHTML='<span style="color:#b42318">● Error: '+esc(x.message)+'</span>';l.innerHTML='<div class="box">Inicia sesión en DISPROTEL en esta misma pestaña/navegador y vuelve a actualizar.</div>'}
+}
+cargar();setInterval(()=>{if(document.visibilityState==='visible')cargar()},10000);
+</script></body></html>
