@@ -8,9 +8,9 @@
 </style>
 <!-- PRINCIPAL DIRECTO: evita pintar la estructura antigua antes del menú definitivo -->
 <style id="principalDirectPrepaint">html{visibility:hidden}</style>
-<link rel="stylesheet" href="disprotel-erp-theme-v1.css?v=20260922-panel">
-<link rel="stylesheet" href="disprotel-erp-refine.css?v=20260922-panel">
-<link rel="stylesheet" href="erp-sidebar-dinamico-v1.css?v=20260922-panel">
+<link rel="stylesheet" href="disprotel-erp-theme-v1.css?v=20260913-direct">
+<link rel="stylesheet" href="disprotel-erp-refine.css?v=20260913-direct">
+<link rel="stylesheet" href="erp-sidebar-dinamico-v1.css?v=20260913-direct">
 
 </head><body class="panelMenu">
 <header class="topbar"><div class="topin"><div class="logoBox"><img id="companyLogo" alt="DISPROTEL"><span id="logoFallback" class="logoFallback">DISPROTEL</span></div><div class="brand"><b>Centro de Control Principal</b><span>Sistema Integral DISPROTEL</span></div><div class="who"><b id="whoName">Usuario</b><span id="whoRole">PERFIL</span></div><button class="logout" onclick="salir()">Salir</button></div></header>
@@ -51,12 +51,12 @@ window.addEventListener('popstate',()=>{ocultarToast();sincronizarCapas()});docu
 sincronizarCapas();
 </script>
 <!-- PRINCIPAL DIRECTO: scripts funcionales cargados sobre el DOM definitivo -->
-<script src="integracion-admin-panel.js?v=20260922-panel"></script>
-<script src="panel-dinamico-permisos-v2.js?v=20260922-panel"></script>
-<script src="panel-experiencia-v1.js?v=20260922-panel"></script>
-<script src="erp-sidebar-dinamico-v1.js?v=20260922-panel"></script>
-<script src="prioridad-tecnica-local-v1.js?v=20260922-panel"></script>
-<script src="navegacion-movil-historial-v1.js?v=20260922-panel"></script>
+<script src="integracion-admin-panel.js?v=20260913-direct"></script>
+<script src="panel-dinamico-permisos-v2.js?v=20260913-direct"></script>
+<script src="panel-experiencia-v1.js?v=20260913-direct"></script>
+<script src="erp-sidebar-dinamico-v1.js?v=20260913-direct"></script>
+<script src="prioridad-tecnica-local-v1.js?v=20260913-direct"></script>
+<script src="navegacion-movil-historial-v1.js?v=20260913-direct"></script>
 <script src="compras-seriales-loader-v1.js?v=20260913-direct"></script>
 <script src="inventario-inicial-loader-v1.js?v=20260913-direct"></script>
 <script src="chat-interno-v1.js?v=20260914-lazy1"></script>
@@ -65,10 +65,5 @@ sincronizarCapas();
 <script src="supervisor-ot-progreso-v1.js?v=20260913-direct"></script>
 <script src="alertas-inventario-ui-v1.js?v=20260913-direct"></script>
 <script src="informes-finalizados-v1.js?v=20260913-direct"></script>
-<script>
-/* Failsafe de carga: el prepaint evita parpadeos, pero nunca debe dejar el panel oculto
-   si una validación secundaria tarda o falla. */
-setTimeout(()=>{document.documentElement.style.visibility=''},900);
-</script>
 
 </body></html>
