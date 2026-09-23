@@ -101,6 +101,9 @@ function ensureMenuShell(){
     const observer=new MutationObserver(syncTechnicalMetrics);main.querySelectorAll('.stat .num').forEach(x=>observer.observe(x,{childList:true,subtree:true,characterData:true}));
     const attentionObserver=new MutationObserver(syncAttentionIndicators);attentionObserver.observe(dash,{childList:true,subtree:true,characterData:true});
     syncTechnicalMetrics();
+    /* Carga inicial real del resumen personal. Antes solo se conectaba el botón Actualizar,
+       por eso el técnico veía Consultando... y guiones hasta pulsarlo manualmente. */
+    setTimeout(()=>refreshDashboard(),120);
 
     const goMenuHome=()=>{
       document.body.classList.remove('moduleOpen');
