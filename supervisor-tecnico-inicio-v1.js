@@ -214,8 +214,9 @@
   const SUPERVISOR_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-panel-supervisor';
   const estadoFinal=s=>['COMPLETADA','FINALIZADA','CANCELADA','CANCELADA EN SITIO','CANCELADA_EN_SITIO','NO EJECUTADA CLIENTE','NO_EJECUTADA_CLIENTE'].includes(norm(s));
   const estadoPendiente=s=>['CREADA','PENDIENTE','POR ASIGNAR','ASIGNADA'].includes(norm(s));
-  let resumenReal=null,resumenCargando=null;
+  let resumenReal=null,resumenCargando=null,ultimoResumenEn=0;
   async function cargarResumenReal(){
+    if(resumenReal&&Date.now()-ultimoResumenEn<10000)return resumenReal;
     if(resumenCargando)return resumenCargando;
     resumenCargando=(async()=>{
       try{
@@ -228,6 +229,7 @@
           field:orders.filter(o=>!estadoFinal(o.estado)&&!estadoPendiente(o.estado)).length,
           done:orders.filter(o=>estadoFinal(o.estado)).length
         };
+        ultimoResumenEn=Date.now();
         pintarResumenReal();
       }catch(e){console.warn('Resumen supervisor:',e)}
       finally{resumenCargando=null}
