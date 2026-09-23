@@ -60,8 +60,29 @@
       return true;
     }catch(e){w.MutationObserver=NativeMO;console.warn('Enhancer seguro:',e);return false}
   }
+  function restoreGroupNoveltyActions(frame,w,d){
+    const groups=d.getElementById('groups');if(!groups||groups.dataset.noveltyActionRestored==='1')return;
+    groups.dataset.noveltyActionRestored='1';
+    groups.addEventListener('click',e=>{
+      const card=e.target?.closest?.('.group');if(!card||!groups.contains(card))return;
+      const raw=String(card.getAttribute('onclick')||'');
+      const m=raw.match(/openGroup\(['"]([^'"]+)['"]\)/);
+      if(!m?.[1]||typeof w.openGroup!=='function')return;
+      e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+      w.openGroup(m[1]);
+    },true);
+  }
   function enhanceFrame(frame){
-    try{const w=frame.contentWindow,d=frame.contentDocument;if(!w||!d)return false;const path=String(w.location.pathname||'').toLowerCase();if(!path.endsWith('/panel-supervisor-vivo-v2.html'))return false;frame.dataset.supOrigin='live';cleanPanelNav(d);return injectEnhancerSafely(frame,w,d)}catch{return false}
+    try{
+      const w=frame.contentWindow,d=frame.contentDocument;
+      if(!w||!d)return false;
+      const path=String(w.location.pathname||'').toLowerCase();
+      if(!path.endsWith('/panel-supervisor-vivo-v2.html'))return false;
+      frame.dataset.supOrigin='live';
+      cleanPanelNav(d);
+      restoreGroupNoveltyActions(frame,w,d);
+      return injectEnhancerSafely(frame,w,d)
+    }catch{return false}
   }
   function returnToLive(frame){
     try{frame.dataset.supOrigin='live';frame.style.visibility='hidden';frame.setAttribute('aria-busy','true');frame.src=TARGET;document.body.classList.add('moduleOpen');const tech=techButton();document.querySelectorAll('.menuAside button').forEach(x=>x.classList.toggle('on',x===tech))}catch(e){console.warn('Regreso a supervisión:',e)}
