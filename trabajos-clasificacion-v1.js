@@ -102,6 +102,7 @@
   }
   function ensure(){
     const grid=document.querySelector('.workGrid'),catalog=document.querySelector('.catalogPanel');if(!grid||!catalog)return null;
+    const all=document.getElementById('familyAll');if(all&&!all.dataset.singleToggle){all.dataset.singleToggle='1';all.onclick=()=>{const wasAll=ACTIVE_FAMILY==='TODAS';ACTIVE_FAMILY='TODAS';allDetailsOpen=wasAll?!allDetailsOpen:true;if(!allDetailsOpen){window.__disprotelOpenJobId='';document.querySelectorAll('.job.expanded').forEach(job=>job.classList.remove('expanded'))}renderCatalog();renderBoards();setTimeout(apply,0)}}
     let nav=document.getElementById('attentionSwitch');
     if(!nav){nav=document.createElement('section');nav.id='attentionSwitch';nav.className='attentionSwitch';nav.innerHTML=`
       <button class="attentionTab" data-view="available">🔔 <strong>Disponibles</strong><small>Órdenes libres para tomar</small><span class="attentionCount">0</span></button>
@@ -125,7 +126,7 @@
   function apply(){
     if(busy)return;busy=true;
     const ui=ensure();if(!ui){busy=false;return}
-    if(focusAttentionOnce()){busy=false;return}
+    if(focusAttentionOnce()){busy=false;setTimeout(apply,0);return}
     const mode=familySelected(),c=counts(),available=document.querySelector('.workPanel.available'),assigned=document.querySelector('.workPanel.assigned'),mine=document.querySelector('.workPanel.active'),history=document.querySelector('.workPanel.history');
     ui.nav.classList.toggle('show',mode);ui.grid.classList.toggle('attentionMode',mode);ui.grid.classList.toggle('allDetailsOpen',!mode&&allDetailsOpen);ui.grid.classList.toggle('allDetailsCollapsed',!mode&&!allDetailsOpen);const all=document.getElementById('familyAll');if(all)all.textContent=mode?'Ver todas':allDetailsOpen?'Ocultar todas':'Ver todas';
     ui.nav.querySelectorAll('.attentionTab').forEach(b=>{const k=b.dataset.view,n=c[k],count=b.querySelector('.attentionCount');b.classList.toggle('on',k===view);b.classList.toggle('needsAttention',n>0);if(count.textContent!==String(n))count.textContent=n});
