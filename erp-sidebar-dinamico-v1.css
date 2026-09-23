@@ -62,3 +62,7 @@ body.chatSidebarBootReady .menuAside{visibility:visible!important}
 .chatManager.chatConversationFocus .chatPanel>.chatHead .chatClose{display:none!important}
 .chatManager.chatConversationFocus .chatMessages{overflow:auto!important;border-radius:9px 9px 0 0!important}
 .chatManager.chatConversationFocus .chatForm{border-radius:0 0 9px 9px!important}
+
+/* Opción de navegación activa: permanece visible al abrir módulos dentro del panel. */
+.menuAside button.erpNavActive,.menuAside button[aria-current="page"]{background:linear-gradient(90deg,#118fd0,#1d75bd)!important;color:#fff!important;border-left-color:#76d6ff!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 5px 13px rgba(0,0,0,.14)!important}
+.menuAside button.erpNavActive span,.menuAside button[aria-current="page"] span{color:#fff!important;font-weight:900!important}
