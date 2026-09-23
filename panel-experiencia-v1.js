@@ -85,7 +85,6 @@ function ensureMenuShell(){
       let title=card.querySelector('h3')?.textContent?.trim(),icon=card.querySelector('.ico')?.textContent?.trim()||'•',href=link?.getAttribute('href');
       if(!link||!title||getComputedStyle(card).display==='none'||getComputedStyle(link).display==='none')return null;
       if(isRubi&&norm(title).includes('AREA TECNICA')){title='Área técnica · Supervisión';icon='🛠️';href='panel-general-supervisor-visual.html?v='+Date.now()}
-      if(isRubi&&norm(title)==='INVENTARIO')href='index.html?open=existencias&v='+Date.now();
       if(norm(title)==='TRANSFERENCIAS')title='Solicitudes y transferencias de equipos y materiales';
       return{title,icon,href,i}
     }).filter(Boolean);
