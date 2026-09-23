@@ -209,4 +209,45 @@
   [0,120,320,700,1400,2500].forEach(ms=>setTimeout(()=>{ensureStyle();applyMenu();renderDashboard();syncDashboard()},ms));
 
   setInterval(syncDashboard,5000);
+
+  /* Resumen real: no depende de los contadores decorativos del panel principal. */
+  const SUPERVISOR_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-panel-supervisor';
+  const estadoFinal=s=>['COMPLETADA','FINALIZADA','CANCELADA','CANCELADA EN SITIO','CANCELADA_EN_SITIO','NO EJECUTADA CLIENTE','NO_EJECUTADA_CLIENTE'].includes(norm(s));
+  const estadoPendiente=s=>['CREADA','PENDIENTE','POR ASIGNAR','ASIGNADA'].includes(norm(s));
+  let resumenReal=null,resumenCargando=null;
+  async function cargarResumenReal(){
+    if(resumenCargando)return resumenCargando;
+    resumenCargando=(async()=>{
+      try{
+        const r=await fetch(SUPERVISOR_API,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','x-session':me.session_token||''},body:JSON.stringify({action:'dashboard'})});
+        const d=await r.json().catch(()=>({}));
+        if(!r.ok||d.error)throw new Error(d.error||'No se pudo cargar el resumen');
+        const orders=Array.isArray(d.orders)?d.orders:[];
+        resumenReal={
+          pending:orders.filter(o=>estadoPendiente(o.estado)).length,
+          field:orders.filter(o=>!estadoFinal(o.estado)&&!estadoPendiente(o.estado)).length,
+          done:orders.filter(o=>estadoFinal(o.estado)).length
+        };
+        pintarResumenReal();
+      }catch(e){console.warn('Resumen supervisor:',e)}
+      finally{resumenCargando=null}
+      return resumenReal;
+    })();
+    return resumenCargando;
+  }
+  function pintarResumenReal(){
+    if(!resumenReal)return;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=String(v)};
+    set('supPending',resumenReal.pending);set('supField',resumenReal.field);set('supDone',resumenReal.done);
+    const list=document.getElementById('supAttentionList');if(!list)return;
+    const rows=[];
+    if(resumenReal.pending>0)rows.push('<div class="dashItem dashAlert"><span>📋</span><span>Requerimientos que todavía necesitan atención</span><b>'+resumenReal.pending+'</b></div>');
+    if(resumenReal.field>0)rows.push('<div class="dashItem"><span>🚐</span><span>Trabajos que se encuentran en campo</span><b>'+resumenReal.field+'</b></div>');
+    if(!resumenReal.pending&&!resumenReal.field)rows.push('<div class="dashItem dashOk"><span>✓</span><span>No hay trabajos pendientes o en proceso reportados en este momento</span></div>');
+    rows.push('<div class="dashItem"><span>📣</span><span>Revisa novedades de grupos, vehículos y apoyos interzonales desde Supervisión técnica</span></div>');
+    list.innerHTML=rows.join('');
+  }
+  const syncDashboardBase=syncDashboard;
+  syncDashboard=function(){syncDashboardBase();pintarResumenReal();cargarResumenReal()};
+
 })();
