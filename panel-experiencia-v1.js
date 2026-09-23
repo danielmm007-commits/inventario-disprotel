@@ -78,7 +78,7 @@ function ensureMenuShell(){
 
     menuShell=shell;
     menuHome=shell.querySelector('.menuHome');
-    menuFrame=shell.querySelector('.menuFrame');
+    menuFrame=shell.querySelector('.menuFrame');menuFrame?.setAttribute('allow','geolocation');
 
     const cards=[...main.querySelectorAll('.module')].map((card,i)=>{
       const link=card.querySelector('a.btn');
