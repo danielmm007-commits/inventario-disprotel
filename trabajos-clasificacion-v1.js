@@ -1,6 +1,6 @@
 (()=>{
   const ASSIGNED=new Set(['ASIGNADA','ASIGNADO','PENDIENTE_RECEPCION','PENDIENTE_CONFIRMACION']);
-  let view='available',busy=false,autoFocused=false;
+  let view='available',busy=false,autoFocused=false,allDetailsOpen=true;
   const css=`
   .attentionSwitch{display:none;grid-template-columns:repeat(4,1fr);gap:10px;margin:13px 0}
   .attentionSwitch.show{display:grid}
@@ -21,7 +21,7 @@
   .jobInstall .workKind{background:#eaf5ff;color:#075da8}
   .jobClosedOk .workKind{background:#e8f8ee;color:#126239}
   .jobClosedCancel .workKind{background:#fdecec;color:#991b1b}
-  .attentionMode .job.jobCompact:not(.expanded)>:not(.workKind):not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle){display:none!important}
+  .attentionMode .job.jobCompact:not(.expanded)>:not(.workKind):not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle),.workGrid.allDetailsCollapsed .job.jobCompact:not(.expanded)>:not(.workKind):not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle){display:none!important}.workGrid.allDetailsOpen .jobToggle{display:none!important}
   .jobToggle{position:relative;display:flex!important;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:11px;padding:12px 14px!important;border:1px solid #b7d7e9!important;border-radius:14px!important;background:linear-gradient(135deg,#eaf7ff,#ffffff 46%,#dcefff)!important;color:#082b5c!important;font-size:13px!important;font-weight:1000!important;letter-spacing:.02em;box-shadow:0 7px 18px #176fc426;overflow:hidden;animation:jobTogglePulse 1.8s ease-in-out infinite}
   .jobToggle:before{content:'📋';width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#fff;border:1px solid #cbe2ee;box-shadow:0 4px 10px #082b5c17;font-size:18px}
   .jobToggle:after{content:'';position:absolute;inset:-40% auto -40% -55%;width:48%;background:linear-gradient(90deg,transparent,#ffffff9c,transparent);transform:rotate(16deg);animation:jobToggleShine 2.6s ease-in-out infinite;pointer-events:none}
@@ -103,7 +103,7 @@
   function ensure(){
     const grid=document.querySelector('.workGrid'),catalog=document.querySelector('.catalogPanel');if(!grid||!catalog)return null;
     let nav=document.getElementById('attentionSwitch');
-    if(!nav){nav=document.createElement('section');nav.id='attentionSwitch';nav.className='attentionSwitch';nav.innerHTML=`
+    const all=document.getElementById('familyAll');if(all&&!all.dataset.detailsToggle){all.dataset.detailsToggle='1';all.addEventListener('click',()=>{const wasAll=all.classList.contains('on');allDetailsOpen=wasAll?!allDetailsOpen:true;if(!allDetailsOpen){window.__disprotelOpenJobId='';[...document.querySelectorAll('.job.expanded')].forEach(job=>job.classList.remove('expanded'))}setTimeout(apply,0)},true)}if(!nav){nav=document.createElement('section');nav.id='attentionSwitch';nav.className='attentionSwitch';nav.innerHTML=`
       <button class="attentionTab" data-view="available">🔔 <strong>Disponibles</strong><small>Órdenes libres para tomar</small><span class="attentionCount">0</span></button>
       <button class="attentionTab" data-view="assigned">📥 <strong>Asignados</strong><small>Pendientes de recibir</small><span class="attentionCount">0</span></button>
       <button class="attentionTab" data-view="active">🛠️ <strong>En ejecución</strong><small>Aceptados o en proceso</small><span class="attentionCount">0</span></button>
@@ -127,7 +127,7 @@
     const ui=ensure();if(!ui){busy=false;return}
     if(focusAttentionOnce()){busy=false;return}
     const mode=familySelected(),c=counts(),available=document.querySelector('.workPanel.available'),assigned=document.querySelector('.workPanel.assigned'),mine=document.querySelector('.workPanel.active'),history=document.querySelector('.workPanel.history');
-    ui.nav.classList.toggle('show',mode);ui.grid.classList.toggle('attentionMode',mode);
+    ui.nav.classList.toggle('show',mode);ui.grid.classList.toggle('attentionMode',mode);ui.grid.classList.toggle('allDetailsOpen',!mode&&allDetailsOpen);ui.grid.classList.toggle('allDetailsCollapsed',!mode&&!allDetailsOpen);const all=document.getElementById('familyAll');if(all)all.textContent=mode?'Ver todas':allDetailsOpen?'Ocultar todas':'Ver todas';
     ui.nav.querySelectorAll('.attentionTab').forEach(b=>{const k=b.dataset.view,n=c[k],count=b.querySelector('.attentionCount');b.classList.toggle('on',k===view);b.classList.toggle('needsAttention',n>0);if(count.textContent!==String(n))count.textContent=n});
     available?.classList.toggle('boardVisible',mode&&view==='available');
     assigned?.classList.toggle('boardVisible',mode&&view==='assigned');
