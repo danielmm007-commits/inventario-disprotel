@@ -122,7 +122,7 @@ function ensureMenuShell(){
       menuFrame.style.visibility='hidden';menuFrame.setAttribute('aria-busy','true');menuFrame.src=directModuleUrl(btn.dataset.href);
       document.body.classList.add('moduleOpen');aside.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===btn))
     });
-    try{const saved=JSON.parse(localStorage.getItem(moduleStateKey)||'null');if(saved?.href){const wanted=new URL(saved.href,location.href).pathname,restore=[...aside.querySelectorAll('[data-href]')].find(btn=>new URL(btn.dataset.href,location.href).pathname===wanted);if(restore)setTimeout(()=>restore.click(),60)}}catch{}
+    const restoreSavedModule=()=>{try{const saved=JSON.parse(localStorage.getItem(moduleStateKey)||'null');if(!saved?.href)return;const wanted=new URL(saved.href,location.href).pathname,restore=[...aside.querySelectorAll('[data-href]')].find(btn=>new URL(btn.dataset.href,location.href).pathname===wanted),framePath=(()=>{try{return menuFrame.contentWindow.location.pathname}catch{return''}})();if(restore&&(!document.body.classList.contains('moduleOpen')||framePath!==wanted))restore.click()}catch{}};[40,500,1400].forEach(delay=>setTimeout(restoreSavedModule,delay))
     document.documentElement.dataset.panelStaticHydrated='1';
   }
 
