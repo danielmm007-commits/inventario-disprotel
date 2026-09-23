@@ -2,15 +2,22 @@
   const session=(()=>{try{return JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'{}')}catch{return{}}})();
   const role=String(session?.rol||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toUpperCase();
   const mobileSupervisor=window.matchMedia('(max-width:680px)').matches&&role.includes('SUPERVISOR TECNICO');
+  const tecnicoOperativo=role==='TECNICO';
   if(mobileSupervisor)document.body.classList.add('supMobileAtomicWait');
 
   document.getElementById('panelBootCover')?.remove();
+  /* El perfil técnico nunca debe quedar bloqueado detrás del prepaint.
+     El menú puede terminar de hidratarse después, pero la base del perfil queda visible y usable. */
+  if(tecnicoOperativo){
+    document.getElementById('principalDirectPrepaint')?.remove();
+    document.body.classList.add('panelAtomicReady');
+  }
 
   if(!document.getElementById('panelAtomicPaint')){
     const st=document.createElement('style');
     st.id='panelAtomicPaint';
     st.textContent=`
-      body{visibility:hidden!important}
+      body{visibility:${tecnicoOperativo?'visible':'hidden'}!important}
       body.panelAtomicReady{visibility:visible!important}
       body.supMobileAtomicWait::before{
         content:'Cargando supervisión en vivo…';
