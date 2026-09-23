@@ -172,5 +172,73 @@ async def main():
     return 0
 
 
+
+
+# Integración opcional con DISPROTEL.
+# Si se definen SUPABASE_URL y DETECTOR_TOKEN, además de imprimir la lectura
+# puede enviarse el snapshot al backend inventario-onu-detector.
+def send_snapshot(payload):
+    import urllib.request
+    base=os.environ.get("SUPABASE_URL","").rstrip("/")
+    token=os.environ.get("DETECTOR_TOKEN","")
+    olt_codigo=os.environ.get("OLT_CODIGO","SALCEDO")
+    if not base or not token:
+        return None
+    body=json.dumps({
+        "action":"scanner-snapshot",
+        "olt_codigo":olt_codigo,
+        "olt_nombre":OLT_NAME,
+        "onts":payload.get("onts",[])
+    }).encode()
+    req=urllib.request.Request(
+        base+"/functions/v1/inventario-onu-detector",
+        data=body,
+        headers={
+            "Authorization":"Bearer "+token,
+            "Content-Type":"application/json",
+            "Accept":"application/json"
+        },
+        method="POST"
+    )
+    with urllib.request.urlopen(req,timeout=20) as resp:
+        raw=resp.read().decode("utf-8")
+        return json.loads(raw) if raw else {"ok":True}
+
+
+async def run_once():
+    onts=await read_autofind()
+    payload={
+        "ok":True,"read_only":True,"olt":OLT_NAME,"host":HOST,
+        "read_at":datetime.now(timezone.utc).isoformat(),
+        "pending_count":len(onts),"onts":onts
+    }
+    sent=send_snapshot(payload)
+    if sent is not None:
+        payload["backend"]=sent
+    return payload
+
+
+async def service_loop():
+    seconds=max(5,int(os.environ.get("OLT_POLL_SECONDS","10")))
+    while True:
+        try:
+            print(json.dumps(await run_once(),ensure_ascii=False))
+        except Exception as exc:
+            print(json.dumps({"ok":False,"olt":OLT_NAME,"error":str(exc)},ensure_ascii=False))
+        await asyncio.sleep(seconds)
+
+
+async def main():
+    if os.environ.get("OLT_SERVICE_MODE","0")=="1":
+        await service_loop()
+        return 0
+    try:
+        print(json.dumps(await run_once(),ensure_ascii=False,indent=2))
+        return 0
+    except Exception as exc:
+        print(json.dumps({"ok":False,"read_only":True,"olt":OLT_NAME,"host":HOST,"error":str(exc)},ensure_ascii=False,indent=2))
+        return 1
+
+
 if __name__ == "__main__":
     sys.exit(asyncio.run(main()))
