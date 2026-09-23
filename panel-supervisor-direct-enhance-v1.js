@@ -43,5 +43,8 @@
   async function refresh(){if(busy||!token())return;busy=true;try{const [d,g,s]=await Promise.all([call(PANEL,{action:'dashboard'}),call(GPS,{}).catch(()=>({puntos:[]})),call(SUPPORT,{action:'pending'}).catch(()=>({solicitudes:[]}))]);DATA=d;GPSDATA=g.puntos||[];SUPPORTS=s.solicitudes||[];paint()}catch(e){console.warn('panel-supervisor-direct-enhance-v1',e)}finally{busy=false}}
   document.getElementById('zone')?.addEventListener('change',()=>setTimeout(paint,40));
   const mo=new MutationObserver(()=>{if(DATA){renderProgress();renderAttention()}});mo.observe(document.body,{childList:true,subtree:true});
+  /* El panel base renueva sus tarjetas periódicamente. Esta conciliación liviana
+     repone la línea de avance si ese repintado la elimina, sin hacer otra consulta. */
+  setInterval(()=>{if(!DATA)return;const cards=[...document.querySelectorAll('.work')];if(cards.length&&cards.some(card=>!card.querySelector('.supDirectProgress')))renderProgress()},300);
   setTimeout(refresh,250);setInterval(refresh,8000);
 })();
