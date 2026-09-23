@@ -55,16 +55,20 @@
     const type=field(job,'TIPO DE TRABAJO')||field(job,'SERVICIO / PLAN');
     const damage=field(job,'DETALLE')||field(job,'DESCRIPCIÓN')||field(job,'DANO')||field(job,'DAÑO');
     const place=field(job,'DIRECCIÓN')||field(job,'SECTOR');
-    const by=field(job,'SOLICITADO POR');
+    const by=field(job,'CREADA POR')||field(job,'SOLICITADO POR');
     return [
       client&&['Cliente:',client],
       type&&['Tipo:',type],
       damage&&['Detalle:',damage],
       place&&['Ubicación:',place],
-      by&&['Solicitado:',by]
+      by&&['Creada por:',by]
     ].filter(Boolean);
   }
   function addQuickMeta(job,items){
+    const signature=JSON.stringify(items);
+    if(job.dataset.quickMetaSignature===signature)return;
+    job.dataset.quickMetaSignature=signature;
+    job.querySelector('.jobQuickMeta')?.remove();
     if(!items.length)return;
     const m=document.createElement('div');m.className='jobQuickMeta';
     items.forEach(([label,value])=>{
@@ -85,11 +89,11 @@
   }
   function compact(job){
     job.classList.add('jobCompact');
+    addQuickMeta(job,quick(job));
     if(job.dataset.compactReady)return;
     job.dataset.compactReady='1';
     const [cls,label]=kind(job);
     if(cls){job.classList.add(...cls.split(/\s+/).filter(Boolean));const k=document.createElement('span');k.className='workKind';k.textContent=label;job.prepend(k)}
-    addQuickMeta(job,quick(job));
     const id=job.dataset.ordenId||'';
     if(id&&window.__disprotelOpenJobId===id)job.classList.add('expanded');
     const b=document.createElement('button');b.type='button';b.className='jobToggle';b.textContent=job.classList.contains('expanded')?'OCULTAR DETALLE':'VER TRABAJO Y ACCIONES';
