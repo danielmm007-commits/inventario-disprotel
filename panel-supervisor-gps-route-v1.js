@@ -12,7 +12,7 @@
   const COLORS=['#176eb7','#e57a12','#7a4fd0','#1f8c5a','#c23b67','#8a6d15'];
 
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const norm=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim().toUpperCase();
+  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
   const token=()=>{try{return JSON.parse(sessionStorage.getItem(KEY)||'{}').session_token||''}catch{return''}};
   const fmt=v=>{try{return new Date(v).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})}catch{return'—'}};
   const valid=x=>Number.isFinite(Number(x?.latitud))&&Number.isFinite(Number(x?.longitud));
