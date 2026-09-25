@@ -49,14 +49,14 @@
     }
   }
   function injectEnhancerSafely(frame,w,d){
-    if(d.getElementById('panelSupervisorDirectEnhanceLoader')){injectScript(d,'supervisorReasignacionVisualLoader','supervisor-reasignacion-visual-v1.js');injectScript(d,'supervisorGpsRouteLoader','panel-supervisor-gps-route-v1.js');return true}
+    if(d.getElementById('panelSupervisorDirectEnhanceLoader')){injectScript(d,'supervisorReasignacionVisualLoader','supervisor-reasignacion-visual-v1.js');injectScript(d,'supervisorGpsRouteLoader','panel-supervisor-gps-route-v1.js');injectScript(d,'supervisorGruposNovedadesLoader','supervisor-grupos-novedades-v1.js');return true}
     const NativeMO=w.MutationObserver,captured=[];
     try{
       w.MutationObserver=class extends NativeMO{constructor(cb){super(cb);captured.push(this)}};
       const s=d.createElement('script');s.id='panelSupervisorDirectEnhanceLoader';s.src='panel-supervisor-direct-enhance-v1.js?v='+Date.now();s.async=false;
-      s.onload=()=>{captured.forEach(o=>{try{o.disconnect()}catch{}});w.MutationObserver=NativeMO;frame.dataset.supEnhancerSafe='1';injectScript(d,'supervisorReasignacionVisualLoader','supervisor-reasignacion-visual-v1.js');injectScript(d,'supervisorGpsRouteLoader','panel-supervisor-gps-route-v1.js')};
+      s.onload=()=>{captured.forEach(o=>{try{o.disconnect()}catch{}});w.MutationObserver=NativeMO;frame.dataset.supEnhancerSafe='1';injectScript(d,'supervisorReasignacionVisualLoader','supervisor-reasignacion-visual-v1.js');injectScript(d,'supervisorGpsRouteLoader','panel-supervisor-gps-route-v1.js');injectScript(d,'supervisorGruposNovedadesLoader','supervisor-grupos-novedades-v1.js')};
       s.onerror=()=>{w.MutationObserver=NativeMO};d.body.appendChild(s);
-      setTimeout(()=>{captured.forEach(o=>{try{o.disconnect()}catch{}});if(w.MutationObserver!==NativeMO)w.MutationObserver=NativeMO;injectScript(d,'supervisorReasignacionVisualLoader','supervisor-reasignacion-visual-v1.js');injectScript(d,'supervisorGpsRouteLoader','panel-supervisor-gps-route-v1.js')},1500);
+      setTimeout(()=>{captured.forEach(o=>{try{o.disconnect()}catch{}});if(w.MutationObserver!==NativeMO)w.MutationObserver=NativeMO;injectScript(d,'supervisorReasignacionVisualLoader','supervisor-reasignacion-visual-v1.js');injectScript(d,'supervisorGpsRouteLoader','panel-supervisor-gps-route-v1.js');injectScript(d,'supervisorGruposNovedadesLoader','supervisor-grupos-novedades-v1.js')},1500);
       return true;
     }catch(e){w.MutationObserver=NativeMO;console.warn('Enhancer seguro:',e);return false}
   }
