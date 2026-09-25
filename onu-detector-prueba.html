@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Detector ONU/ONT · Prueba</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef4f7;color:#17313d;font-family:Arial,sans-serif}.wrap{max-width:900px;margin:auto;padding:18px}.card{background:#fff;border:1px solid #d8e4ea;border-radius:18px;padding:16px;box-shadow:0 6px 20px #082b5c0d}.head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.head h1{margin:0;font-size:20px;color:#0c3564}.muted{color:#667d89;font-size:12px}.status{margin-top:12px;padding:11px;border-radius:12px;background:#f5f8fa;border:1px solid #d8e4ea}.status.ok{background:#eaf8ef;border-color:#b9e5ca;color:#17643e}.status.warn{background:#fff7dd;border-color:#ead18c;color:#725b00}.status.err{background:#fdecec;border-color:#edb4b4;color:#962828}.tools{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.tools button,.tools select{padding:10px 12px;border-radius:10px;border:1px solid #cbd9e1;background:#fff;font-weight:800}.tools button{background:#0d5ead;color:#fff;border:0;cursor:pointer}.list{display:grid;gap:9px;margin-top:14px}.onu{border:1px solid #d8e4ea;border-radius:14px;padding:12px;background:#fbfdfe}.onu b{font-size:13px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px;font-size:11px}.label{color:#71838e}.empty{padding:24px;text-align:center;color:#6f818b}@media(max-width:620px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<section class="card">
+<div class="head"><div><h1>📡 Detector ONU / ONT · Solo lectura</h1><div class="muted">Pantalla aislada de prueba. No autoriza, no vincula y no modifica órdenes.</div></div></div>
+<div class="tools">
+<select id="olt"><option value="SALCEDO">SALCEDO</option></select>
+<button id="refresh">↻ ACTUALIZAR LECTURA</button>
+</div>
+<div id="status" class="status">Consultando scanner…</div>
+<div id="list" class="list"></div>
+</section>
+</main>
+<script>
+(()=> {
+const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-onu-detector';
+const KEY='disprotel_login_general_v2';
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function ses(){try{return JSON.parse(sessionStorage.getItem(KEY)||'null')||JSON.parse(sessionStorage.getItem('disprotel_trabajos_test')||'null')||{}}catch{return{}}}
+function fmt(v){if(!v)return'—';try{return new Date(v).toLocaleString('es-EC',{timeZone:'America/Guayaquil'})}catch{return String(v)}}
+function ageText(sec){if(sec==null)return'Sin lectura';if(sec<60)return sec+' s';if(sec<3600)return Math.floor(sec/60)+' min';if(sec<86400)return Math.floor(sec/3600)+' h';return Math.floor(sec/86400)+' d'}
+async function load(){
+ const s=ses(),token=s.session_token||'';
+ if(!token){$('status').className='status err';$('status').textContent='No hay sesión válida. Abre esta prueba desde una sesión iniciada.';$('list').innerHTML='';return}
+ $('status').className='status';$('status').textContent='Consultando scanner…';$('list').innerHTML='';
+ try{
+  const r=await fetch(API+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','x-session':token},body:JSON.stringify({action:'autofind-read',olt_codigo:$('olt').value})});
+  const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'No se pudo consultar');
+  $('status').className='status '+(d.stale?'warn':'ok');
+  $('status').innerHTML=(d.stale?'⚠ LECTURA DESACTUALIZADA':'✅ LECTURA RECIENTE')+'<br><span class="muted">OLT: '+esc(d.olt_nombre||d.olt_codigo||'—')+' · última lectura: '+esc(fmt(d.last_read_at))+' · antigüedad: '+esc(ageText(d.age_seconds))+'</span>';
+  const items=d.items||[];
+  $('list').innerHTML=items.length?items.map(o=>'<article class="onu"><b>'+esc(o.modelo||'ONU/ONT')+' · '+esc(o.onu_sn_display||o.onu_sn||'—')+'</b><div class="grid"><div><span class="label">SN</span><br>'+esc(o.onu_sn||'—')+'</div><div><span class="label">PON / FSP</span><br>'+esc(o.pon||'—')+'</div><div><span class="label">Fabricante</span><br>'+esc(o.vendor||'—')+'</div><div><span class="label">Detectada</span><br>'+esc(fmt(o.detectada_at))+'</div><div><span class="label">Versión</span><br>'+esc(o.version||'—')+'</div><div><span class="label">Software</span><br>'+esc(o.software||'—')+'</div></div></article>').join(''):'<div class="empty">No hay ONU/ONT presentes en la última lectura guardada.</div>';
+ }catch(e){$('status').className='status err';$('status').textContent='⚠ '+String(e.message||e);$('list').innerHTML=''}
+}
+$('refresh').onclick=load;$('olt').onchange=load;load();
+})();
+</script>
+</body>
+</html>
