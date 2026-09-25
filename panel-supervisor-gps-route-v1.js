@@ -1,0 +1,1 @@
+(()=>{window.__DISPROTEL_GPS_ROUTE_MODULE__=true;})();
