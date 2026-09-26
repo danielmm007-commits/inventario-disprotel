@@ -17,7 +17,7 @@
     'Área técnica':['trabajos.ver','trabajos.aceptar','trabajos.cargar_evidencias'],
     'Solicitudes':['instalaciones.solicitar','soportes.solicitar','solicitudes.asignar','solicitudes.editar'],
     'IP y acceso remoto':['ip.ver','ip.solicitar','ip.asignar','remoto.solicitar'],
-    'Gestiones administrativas':['instalaciones.solicitar','soportes.solicitar','solicitudes.editar','ip.asignar']
+    'Gestiones administrativas':['solicitudes.ver','instalaciones.solicitar','soportes.solicitar','solicitudes.editar','ip.ver','ip.asignar']
   };
   const rootRules=[['usuarios.ver','usuarios.crear','usuarios.editar'],['permisos.ver','permisos.asignar','perfiles.gestionar'],['grupos.ver','grupos.gestionar','bodegas.gestionar'],['auditoria.ver','seguridad.configurar']];
   function canAny(allowed,keys){return allowed.has('*')||keys.some(key=>allowed.has(key))}
