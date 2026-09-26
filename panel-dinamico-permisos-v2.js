@@ -16,14 +16,15 @@
     'Transferencias':['transferencias.ver','transferencias.solicitar','transferencias.recibir'],
     'Área técnica':['trabajos.ver','trabajos.aceptar','trabajos.cargar_evidencias'],
     'Solicitudes':['instalaciones.solicitar','soportes.solicitar','solicitudes.asignar','solicitudes.editar'],
-    'IP y acceso remoto':['ip.ver','ip.solicitar','ip.asignar','remoto.solicitar']
+    'IP y acceso remoto':['ip.ver','ip.solicitar','ip.asignar','remoto.solicitar'],
+    'Gestiones administrativas':['instalaciones.solicitar','soportes.solicitar','solicitudes.editar','ip.asignar']
   };
   const rootRules=[['usuarios.ver','usuarios.crear','usuarios.editar'],['permisos.ver','permisos.asignar','perfiles.gestionar'],['grupos.ver','grupos.gestionar','bodegas.gestionar'],['auditoria.ver','seguridad.configurar']];
   function canAny(allowed,keys){return allowed.has('*')||keys.some(key=>allowed.has(key))}
   function ordenarModulos(profileName){
     const role=normalize(profileName),modules=document.querySelector('.modules');if(!modules)return;
     const prioridad=role.includes('SUPERVISOR')||role.includes('ADMINISTRADOR');if(!prioridad)return;
-    const orden=['Área técnica','IP y acceso remoto','Solicitud de IP y acceso remoto','Solicitudes','Inventario','Compras e ingresos','Transferencias'];
+    const orden=['Área técnica','IP y acceso remoto','Solicitud de IP y acceso remoto','Gestiones administrativas','Solicitudes','Inventario','Compras e ingresos','Transferencias'];
     const cards=[...modules.querySelectorAll('.module')];
     orden.forEach(nombre=>{const card=cards.find(c=>normalize(c.querySelector('h3')?.textContent)===normalize(nombre));if(card)modules.appendChild(card)});
     cards.filter(c=>!orden.some(nombre=>normalize(c.querySelector('h3')?.textContent)===normalize(nombre))).forEach(c=>modules.appendChild(c));
