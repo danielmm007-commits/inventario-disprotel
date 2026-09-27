@@ -79,6 +79,102 @@ def parse_autofind(text):
     return onts
 
 
+
+def parse_ont_info_by_sn(text, requested_sn):
+    low = text.lower()
+    not_found = (
+        "does not exist" in low
+        or "do not exist" in low
+        or "not exist" in low
+        or "failure: the ont" in low
+        or "failure: ont" in low
+    )
+    ont_id = _field(text, r"ONT-ID\s*:\s*(.+)")
+    fsp = _field(text, r"F/S/P\s*:\s*(.+)")
+    run_state = _field(text, r"Run state\s*:\s*(.+)")
+    sn = _field(text, r"SN\s*:\s*(.+)")
+    found = (not not_found) and (
+        ont_id != "-" or fsp != "-" or run_state != "-" or sn != "-"
+    )
+    return {
+        "found": found,
+        "onu_sn": requested_sn.upper(),
+        "ont_id": None if ont_id == "-" else ont_id,
+        "pon": None if fsp == "-" else fsp,
+        "run_state": None if run_state == "-" else run_state,
+        "reported_sn": None if sn == "-" else sn,
+        "descripcion": "ONU configurada en OLT" if found else "ONU no encontrada en configuración OLT",
+    }
+
+
+async def read_ont_by_sn(sn):
+    if not USER or not PASSWORD:
+        raise RuntimeError("Faltan OLT_USER / OLT_PASSWORD en variables de entorno.")
+
+    requested = str(sn or "").strip().upper()
+    if not requested:
+        raise RuntimeError("SN vacío para consulta OLT.")
+
+    reader = writer = None
+    try:
+        reader, writer = await telnetlib3.open_connection(
+            host=HOST,
+            port=PORT,
+            shell=None,
+            connect_minwait=0.05,
+        )
+
+        await read_until(reader, "User name:")
+        writer.write(USER + "\n")
+        await writer.drain()
+
+        await read_until(reader, "User password:")
+        writer.write(PASSWORD + "\n")
+        await writer.drain()
+
+        login = await read_until(reader, ">")
+        if ">" not in login:
+            raise RuntimeError("No se obtuvo prompt de usuario de la OLT.")
+
+        writer.write("enable\n")
+        await writer.drain()
+        await read_until(reader, "#")
+
+        writer.write(f"display ont info by-sn {requested}\n")
+        await writer.drain()
+
+        response = ""
+        while PROMPT not in response:
+            chunk = await asyncio.wait_for(reader.read(1024), timeout=12)
+            if not chunk:
+                break
+            response += chunk
+            if "{ <cr>||<K> }:" in response and "Command:" not in response:
+                writer.write("\n")
+                await writer.drain()
+                await asyncio.sleep(0.15)
+            if "Press 'Q' to break" in chunk or "More" in chunk:
+                writer.write(" ")
+                await writer.drain()
+                await asyncio.sleep(0.15)
+
+        result = parse_ont_info_by_sn(response, requested)
+        result["raw_excerpt"] = response[-1200:]
+        return result
+    finally:
+        if writer is not None:
+            try:
+                writer.write("quit\n")
+                await writer.drain()
+                answer = await read_until(reader, "(y/n)[n]:", timeout=3)
+                if "(y/n)[n]:" in answer:
+                    writer.write("y\n")
+                    await writer.drain()
+            except Exception:
+                pass
+            writer.close()
+
+
 async def read_autofind():
     if not USER or not PASSWORD:
         raise RuntimeError("Faltan OLT_USER / OLT_PASSWORD en variables de entorno.")
@@ -209,6 +305,58 @@ def send_snapshot(payload):
         "onts":payload.get("onts",[])
     })
 
+
+def baja_backend_call(action, payload=None):
+    import urllib.request
+    base=os.environ.get("SUPABASE_URL","").rstrip("/")
+    token=os.environ.get("DETECTOR_TOKEN","")
+    olt_codigo=os.environ.get("OLT_CODIGO","SALCEDO")
+    if not base or not token:
+        return None
+    data={"action":action,"olt_codigo":olt_codigo}
+    if payload:
+        data.update(payload)
+    req=urllib.request.Request(
+        base+"/functions/v1/inventario-bajas-servicio",
+        data=json.dumps(data).encode(),
+        headers={
+            "Authorization":"Bearer "+token,
+            "Content-Type":"application/json",
+            "Accept":"application/json"
+        },
+        method="POST"
+    )
+    with urllib.request.urlopen(req,timeout=20) as resp:
+        raw=resp.read().decode("utf-8")
+        return json.loads(raw) if raw else {"ok":True}
+
+
+async def process_baja_requests():
+    pending=baja_backend_call("scanner-pending") or {}
+    rows=pending.get("solicitudes") or []
+    results=[]
+    for row in rows:
+        req_id=str(row.get("id") or "")
+        sn=str(row.get("onu_sn") or "").strip().upper()
+        if not req_id or not sn:
+            continue
+        try:
+            info=await read_ont_by_sn(sn)
+            payload={
+                "id":req_id,
+                "onu_sn":sn,
+                "found":bool(info.get("found")),
+                "run_state":info.get("run_state"),
+                "pon":info.get("pon"),
+                "ont_id":info.get("ont_id"),
+                "descripcion":info.get("descripcion"),
+            }
+            sent=baja_backend_call("scanner-result",payload) or {}
+            results.append({"id":req_id,"sn":sn,"olt":info,"backend":sent})
+        except Exception as exc:
+            results.append({"id":req_id,"sn":sn,"error":str(exc)})
+    return {"pending_count":len(rows),"results":results}
+
 async def run_once():
     onts=await read_autofind()
     payload={
@@ -228,11 +376,22 @@ async def service_loop():
         try:
             pending=backend_call("scanner-pending") or {}
             count=int(pending.get("pending_count",0) or 0)
+            baja=await process_baja_requests()
+            baja_count=int(baja.get("pending_count",0) or 0)
             if count>0:
                 payload=await run_once()
                 payload["trigger"]="SOLICITUD_OT"
                 payload["requests"]=count
+                payload["bajas"]=baja
                 print(json.dumps(payload,ensure_ascii=False))
+            elif baja_count>0:
+                print(json.dumps({
+                    "ok":True,
+                    "read_only":True,
+                    "olt":OLT_NAME,
+                    "trigger":"VERIFICACION_BAJA",
+                    "bajas":baja
+                },ensure_ascii=False))
             else:
                 print(json.dumps({
                     "ok":True,
@@ -240,7 +399,8 @@ async def service_loop():
                     "olt":OLT_NAME,
                     "waiting":True,
                     "pending_requests":0,
-                    "message":"Sin solicitudes ONU pendientes. No se consulta la OLT."
+                    "pending_bajas":0,
+                    "message":"Sin solicitudes ONU ni verificaciones de baja pendientes. No se consulta la OLT."
                 },ensure_ascii=False))
         except Exception as exc:
             print(json.dumps({"ok":False,"olt":OLT_NAME,"error":str(exc)},ensure_ascii=False))
