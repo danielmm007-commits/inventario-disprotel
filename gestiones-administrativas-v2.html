@@ -1,7 +1,7 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Gestiones administrativas · DISPROTEL</title>
 <style>
-*{box-sizing:border-box}body{margin:0;padding:16px;background:#eef4f7;color:#17313d;font-family:Arial,sans-serif}.wrap{max-width:1100px;margin:auto}.hero,.card{background:#fff;border:1px solid #d8e4ea;border-radius:20px;box-shadow:0 8px 24px #082b5c12}.hero{padding:20px;background:linear-gradient(135deg,#0b356f,#168bc0);color:#fff}.hero h1{margin:0 0 5px}.hero p{margin:0;color:#dff3ff}.card{padding:18px;margin-top:14px}h2{margin:0 0 10px}label{display:block;font-weight:800;margin:12px 0 6px}input,select,textarea{width:100%;padding:12px;border:1px solid #cbd9e1;border-radius:10px;background:#fff;font-size:15px}textarea{min-height:82px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.search,.codeRow{display:grid;grid-template-columns:1fr auto;gap:8px}.search button,.codeRow button,button{border:0;border-radius:10px;padding:12px;background:#17313d;color:#fff;font-weight:900;cursor:pointer}.secondary{background:#e8eef1;color:#17313d}.warn{background:#fff5cf;border:1px solid #e7c668;padding:12px;border-radius:12px;color:#6b5600}.result,.pending{border:1px solid #d8e4ea;border-radius:14px;padding:12px;margin-top:9px;background:#fbfdfe}.service{border-top:1px solid #e1e8ec;margin-top:8px;padding-top:8px}.muted{font-size:12px;color:#677e8a}.pill{display:inline-block;padding:5px 8px;border-radius:999px;background:#eaf8ef;color:#17643e;font-size:11px;font-weight:900}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.hidden{display:none!important}.msg{margin-top:10px;padding:10px;border-radius:10px}.ok{background:#eaf8ef;color:#17643e}.err{background:#fdecec;color:#962828}.codeBox{margin-top:12px;padding:12px;border:1px solid #cfe0e8;border-radius:12px;background:#f6fafc}@media(max-width:700px){.grid,.search,.codeRow{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;padding:16px;background:#eef4f7;color:#17313d;font-family:Arial,sans-serif}.wrap{max-width:1100px;margin:auto}.hero,.card{background:#fff;border:1px solid #d8e4ea;border-radius:20px;box-shadow:0 8px 24px #082b5c12}.hero{padding:20px;background:linear-gradient(135deg,#0b356f,#168bc0);color:#fff}.hero h1{margin:0 0 5px}.hero p{margin:0;color:#dff3ff}.card{padding:18px;margin-top:14px}h2{margin:0 0 10px}label{display:block;font-weight:800;margin:12px 0 6px}input,select,textarea{width:100%;padding:12px;border:1px solid #cbd9e1;border-radius:10px;background:#fff;font-size:15px}textarea{min-height:82px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.search,.codeRow{display:grid;grid-template-columns:1fr auto;gap:8px}.search button,.codeRow button,button{border:0;border-radius:10px;padding:12px;background:#17313d;color:#fff;font-weight:900;cursor:pointer}.secondary{background:#e8eef1;color:#17313d}.warn{background:#fff5cf;border:1px solid #e7c668;padding:12px;border-radius:12px;color:#6b5600}.result,.pending{border:1px solid #d8e4ea;border-radius:14px;padding:12px;margin-top:9px;background:#fbfdfe}.service{border-top:1px solid #e1e8ec;margin-top:8px;padding-top:8px}.muted{font-size:12px;color:#677e8a}.pill{display:inline-block;padding:5px 8px;border-radius:999px;background:#eaf8ef;color:#17643e;font-size:11px;font-weight:900}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.hidden{display:none!important}.msg{margin-top:10px;padding:10px;border-radius:10px}.ok{background:#eaf8ef;color:#17643e}.err{background:#fdecec;color:#962828}.codeBox{margin-top:12px;padding:12px;border:1px solid #cfe0e8;border-radius:12px;background:#f6fafc}.verifyGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.verifyBox{padding:10px;border-radius:10px;border:1px solid #d7e3e9;background:#f8fbfc}.verifyBox.good{background:#eaf8ef;border-color:#b9e5ca;color:#17643e}.verifyBox.bad{background:#fdecec;border-color:#efb4bc;color:#962828}.verifyBox.wait{background:#fff7dd;border-color:#ebd18b;color:#715800}.retireRow{border:1px solid #d8e4ea;border-radius:14px;padding:13px;margin-top:10px;background:#fff}.retireTitle{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.retireTitle b{font-size:15px}@media(max-width:700px){.grid,.search,.codeRow{grid-template-columns:1fr}}
 </style></head><body><main class="wrap">
 <section class="hero"><h1>🗂 Gestiones administrativas</h1><p>Gestiones de oficina que no requieren intervención técnica directa.</p></section>
 <section class="card"><h2>🔄 Cambio de titular</h2><div class="warn"><b>Ticket administrativo:</b> primero registra el cambio aquí. El nuevo código de servicio se ingresa manualmente cuando Fernando lo obtenga del sistema externo.</div>
@@ -13,11 +13,12 @@
 <label>Observación</label><textarea id="obs" placeholder="Detalle administrativo del cambio"></textarea>
 <button id="registrar" style="margin-top:12px">GENERAR TICKET DE CAMBIO DE TITULAR</button><div id="formMsg"></div></section>
 <section class="card"><h2>📋 Cambios pendientes</h2><div class="muted">El código nuevo se registra manualmente. El código anterior siempre queda conservado en el historial.</div><button id="recargar" class="secondary" style="margin-top:10px">↻ ACTUALIZAR</button><div id="pendientes"></div></section>
+<section class="card"><h2>📥 Bajas de servicio pendientes</h2><div class="muted">Aparecen aquí las OTs de RETIRO ya completadas cuyo servicio todavía sigue activo. Antes de cerrar la baja se verifica MikroTik y, cuando aplica fibra, que la ONU ya no continúe configurada en la OLT.</div><button id="recargarBajas" class="secondary" style="margin-top:10px">↻ ACTUALIZAR BAJAS</button><div id="bajas"></div></section>
 </main><script>
-const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-cambios-titular',KEY='disprotel_login_general_v2';let SEL=null;
+const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-cambios-titular',API_B='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-bajas-servicio',KEY='disprotel_login_general_v2';let SEL=null;
 const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),up=v=>String(v??'').toLocaleUpperCase('es-EC');
 function ses(){try{return JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{return{}}}
-async function post(payload){const s=ses(),r=await fetch(API+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','x-session':s.session_token||''},body:JSON.stringify({session_token:s.session_token||'',...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error');return d}
+async function postTo(url,payload){const s=ses(),r=await fetch(url+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','x-session':s.session_token||''},body:JSON.stringify({session_token:s.session_token||'',...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error');return d}const post=payload=>postTo(API,payload),postBaja=payload=>postTo(API_B,payload)
 function msg(id,t,ok=false){const e=$(id);e.className='msg '+(ok?'ok':'err');e.textContent=t}
 async function buscar(){const q=$('q').value.trim();if(q.length<2)return msg('searchMsg','Escribe al menos 2 caracteres.');try{msg('searchMsg','Buscando...',true);const d=await post({action:'search',q});$('searchMsg').className='';$('searchMsg').textContent='';const cs=d.clientes||[];$('resultados').innerHTML=cs.length?cs.map(c=>'<div class="result"><b>'+esc(up(c.nombre_completo))+'</b><div class="muted">'+esc(c.identificacion||'SIN DOCUMENTO')+' · '+esc(c.telefono||'SIN TELÉFONO')+'</div>'+((c.servicios||[]).map(s=>'<div class="service"><b>'+esc(s.codigo_servicio||'SIN CÓDIGO')+'</b><div class="muted">'+esc(up(s.direccion||'SIN DIRECCIÓN'))+' · IP '+esc(s.ip||'SIN IP')+' · '+esc(up(s.router||'SIN ROUTER'))+'</div><button class="secondary" style="margin-top:7px" onclick=\'usar('+JSON.stringify(JSON.stringify({c,s}))+')\'>GENERAR CAMBIO DE TITULAR</button></div>').join(''))+'</div>').join(''):'<div class="msg err">No encontré servicios.</div>'}catch(e){msg('searchMsg',e.message)}}
 function usar(raw){const x=JSON.parse(raw);SEL=x;$('servicioActual').innerHTML='<b>CÓDIGO ACTUAL: '+esc(x.s.codigo_servicio||'—')+'</b><br><span class="muted">Titular actual: '+esc(up(x.c.nombre_completo))+' · '+esc(x.c.identificacion||'SIN DOCUMENTO')+'<br>'+esc(up(x.s.direccion||'SIN DIRECCIÓN'))+' · IP '+esc(x.s.ip||'SIN IP')+' · '+esc(up(x.s.router||'SIN ROUTER'))+'</span>';$('nuevoNombre').value='';$('nuevoCedula').value='';$('nuevoTelefono').value='';$('nuevoCorreo').value='';$('beneficio').value='NO_APLICA';$('obs').value='';$('formCard').classList.remove('hidden');$('formCard').scrollIntoView({behavior:'smooth',block:'start'})}
@@ -27,5 +28,62 @@ async function guardarCodigo(id){const el=$('codigo_'+id),codigo=up(el?.value.tr
 window.guardarCodigo=guardarCodigo;
 async function cancelar(id){const motivo=prompt('Motivo de cancelación (opcional):')||'';try{await post({action:'cancel',id,motivo:up(motivo)});await cargar()}catch(e){alert(e.message)}}window.cancelar=cancelar;
 async function cargar(){try{const d=await post({action:'list',estado:'PENDIENTE'}),xs=d.items||[];$('pendientes').innerHTML=xs.length?xs.map(x=>'<div class="pending"><div><span class="pill">PENDIENTE</span> <b>CAMBIO DE TITULAR</b></div><div style="margin-top:8px"><b>ANTES:</b> '+esc(up(x.titular_anterior_nombre))+' '+(x.titular_anterior_identificacion?'· '+esc(x.titular_anterior_identificacion):'')+'</div><div><b>DESPUÉS:</b> '+esc(up(x.titular_nuevo_nombre))+' '+(x.titular_nuevo_identificacion?'· '+esc(x.titular_nuevo_identificacion):'')+'</div><div class="muted" style="margin-top:7px"><b>Código anterior:</b> '+esc(x.codigo_servicio_snapshot||'—')+'<br>Beneficio: '+esc(x.beneficiario_nuevo||'NO_APLICA')+' · IP: '+esc(x.ip_snapshot||'—')+' · Router: '+esc(x.router_snapshot||'—')+'<br>Dirección: '+esc(up(x.direccion_snapshot||'—'))+'</div><div class="codeBox"><label style="margin-top:0">Nuevo código de servicio</label><div class="codeRow"><input id="codigo_'+esc(x.id)+'" value="'+esc(x.codigo_servicio_nuevo_confirmado||'')+'" placeholder="Ej. DSPR00000987"><button onclick="guardarCodigo(\''+esc(x.id)+'\')">GUARDAR CÓDIGO</button></div><div class="muted" style="margin-top:6px">'+(x.codigo_servicio_nuevo_confirmado?'Ingresado manualmente':'Pendiente de ingreso')+(x.codigo_nuevo_editado_at?' · '+esc(new Date(x.codigo_nuevo_editado_at).toLocaleString('es-EC')):'')+'</div></div><div class="actions"><button class="secondary" disabled>COMPLETAR CAMBIO · AÚN NO HABILITADO</button><button class="secondary" onclick="cancelar(\''+esc(x.id)+'\')">CANCELAR REGISTRO</button></div></div>').join(''):'<div class="muted" style="margin-top:10px">No hay cambios de titular pendientes.</div>'}catch(e){$('pendientes').innerHTML='<div class="msg err">'+esc(e.message)+'</div>'}}
-$('buscar').onclick=buscar;$('q').addEventListener('keydown',e=>{if(e.key==='Enter')buscar()});$('registrar').onclick=registrar;$('recargar').onclick=cargar;(async()=>{try{await post({action:'context'});await cargar()}catch(e){document.body.innerHTML='<main class="wrap"><div class="card msg err">'+esc(e.message)+'</div></main>'}})();
+
+function vbox(title,state,text){
+ const cls=state==='OK'?'good':state==='BAD'?'bad':'wait';
+ return '<div class="verifyBox '+cls+'"><b>'+esc(title)+'</b><div style="margin-top:4px">'+esc(text)+'</div></div>';
+}
+function rbLabel(v){
+ if(!v)return['WAIT','SIN VERIFICAR'];
+ if(v.rb_estado==='AUSENTE')return['OK','✅ ELIMINADO DEL RB'];
+ if(v.rb_estado==='PRESENTE')return['BAD','❌ AÚN PRESENTE EN RB'];
+ if(v.rb_estado==='NO_VERIFICABLE')return['WAIT','⚠️ NO SE PUEDE VERIFICAR'];
+ return['WAIT','PENDIENTE'];
+}
+function oltLabel(v){
+ if(!v)return['WAIT','SIN VERIFICAR'];
+ if(v.olt_estado==='AUSENTE'||v.olt_estado==='NO_CONFIGURADO')return['OK',v.olt_estado==='AUSENTE'?'✅ ONU ELIMINADA DE OLT':'✅ NO REQUIERE OLT'];
+ if(v.olt_estado==='PRESENTE_ONLINE')return['BAD','❌ ONU AÚN CONFIGURADA · ONLINE'];
+ if(v.olt_estado==='PRESENTE_OFFLINE')return['BAD','❌ ONU AÚN CONFIGURADA · OFFLINE'];
+ if(v.olt_estado==='ERROR')return['WAIT','⚠️ ERROR / FALTA DATO'];
+ return['WAIT','⏳ PENDIENTE DE LECTURA OLT'];
+}
+async function cargarBajas(){
+ const box=$('bajas');if(!box)return;
+ try{
+  const d=await postBaja({action:'list-pending'}),xs=d.items||[];
+  box.innerHTML=xs.length?xs.map(x=>{
+    const v=x.verificacion||null,rb=rbLabel(v),ol=oltLabel(v),sv=x.servicio||{};
+    return '<div class="retireRow"><div class="retireTitle"><span class="pill">RETIRO COMPLETADO</span><b>'+esc(x.id_orden||'OT')+' · '+esc(up(x.cliente_nombre||''))+'</b></div>'+
+      '<div class="muted" style="margin-top:7px"><b>Servicio:</b> '+esc(sv.codigo_servicio_legacy||'SIN CÓDIGO')+' · <b>IP:</b> '+esc(sv.ip_cliente||'SIN IP')+' · <b>Router:</b> '+esc(x.router?.nombre||'SIN ROUTER')+'<br><b>Dirección:</b> '+esc(up(sv.direccion||'SIN DIRECCIÓN'))+'</div>'+
+      '<div class="verifyGrid">'+vbox('MikroTik',rb[0],rb[1])+vbox('OLT / ONU',ol[0],ol[1])+'</div>'+
+      (v&&v.onu_sn?'<div class="muted" style="margin-top:7px"><b>ONU:</b> '+esc(v.onu_sn)+' · '+esc(v.olt_codigo||'OLT POR CONFIRMAR')+'</div>':'')+
+      '<div class="actions"><button onclick="verificarBaja(\''+esc(x.id)+'\')">🔎 VERIFICAR BAJA</button>'+
+      (v&&v.rb_estado==='AUSENTE'&&['AUSENTE','NO_CONFIGURADO'].includes(v.olt_estado)?'<button onclick="cerrarBaja(\''+esc(x.id)+'\')">✅ CERRAR BAJA DEL SERVICIO</button>':'')+
+      (v&&(!v.onu_sn||v.olt_estado==='ERROR')?'<button class="secondary" onclick="ponerSn(\''+esc(x.id)+'\',\''+esc(v.onu_sn||'')+'\',\''+esc(v.olt_codigo||'SALCEDO')+'\')">✏️ DEFINIR ONU / OLT</button>':'')+
+      '</div></div>';
+  }).join(''):'<div class="muted" style="margin-top:10px">No hay retiros completados pendientes de baja.</div>';
+ }catch(e){box.innerHTML='<div class="msg err">'+esc(e.message)+'</div>'}
+}
+async function verificarBaja(id){
+ try{
+   const d=await postBaja({action:'refresh',orden_id:id});
+   await cargarBajas();
+   if(d.verificacion?.olt_estado==='PENDIENTE'){
+     setTimeout(()=>cargarBajas(),4500);
+     setTimeout(()=>cargarBajas(),9000);
+   }
+ }catch(e){alert(e.message)}
+}
+async function cerrarBaja(id){
+ if(!confirm('¿Confirmas cerrar la baja? El cliente y su historial se conservarán; únicamente el servicio quedará RETIRADO e inactivo.'))return;
+ try{await postBaja({action:'close',orden_id:id});await cargarBajas();alert('Servicio retirado correctamente. El historial del cliente se conserva.')}catch(e){alert(e.message)}
+}
+async function ponerSn(id,actual,olt){
+ const sn=up(prompt('Serial de la ONU:',actual||'')||'').trim();if(!sn)return;
+ const code=up(prompt('Código de OLT:',olt||'SALCEDO')||'').trim();if(!code)return;
+ try{await postBaja({action:'set-sn',orden_id:id,onu_sn:sn,olt_codigo:code});await verificarBaja(id)}catch(e){alert(e.message)}
+}
+window.verificarBaja=verificarBaja;window.cerrarBaja=cerrarBaja;window.ponerSn=ponerSn;
+$('buscar').onclick=buscar;$('q').addEventListener('keydown',e=>{if(e.key==='Enter')buscar()});$('registrar').onclick=registrar;$('recargar').onclick=cargar;$('recargarBajas').onclick=cargarBajas;(async()=>{try{await post({action:'context'});await cargar();await cargarBajas()}catch(e){document.body.innerHTML='<main class="wrap"><div class="card msg err">'+esc(e.message)+'</div></main>'}})();
 </script></body></html>
