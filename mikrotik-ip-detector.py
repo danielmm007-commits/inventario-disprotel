@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, json, time, urllib.request
+import os, json, time, urllib.request, threading
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import routeros_api
@@ -8,6 +8,9 @@ SUPABASE_URL=os.environ.get('SUPABASE_URL','https://ajnbswrwnjpjypjiorye.supabas
 DETECTOR_TOKEN=os.environ.get('DETECTOR_TOKEN','')
 POLL_SECONDS=max(5,int(os.environ.get('POLL_SECONDS','15')))
 TZ=ZoneInfo(os.environ.get('MIKROTIK_TIMEZONE','America/Guayaquil'))
+SMARTOLT_SYNC_SECONDS=max(600,int(os.environ.get('SMARTOLT_SYNC_SECONDS','600')))
+_last_smartolt_sync=0
+_smartolt_sync_running=False
 
 # Puede trabajar con uno o varios RB.
 raw=os.environ.get('MIKROTIK_ROUTERS_JSON','').strip()
@@ -50,6 +53,29 @@ def reportar_latido(router_id,total):
     except Exception as e:
         print('No se pudo reportar latido scanner:',e)
         return None
+
+def _smartolt_sync_worker():
+    global _smartolt_sync_running
+    try:
+        h={'Authorization':'Bearer '+DETECTOR_TOKEN}
+        result=req_json(f'{SUPABASE_URL}/functions/v1/smartolt-sync',headers=h,data={},timeout=120) or {}
+        if result.get('ok'):
+            print(datetime.now().strftime('%H:%M:%S'),'SMARTOLT SYNC ->',result.get('onus',0),'ONUs |',result.get('cambios_sn',0),'cambios SN |',result.get('conflictos',0),'conflictos')
+        else:
+            print(datetime.now().strftime('%H:%M:%S'),'SMARTOLT SYNC ERROR ->',result)
+    except Exception as e:
+        print(datetime.now().strftime('%H:%M:%S'),'SMARTOLT SYNC ERROR ->',e)
+    finally:
+        _smartolt_sync_running=False
+
+def lanzar_smartolt_sync_si_corresponde():
+    global _last_smartolt_sync,_smartolt_sync_running
+    now=time.time()
+    if _smartolt_sync_running or now-_last_smartolt_sync<SMARTOLT_SYNC_SECONDS:
+        return
+    _last_smartolt_sync=now
+    _smartolt_sync_running=True
+    threading.Thread(target=_smartolt_sync_worker,daemon=True).start()
 
 
 def parse_router_time(value):
@@ -164,6 +190,7 @@ def main():
     print(f'DISPROTEL detector IP iniciado · cada {POLL_SECONDS}s · RB configurados: {len(by_id)}')
     while True:
         try:
+            lanzar_smartolt_sync_si_corresponde()
             d=detector_api('detector-pending') or {}
             pendientes=d.get('solicitudes',[])
             agrupadas={}
