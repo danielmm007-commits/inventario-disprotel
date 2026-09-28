@@ -54,25 +54,28 @@ async function consultarLive(intento){
  }catch(e){$('liveBadge').className='badge stale';$('liveBadge').textContent='ERROR';$('liveMsg').textContent=e.message;$('liveRefresh').disabled=false}
 }
 function velocidadMbps(v){
- const s=String(v||'').trim().toUpperCase();const m=s.match(/([0-9.]+)\s*([KMGT]?)/);if(!m)return null;
- const n=Number(m[1]);if(!Number.isFinite(n))return null;const u=m[2]||'';
- if(u==='K')return n/1000;if(u==='G')return n*1000;if(u==='T')return n*1000000;return n;
+ const s=String(v||'').trim().toUpperCase(),m=s.match(/^([0-9.]+)\s*([KMGT]?)$/);if(!m)return null;
+ let n=Number(m[1]);if(!Number.isFinite(n))return null;const u=m[2]||'';
+ if(u==='K')n=n/1000;else if(u==='G')n=n*1000;else if(u==='T')n=n*1000000;else if(n>=100000)n=n/1000000;
+ return Math.round(n*100)/100;
 }
-function validarMaxLimit(plan,maxLimit){
- const pm=String(plan||'').match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
- const qm=String(maxLimit||'').split('/');if(!pm||qm.length<2)return {texto:'NO COMPARABLE',ok:null};
- const p=[Number(pm[1]),Number(pm[2])],q=[velocidadMbps(qm[0]),velocidadMbps(qm[1])];
- if(q.some(v=>v==null))return {texto:'NO COMPARABLE',ok:null};
- const tol=.5,igual=(a,b)=>Math.abs(a-b)<=tol;
- const coincide=(igual(p[0],q[0])&&igual(p[1],q[1]))||(igual(p[0],q[1])&&igual(p[1],q[0]));
- return {texto:coincide?'COINCIDE EN VALORES':'REVISAR CONFIGURACIÓN',ok:coincide,plan:p.join('/')+' Mbps',queue:q.join('/')+' Mbps'};
+function parseLimit(v){const p=String(v||'').split('/');if(p.length<2)return null;const a=velocidadMbps(p[0]),b=velocidadMbps(p[1]);return a==null||b==null?null:[a,b]}
+function planConfigurado(q){const raw=String(q?.parent||q?.name||'').trim();return raw&&raw.toLowerCase()!=='none'?raw.split('/')[0]:null}
+function validarAB(limit){
+ const q=parseLimit(limit),pd=CURRENT_PLAN_DETAIL||{},p=[Number(pd.upload_mbps),Number(pd.download_mbps)];
+ if(!q||p.some(v=>!Number.isFinite(v)||v<=0))return {texto:'NO COMPARABLE',ok:null};
+ const igual=(a,b)=>Math.abs(a-b)<=.5,coincide=(igual(p[0],q[0])&&igual(p[1],q[1]))||(igual(p[0],q[1])&&igual(p[1],q[0]));
+ return {texto:coincide?'COINCIDE':'REVISAR CONFIGURACIÓN',ok:coincide,registrado:p[1]+'/'+p[0]+' Mbps',configurado:q[1]+'/'+q[0]+' Mbps'};
 }
 function renderMikrotikLive(x,at){
- const lists=x?.address_lists||[],qs=x?.queues||[],maxLimits=qs.map(z=>z.max_limit).filter(Boolean),principal=maxLimits[0]||'';
- const chk=validarMaxLimit(CURRENT_PLAN,principal);
+ const lists=x?.address_lists||[],qs=x?.queues||[];
+ const exact=qs.find(z=>String(z.name||'').toUpperCase()===String(CURRENT_CODE||'').toUpperCase())||qs.find(z=>z.comment)||qs[0]||null;
+ const limit=exact?.max_limit||'',cfgPlan=planConfigurado(exact),chk=validarAB(limit),lim=parseLimit(limit);
  $('rbBadge').className='badge live';$('rbBadge').textContent='EN VIVO';
  const estadoAB=chk.ok===true?'<span class="badge live">'+esc(chk.texto)+'</span>':chk.ok===false?'<span class="badge stale">'+esc(chk.texto)+'</span>':'<span class="badge">'+esc(chk.texto)+'</span>';
- $('mikrotik').innerHTML='<div class="row"><b>IP:</b> <span class="ip">'+esc(x?.ip||'SIN DATO')+'</span></div><div class="row"><b>RB:</b> '+esc(up(x?.router_nombre||'SIN DATO'))+'</div><div class="row"><b>Address-list:</b> '+esc(lists.length?lists.map(z=>z.list).filter(Boolean).join(' · '):'NO ENCONTRADA')+'</div><div class="row"><b>Comentario:</b> '+esc(lists.map(z=>z.comment).filter(Boolean).join(' · ')||'SIN DATO')+'</div><div class="row"><b>Plan registrado:</b> '+esc(CURRENT_PLAN||'SIN DATO')+'</div><div class="row"><b>Max-limit MikroTik:</b> <span class="mono">'+esc(maxLimits.length?maxLimits.join(' · '):'NO ENCONTRADO')+'</span></div><div class="row"><b>Validación AB:</b> '+estadoAB+(chk.plan&&chk.queue?' <span class="muted">'+esc(chk.plan)+' vs '+esc(chk.queue)+'</span>':'')+'</div><div class="row"><b>Simple Queues:</b> '+esc(qs.length?qs.map(z=>[z.name,z.parent,z.max_limit].filter(Boolean).join(' / ')).join(' · '):'NO ENCONTRADA')+'</div><div class="row"><b>Leído:</b> '+esc(ago(at||x?.read_at))+'</div>';
+ const registrado=(CURRENT_PLAN_DETAIL&&CURRENT_PLAN_DETAIL.download_mbps)?CURRENT_PLAN+' · '+CURRENT_PLAN_DETAIL.download_mbps+'/'+CURRENT_PLAN_DETAIL.upload_mbps+' Mbps':CURRENT_PLAN||'SIN DATO';
+ const configurado=(cfgPlan?cfgPlan+' · ':'')+(lim?lim[1]+'/'+lim[0]+' Mbps':'SIN DATO');
+ $('mikrotik').innerHTML='<div class="row"><b>IP:</b> <span class="ip">'+esc(x?.ip||'SIN DATO')+'</span></div><div class="row"><b>RB:</b> '+esc(up(x?.router_nombre||'SIN DATO'))+'</div><div class="row"><b>Address-list:</b> '+esc(lists.length?lists.map(z=>z.list).filter(Boolean).join(' · '):'NO ENCONTRADA')+'</div><div class="row"><b>Comentario:</b> '+esc(lists.map(z=>z.comment).filter(Boolean).join(' · ')||exact?.comment||'SIN DATO')+'</div><div class="row"><b>Plan registrado:</b> '+esc(registrado)+'</div><div class="row"><b>Plan configurado MikroTik:</b> '+esc(configurado)+'</div><div class="row"><b>Validación AB:</b> '+estadoAB+(chk.registrado&&chk.configurado?' <span class="muted">'+esc(chk.registrado)+' vs '+esc(chk.configurado)+'</span>':'')+'</div><div class="row"><b>Queue cliente:</b> '+esc(exact?[exact.name,exact.parent].filter(Boolean).join(' · '):'NO ENCONTRADA')+'</div><div class="row"><b>Leído:</b> '+esc(ago(at||x?.read_at))+'</div>';
 }
 function renderOltLive(x,at){
  $('oltBadge').className='badge live';$('oltBadge').textContent='EN VIVO';
