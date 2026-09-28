@@ -331,6 +331,43 @@ def baja_backend_call(action, payload=None):
         return json.loads(raw) if raw else {"ok":True}
 
 
+async def process_live_requests():
+    pending=backend_call("scanner-live-pending") or {}
+    rows=pending.get("solicitudes") or []
+    results=[]
+    for row in rows:
+        req_id=str(row.get("id") or "")
+        sn=str(row.get("onu_sn") or "").strip().upper()
+        if not req_id or not sn:
+            continue
+        try:
+            info=await read_ont_by_sn(sn)
+            payload={
+                "id":req_id,
+                "ok":True,
+                "resultado":{
+                    "onu_sn":sn,
+                    "found":bool(info.get("found")),
+                    "run_state":info.get("run_state"),
+                    "pon":info.get("pon"),
+                    "ont_id":info.get("ont_id"),
+                    "reported_sn":info.get("reported_sn"),
+                    "descripcion":info.get("descripcion"),
+                    "olt":OLT_NAME,
+                    "read_at":datetime.now(timezone.utc).isoformat(),
+                }
+            }
+            sent=backend_call("scanner-live-result",payload) or {}
+            results.append({"id":req_id,"sn":sn,"olt":info,"backend":sent})
+        except Exception as exc:
+            try:
+                backend_call("scanner-live-result",{"id":req_id,"ok":False,"error":str(exc)})
+            except Exception:
+                pass
+            results.append({"id":req_id,"sn":sn,"error":str(exc)})
+    return {"pending_count":len(rows),"results":results}
+
+
 async def process_baja_requests():
     pending=baja_backend_call("scanner-pending") or {}
     rows=pending.get("solicitudes") or []
@@ -376,14 +413,25 @@ async def service_loop():
         try:
             pending=backend_call("scanner-pending") or {}
             count=int(pending.get("pending_count",0) or 0)
+            live=await process_live_requests()
+            live_count=int(live.get("pending_count",0) or 0)
             baja=await process_baja_requests()
             baja_count=int(baja.get("pending_count",0) or 0)
             if count>0:
                 payload=await run_once()
                 payload["trigger"]="SOLICITUD_OT"
                 payload["requests"]=count
+                payload["consultas_live"]=live
                 payload["bajas"]=baja
                 print(json.dumps(payload,ensure_ascii=False))
+            elif live_count>0:
+                print(json.dumps({
+                    "ok":True,
+                    "read_only":True,
+                    "olt":OLT_NAME,
+                    "trigger":"CONSULTA_CLIENTE_LIVE",
+                    "consultas_live":live
+                },ensure_ascii=False))
             elif baja_count>0:
                 print(json.dumps({
                     "ok":True,
@@ -399,8 +447,9 @@ async def service_loop():
                     "olt":OLT_NAME,
                     "waiting":True,
                     "pending_requests":0,
+                    "pending_live":0,
                     "pending_bajas":0,
-                    "message":"Sin solicitudes ONU ni verificaciones de baja pendientes. No se consulta la OLT."
+                    "message":"Sin solicitudes ONU, consultas en vivo ni verificaciones de baja pendientes. No se consulta la OLT."
                 },ensure_ascii=False))
         except Exception as exc:
             print(json.dumps({"ok":False,"olt":OLT_NAME,"error":str(exc)},ensure_ascii=False))
