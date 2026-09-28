@@ -82,6 +82,74 @@ def mikrotik_permitidos(router):
         pool.disconnect()
 
 
+def _ip_base(value):
+    return str(value or '').strip().split('/')[0]
+
+def mikrotik_live_ip(router, ip):
+    target=str(ip or '').strip()
+    if not target:
+        raise RuntimeError('IP vacía para consulta en vivo.')
+    pool=routeros_api.RouterOsApiPool(str(router['host']),username=str(router['user']),password=str(router['password']),port=int(router.get('port',8728)),plaintext_login=True,use_ssl=False)
+    try:
+        api=pool.get_api()
+        address_rows=api.get_resource('/ip/firewall/address-list').get()
+        matches=[]
+        for x in address_rows:
+            if _ip_base(x.get('address'))!=target:
+                continue
+            matches.append({
+                'list':x.get('list'),
+                'address':x.get('address'),
+                'comment':x.get('comment',''),
+                'disabled':str(x.get('disabled','false')).lower()=='true',
+                'dynamic':str(x.get('dynamic','false')).lower()=='true',
+                'creation_time':parse_router_time(x.get('creation-time'))
+            })
+        queues=[]
+        try:
+            for q in api.get_resource('/queue/simple').get():
+                qtarget=str(q.get('target',''))
+                if target in qtarget:
+                    queues.append({
+                        'name':q.get('name'),
+                        'target':qtarget,
+                        'parent':q.get('parent'),
+                        'max_limit':q.get('max-limit'),
+                        'disabled':str(q.get('disabled','false')).lower()=='true',
+                        'comment':q.get('comment','')
+                    })
+        except Exception as exc:
+            queues=[{'error':'No se pudo leer Simple Queues: '+str(exc)}]
+        return {
+            'router_id':str(router.get('router_id') or ''),
+            'router_nombre':str(router.get('name') or ''),
+            'ip':target,
+            'address_lists':matches,
+            'queues':queues,
+            'encontrada':bool(matches or queues),
+            'read_at':datetime.now(TZ).isoformat()
+        }
+    finally:
+        pool.disconnect()
+
+def atender_consultas_en_vivo(router):
+    rid=str(router.get('router_id') or '')
+    pending=detector_api('detector-live-pending',{'router_id':rid}) or {}
+    rows=pending.get('solicitudes') or []
+    for row in rows:
+        req_id=str(row.get('id') or '')
+        ip=str(row.get('ip_cliente') or '').strip()
+        if not req_id or not ip:
+            continue
+        try:
+            result=mikrotik_live_ip(router,ip)
+            detector_api('detector-live-result',{'id':req_id,'ok':True,'resultado':result})
+            print(' ',router.get('name',rid),'LIVE',ip,'=>',len(result.get('address_lists',[])),'listas,',len(result.get('queues',[])),'queues')
+        except Exception as exc:
+            detector_api('detector-live-result',{'id':req_id,'ok':False,'error':str(exc)})
+            print(' Error LIVE',router.get('name',rid),ip,':',exc)
+
+
 def main():
     by_id={str(r['router_id']):r for r in ROUTERS if r.get('router_id') and r.get('password')}
     print(f'DISPROTEL detector IP iniciado · cada {POLL_SECONDS}s · RB configurados: {len(by_id)}')
@@ -96,6 +164,10 @@ def main():
             if not pendientes: print(datetime.now().strftime('%H:%M:%S'),'Sin solicitudes esperando IP.')
             for rid,router in by_id.items():
                 sols=agrupadas.get(rid,[])
+                try:
+                    atender_consultas_en_vivo(router)
+                except Exception as e:
+                    print('Error consulta LIVE',router.get('name',rid),':',e)
                 try:
                     rows=mikrotik_permitidos(router)
                     print(datetime.now().strftime('%H:%M:%S'),router.get('name',rid),':',len(rows),'PERMITIDOS')
