@@ -163,16 +163,18 @@ def main():
             for s in pendientes:
                 rid=s.get('router_id')
                 if rid: agrupadas.setdefault(str(rid),[]).append(s)
-            if not pendientes: print(datetime.now().strftime('%H:%M:%S'),'Sin solicitudes esperando IP.')
+            if not pendientes: print(datetime.now().strftime('%H:%M:%S'),'Sin solicitudes de IP. Esperando consultas LIVE.')
             for rid,router in by_id.items():
                 sols=agrupadas.get(rid,[])
                 try:
                     atender_consultas_en_vivo(router)
                 except Exception as e:
                     print('Error consulta LIVE',router.get('name',rid),':',e)
+                if not sols:
+                    continue
                 try:
                     rows=mikrotik_permitidos(router)
-                    print(datetime.now().strftime('%H:%M:%S'),router.get('name',rid),':',len(rows),'PERMITIDOS')
+                    print(datetime.now().strftime('%H:%M:%S'),'SOLICITUD IP ->',router.get('name',rid),': leyendo',len(rows),'PERMITIDOS')
                     reportar_latido(rid,len(rows))
                     for s in sols:
                         result=detector_api('detector-snapshot',{'solicitud_ip_id':s['solicitud_ip_id'],'router_id':rid,'registros':rows})
