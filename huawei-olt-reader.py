@@ -409,6 +409,15 @@ async def run_once():
 
 async def service_loop():
     seconds=max(5,int(os.environ.get("OLT_POLL_SECONDS","10")))
+    print(json.dumps({
+        "ok": True,
+        "diagnostico_inicio": True,
+        "olt": OLT_NAME,
+        "olt_codigo": os.environ.get("OLT_CODIGO","SALCEDO"),
+        "supabase_url": os.environ.get("SUPABASE_URL",""),
+        "service_mode": os.environ.get("OLT_SERVICE_MODE","0"),
+        "poll_seconds": seconds
+    }, ensure_ascii=False))
     while True:
         try:
             pending=backend_call("scanner-pending") or {}
