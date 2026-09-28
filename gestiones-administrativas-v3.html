@@ -104,16 +104,16 @@ function oltLabel(v){
 async function cargarBajas(){
  const box=$('bajas');if(!box)return;
  try{
-  const d=await postBaja({action:'list-pending'}),xs=d.items||[];
+  const d=await postBaja({action:'list-pending'}),xs=d.items||[],meBaja=d.me||null;
   box.innerHTML=xs.length?xs.map(x=>{
     const v=x.verificacion||null,rb=rbLabel(v),ol=oltLabel(v),sv=x.servicio||{};
     return '<div class="retireRow"><div class="retireTitle"><span class="pill">RETIRO COMPLETADO</span><b>'+esc(x.id_orden||'OT')+' · '+esc(up(x.cliente_nombre||''))+'</b></div>'+
       '<div class="muted" style="margin-top:7px"><b>Servicio:</b> '+esc(sv.codigo_servicio_legacy||'SIN CÓDIGO')+' · <b>IP:</b> '+esc(sv.ip_cliente||'SIN IP')+' · <b>Router:</b> '+esc(x.router?.nombre||'SIN ROUTER')+'<br><b>Dirección:</b> '+esc(up(sv.direccion||'SIN DIRECCIÓN'))+'<br><b>Responsable de baja:</b> '+esc(up(v?.responsable?.nombre||'POR ASIGNAR'))+(v?.responsable?.rol?' · '+esc(up(v.responsable.rol)):'')+'</div>'+
       '<div class="verifyGrid">'+vbox('MikroTik',rb[0],rb[1])+vbox('OLT / ONU',ol[0],ol[1])+'</div>'+
       (v&&v.onu_sn?'<div class="muted" style="margin-top:7px"><b>ONU:</b> '+esc(v.onu_sn)+' · '+esc(v.olt_codigo||'OLT POR CONFIRMAR')+'</div>':'')+
-      '<div class="actions"><button onclick="verificarBaja(\''+esc(x.id)+'\')">🔎 VERIFICAR BAJA</button>'+
-      (v&&v.rb_estado==='AUSENTE'&&['AUSENTE','NO_CONFIGURADO'].includes(v.olt_estado)?'<button onclick="cerrarBaja(\''+esc(x.id)+'\')">✅ CERRAR BAJA DEL SERVICIO</button>':'')+
-      (v&&(!v.onu_sn||v.olt_estado==='ERROR')?'<button class="secondary" onclick="ponerSn(\''+esc(x.id)+'\',\''+esc(v.onu_sn||'')+'\',\''+esc(v.olt_codigo||'SALCEDO')+'\')">✏️ DEFINIR ONU / OLT</button>':'')+
+      '<div class="actions">'+((v?.responsable_id&&meBaja?.id===v.responsable_id)?'<button onclick="verificarBaja(\''+esc(x.id)+'\')">🔎 VERIFICAR BAJA</button>':'<span class="muted">Consulta solamente · acciones reservadas al responsable asignado.</span>')+
+      ((v?.responsable_id&&meBaja?.id===v.responsable_id&&v&&v.rb_estado==='AUSENTE'&&['AUSENTE','NO_CONFIGURADO'].includes(v.olt_estado))?'<button onclick="cerrarBaja(\''+esc(x.id)+'\')">✅ CERRAR BAJA DEL SERVICIO</button>':'')+
+      ((v?.responsable_id&&meBaja?.id===v.responsable_id&&v&&(!v.onu_sn||v.olt_estado==='ERROR'))?'<button class="secondary" onclick="ponerSn(\''+esc(x.id)+'\',\''+esc(v.onu_sn||'')+'\',\''+esc(v.olt_codigo||'SALCEDO')+'\')">✏️ DEFINIR ONU / OLT</button>':'')+
       '</div></div>';
   }).join(''):'<div class="muted" style="margin-top:10px">No hay retiros completados pendientes de baja.</div>';
  }catch(e){box.innerHTML='<div class="msg err">'+esc(e.message)+'</div>'}
