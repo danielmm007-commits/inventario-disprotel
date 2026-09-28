@@ -144,7 +144,9 @@ def atender_consultas_en_vivo(router):
         try:
             result=mikrotik_live_ip(router,ip)
             detector_api('detector-live-result',{'id':req_id,'ok':True,'resultado':result})
-            print(' ',router.get('name',rid),'LIVE',ip,'=>',len(result.get('address_lists',[])),'listas,',len(result.get('queues',[])),'queues')
+            listas=', '.join([str(x.get('list') or '') for x in result.get('address_lists',[]) if x.get('list')]) or 'SIN LISTA'
+            limites=', '.join([str(x.get('max_limit') or '') for x in result.get('queues',[]) if x.get('max_limit')]) or 'SIN MAX-LIMIT'
+            print(' ',router.get('name',rid),'LIVE',ip,'=> LISTA:',listas,'| MAX-LIMIT:',limites,'| QUEUES:',len(result.get('queues',[])))
         except Exception as exc:
             detector_api('detector-live-result',{'id':req_id,'ok':False,'error':str(exc)})
             print(' Error LIVE',router.get('name',rid),ip,':',exc)
