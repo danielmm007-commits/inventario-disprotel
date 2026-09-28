@@ -85,6 +85,13 @@ def mikrotik_permitidos(router):
 def _ip_base(value):
     return str(value or '').strip().split('/')[0]
 
+def _target_has_ip(value, target):
+    raw=str(value or '').replace(';',',')
+    parts=[]
+    for chunk in raw.split(','):
+        parts.extend(chunk.strip().split())
+    return any(_ip_base(x)==target for x in parts if x)
+
 def mikrotik_live_ip(router, ip):
     target=str(ip or '').strip()
     if not target:
@@ -109,7 +116,7 @@ def mikrotik_live_ip(router, ip):
         try:
             for q in api.get_resource('/queue/simple').get():
                 qtarget=str(q.get('target',''))
-                if target in qtarget:
+                if _target_has_ip(qtarget,target):
                     queues.append({
                         'name':q.get('name'),
                         'target':qtarget,
