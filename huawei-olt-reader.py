@@ -276,7 +276,7 @@ async def main():
 # puede enviarse el snapshot al backend inventario-onu-detector.
 def backend_call(action, payload=None):
     import urllib.request
-    base=os.environ.get("SUPABASE_URL","").rstrip("/")
+    base=os.environ.get("SUPABASE_URL","https://ajnbswrwnjpjypjiorye.supabase.co").rstrip("/")
     token=os.environ.get("DETECTOR_TOKEN","")
     olt_codigo=os.environ.get("OLT_CODIGO","SALCEDO")
     if not base or not token:
@@ -414,7 +414,8 @@ async def service_loop():
         "diagnostico_inicio": True,
         "olt": OLT_NAME,
         "olt_codigo": os.environ.get("OLT_CODIGO","SALCEDO"),
-        "supabase_url": os.environ.get("SUPABASE_URL",""),
+        "supabase_url": os.environ.get("SUPABASE_URL","https://ajnbswrwnjpjypjiorye.supabase.co"),
+        "detector_token_configurado": bool(os.environ.get("DETECTOR_TOKEN","")),
         "service_mode": os.environ.get("OLT_SERVICE_MODE","0"),
         "poll_seconds": seconds
     }, ensure_ascii=False))
