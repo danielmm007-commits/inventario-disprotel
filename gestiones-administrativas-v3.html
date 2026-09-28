@@ -68,8 +68,10 @@ async function cancelar(id){const motivo=prompt('Motivo de cancelación (opciona
 async function cargar(){try{const d=await post({action:'list',estado:'PENDIENTE'}),xs=d.items||[];$('pendientes').innerHTML=xs.length?xs.map(x=>{
  const tipoLabel=({'SOLO_CAMBIO_TITULAR':'ADMINISTRATIVO','CAMBIO_TITULAR_TRASLADO':'TRASLADO','CAMBIO_TITULAR_MIGRACION':'MIGRACIÓN'})[x.tipo_gestion]||x.tipo_gestion||'ADMINISTRATIVO';
  const rt=x.resultado_tecnico||null;
- const faseLabel=x.fase==='ESPERANDO_TECNICO'?'⏳ ESPERANDO TRABAJO TÉCNICO':x.fase==='ESPERANDO_DSPR'?'🧾 ESPERANDO NUEVO DSPR':'✅ LISTO ADMINISTRATIVAMENTE';
- const tecnico=rt?'<div class="codeBox"><b>DESPUÉS TÉCNICO</b><div class="muted" style="margin-top:6px">OT: '+esc(rt.id_orden||'—')+' · '+esc(up(rt.tipo_trabajo||''))+' · '+esc(up(rt.estado||''))+'<br>Dirección final: '+esc(up(rt.direccion_final||'—'))+'<br>Router final: '+esc(up(rt.router_final||'—'))+' · IP final: '+esc(rt.ip_final||'PENDIENTE')+' · Plan final: '+esc(up(rt.plan_final||'—'))+'</div></div>':'';
+ const faseLabel=x.fase==='ESPERANDO_TECNICO'?'⏳ ESPERANDO TRABAJO TÉCNICO':x.fase==='REVISION_TECNICA'?'⚠️ REVISIÓN TÉCNICA PENDIENTE':x.fase==='ESPERANDO_DSPR'?'🧾 ESPERANDO NUEVO DSPR':'✅ LISTO ADMINISTRATIVAMENTE';
+ const ipTxt=rt?(rt.ip_origen==='ASIGNADA_OT'?'IP nueva: '+esc(rt.ip_final||'PENDIENTE'):rt.ip_origen==='CONSERVADA'?'IP conservada: '+esc(rt.ip_final||'—'):'IP: PENDIENTE'):'';
+ const faltas=rt?.faltantes?.length?'<br><b style="color:#962828">Falta: '+esc(rt.faltantes.join(' · '))+'</b>':'';
+ const tecnico=rt?'<div class="codeBox"><b>DESPUÉS TÉCNICO</b><div class="muted" style="margin-top:6px">OT: '+esc(rt.id_orden||'—')+' · '+esc(up(rt.tipo_trabajo||''))+' · '+esc(up(rt.estado||''))+'<br>Dirección final: '+esc(up(rt.direccion_final||'—'))+'<br>Router final: '+esc(up(rt.router_final||'—'))+' · '+ipTxt+' · Plan final: '+esc(up(rt.plan_final||'—'))+faltas+'</div></div>':'';
  return '<div class="pending"><div><span class="pill">PENDIENTE</span> <b>CAMBIO DE TITULAR · '+esc(tipoLabel)+'</b></div><div class="muted" style="margin-top:5px"><b>'+esc(faseLabel)+'</b></div>'+
  '<div style="margin-top:8px"><b>ANTES:</b> '+esc(up(x.titular_anterior_nombre))+' '+(x.titular_anterior_identificacion?'· '+esc(x.titular_anterior_identificacion):'')+'</div>'+
  '<div><b>DESPUÉS:</b> '+esc(up(x.titular_nuevo_nombre))+' '+(x.titular_nuevo_identificacion?'· '+esc(x.titular_nuevo_identificacion):'')+'</div>'+
