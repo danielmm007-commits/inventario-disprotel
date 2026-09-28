@@ -9,7 +9,7 @@
 <section id="detalle" class="hidden">
 <div class="card"><div class="sectionTitle"><h2 id="clienteNombre">Cliente</h2><span id="consultadoAt" class="time"></span></div><div id="clienteDatos" class="grid" style="margin-top:12px"></div></div>
 <div class="card"><div class="sectionTitle"><h2>Servicio</h2><span class="badge">REGISTRADO</span></div><div id="servicioDatos" class="grid" style="margin-top:12px"></div></div>
-<div class="card"><div class="sectionTitle"><h2>Estado de red en vivo</h2><span id="liveBadge" class="badge stale">PENDIENTE</span></div><div id="liveMsg" class="muted" style="margin-top:8px">La consulta se ejecutará al abrir la ficha.</div><div class="actions"><button id="liveRefresh" onclick="iniciarLive()">🔄 ACTUALIZAR ESTADO EN VIVO</button></div></div>
+<div class="card"><div class="sectionTitle"><h2>Estado de red en vivo</h2><span id="liveBadge" class="badge stale">PENDIENTE</span></div><div id="liveMsg" class="muted" style="margin-top:8px">La consulta se ejecutará al abrir la ficha.</div><div class="actions"><button id="liveRefresh" onclick="iniciarLive(true)">🔄 ACTUALIZAR ESTADO EN VIVO</button></div></div>
 <div class="techGrid" id="techGrid">
 <section class="panel"><div class="sectionTitle"><h3>MikroTik</h3><span id="rbBadge" class="badge"></span></div><div id="mikrotik"></div></section>
 <section class="panel" id="oltPanel"><div class="sectionTitle"><h3>ONT / SmartOLT</h3><span id="oltBadge" class="badge"></span></div><div id="ont"></div></section>
@@ -19,14 +19,14 @@
 <section class="card"><div class="sectionTitle"><h2>Últimos trabajos</h2><span class="badge">OT</span></div><div id="trabajos"></div></section>
 </section></div></div>
 <script>
-const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-clientes',KEY='disprotel_login_general_v2';let SESSION={},CURRENT_SERVICE='',CURRENT_PLAN='',CURRENT_PLAN_DETAIL=null,CURRENT_CODE='',CURRENT_ONT_CACHE=null,LIVE_REQUEST='',LIVE_TIMER=null;try{SESSION=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}const $=id=>document.getElementById(id);const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const up=v=>String(v??'').toLocaleUpperCase('es-EC');function msg(t,ok=false){$('msg').className='msg '+(ok?'ok':'err');$('msg').textContent=t}async function api(action,payload={}){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_token:SESSION.session_token||'',usuario:SESSION.usuario||'',pin:SESSION.pin||'',action,...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error');return d}function ago(iso){if(!iso)return'REGISTRADO SIN FECHA';const s=Math.max(0,Math.floor((Date.now()-new Date(iso).getTime())/1000));if(s<60)return'HACE '+s+' S';if(s<3600)return'HACE '+Math.floor(s/60)+' MIN';if(s<86400)return'HACE '+Math.floor(s/3600)+' H';return new Date(iso).toLocaleString('es-EC')}function dato(k,v,cls=''){return '<div class="dato"><b>'+esc(k)+'</b><span class="'+cls+'">'+esc(v??'SIN DATO')+'</span></div>'}function renderResultados(cs){const r=$('resultados');if(!cs.length){r.innerHTML='<div class="msg err">No encontré coincidencias.</div>';return}r.innerHTML=cs.map(c=>'<div class="cliente"><h3>'+esc(up(c.nombre_completo))+'</h3><div class="muted">'+esc(c.identificacion||'SIN DOCUMENTO')+(c.telefono?' · '+esc(c.telefono):'')+'</div>'+(c.servicios||[]).map(s=>'<div class="servicio"><b>'+esc(up(s.codigo_servicio||'SIN CÓDIGO'))+'</b><div class="grid" style="margin-top:8px">'+dato('Plan',up(s.plan||'SIN DATO'))+dato('IP',s.ip||'SIN DATO','ip')+dato('Router',up(s.router||'SIN DATO'))+dato('Estado',up(s.estado||'SIN DATO'))+'</div><div class="actions"><button onclick="verServicio(\''+esc(s.id)+'\')">VER FICHA TÉCNICA</button></div></div>').join('')+'</div>').join('')}async function buscar(){const q=$('q').value.trim();if(q.length<2)return msg('Escriba al menos 2 caracteres.');try{if(LIVE_TIMER){clearTimeout(LIVE_TIMER);LIVE_TIMER=null}CURRENT_SERVICE='';LIVE_REQUEST='';$('detalle').classList.add('hidden');$('volverResultados').classList.add('hidden');$('resultados').classList.remove('hidden');msg('Buscando...',true);const d=await api('search',{q});$('msg').className='';$('msg').textContent='';renderResultados(d.clientes||[]);$('resultados').scrollIntoView({behavior:'smooth',block:'start'})}catch(e){msg(e.message)}}async function verServicio(id){try{CURRENT_SERVICE=id;if(LIVE_TIMER){clearTimeout(LIVE_TIMER);LIVE_TIMER=null}msg('Cargando ficha técnica...',true);const d=await api('technical-detail',{servicio_id:id});$('msg').className='';$('msg').textContent='';$('resultados').classList.add('hidden');$('volverResultados').classList.remove('hidden');renderDetalle(d);$('detalle').classList.remove('hidden');$('detalle').scrollIntoView({behavior:'smooth',block:'start'});iniciarLive()}catch(e){msg(e.message)}}function volverResultados(){if(LIVE_TIMER){clearTimeout(LIVE_TIMER);LIVE_TIMER=null}CURRENT_SERVICE='';LIVE_REQUEST='';$('detalle').classList.add('hidden');$('volverResultados').classList.add('hidden');$('resultados').classList.remove('hidden');$('resultados').scrollIntoView({behavior:'smooth',block:'start'})}async function iniciarLive(){
+const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-clientes',KEY='disprotel_login_general_v2';let SESSION={},CURRENT_SERVICE='',CURRENT_PLAN='',CURRENT_PLAN_DETAIL=null,CURRENT_CODE='',CURRENT_ONT_CACHE=null,CURRENT_SMARTOLT_LIVE=null,CURRENT_HUAWEI_LIVE=null,LIVE_REQUEST='',LIVE_TIMER=null;try{SESSION=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}const $=id=>document.getElementById(id);const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const up=v=>String(v??'').toLocaleUpperCase('es-EC');function msg(t,ok=false){$('msg').className='msg '+(ok?'ok':'err');$('msg').textContent=t}async function api(action,payload={}){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_token:SESSION.session_token||'',usuario:SESSION.usuario||'',pin:SESSION.pin||'',action,...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error');return d}function ago(iso){if(!iso)return'REGISTRADO SIN FECHA';const s=Math.max(0,Math.floor((Date.now()-new Date(iso).getTime())/1000));if(s<60)return'HACE '+s+' S';if(s<3600)return'HACE '+Math.floor(s/60)+' MIN';if(s<86400)return'HACE '+Math.floor(s/3600)+' H';return new Date(iso).toLocaleString('es-EC')}function dato(k,v,cls=''){return '<div class="dato"><b>'+esc(k)+'</b><span class="'+cls+'">'+esc(v??'SIN DATO')+'</span></div>'}function renderResultados(cs){const r=$('resultados');if(!cs.length){r.innerHTML='<div class="msg err">No encontré coincidencias.</div>';return}r.innerHTML=cs.map(c=>'<div class="cliente"><h3>'+esc(up(c.nombre_completo))+'</h3><div class="muted">'+esc(c.identificacion||'SIN DOCUMENTO')+(c.telefono?' · '+esc(c.telefono):'')+'</div>'+(c.servicios||[]).map(s=>'<div class="servicio"><b>'+esc(up(s.codigo_servicio||'SIN CÓDIGO'))+'</b><div class="grid" style="margin-top:8px">'+dato('Plan',up(s.plan||'SIN DATO'))+dato('IP',s.ip||'SIN DATO','ip')+dato('Router',up(s.router||'SIN DATO'))+dato('Estado',up(s.estado||'SIN DATO'))+'</div><div class="actions"><button onclick="verServicio(\''+esc(s.id)+'\')">VER FICHA TÉCNICA</button></div></div>').join('')+'</div>').join('')}async function buscar(){const q=$('q').value.trim();if(q.length<2)return msg('Escriba al menos 2 caracteres.');try{if(LIVE_TIMER){clearTimeout(LIVE_TIMER);LIVE_TIMER=null}CURRENT_SERVICE='';LIVE_REQUEST='';$('detalle').classList.add('hidden');$('volverResultados').classList.add('hidden');$('resultados').classList.remove('hidden');msg('Buscando...',true);const d=await api('search',{q});$('msg').className='';$('msg').textContent='';renderResultados(d.clientes||[]);$('resultados').scrollIntoView({behavior:'smooth',block:'start'})}catch(e){msg(e.message)}}async function verServicio(id){try{CURRENT_SERVICE=id;if(LIVE_TIMER){clearTimeout(LIVE_TIMER);LIVE_TIMER=null}msg('Cargando ficha técnica...',true);const d=await api('technical-detail',{servicio_id:id});$('msg').className='';$('msg').textContent='';$('resultados').classList.add('hidden');$('volverResultados').classList.remove('hidden');renderDetalle(d);$('detalle').classList.remove('hidden');$('detalle').scrollIntoView({behavior:'smooth',block:'start'});iniciarLive(false)}catch(e){msg(e.message)}}function volverResultados(){if(LIVE_TIMER){clearTimeout(LIVE_TIMER);LIVE_TIMER=null}CURRENT_SERVICE='';LIVE_REQUEST='';$('detalle').classList.add('hidden');$('volverResultados').classList.add('hidden');$('resultados').classList.remove('hidden');$('resultados').scrollIntoView({behavior:'smooth',block:'start'})}async function iniciarLive(opticoLive=true){
  if(!CURRENT_SERVICE)return;
  if(LIVE_TIMER){clearTimeout(LIVE_TIMER);LIVE_TIMER=null}
  $('liveBadge').className='badge stale';$('liveBadge').textContent='CONSULTANDO';
- const tipo=String(document.querySelector('#servicioDatos')?.textContent||'').toUpperCase();$('liveMsg').textContent=tipo.includes('ANTENA')?'Solicitando lectura puntual a MikroTik…':'Solicitando lectura puntual a MikroTik y Huawei…';
+ const tipo=String(document.querySelector('#servicioDatos')?.textContent||'').toUpperCase();$('liveMsg').textContent=!opticoLive||tipo.includes('ANTENA')?'Solicitando lectura puntual a MikroTik…':'Solicitando lectura puntual a MikroTik, SmartOLT y Huawei…';
  $('liveRefresh').disabled=true;
  try{
-   const d=await api('live-request',{servicio_id:CURRENT_SERVICE});LIVE_REQUEST=d.solicitud?.id||'';
+   CURRENT_SMARTOLT_LIVE=null;CURRENT_HUAWEI_LIVE=null;const d=await api('live-request',{servicio_id:CURRENT_SERVICE,optico_live:!!opticoLive});LIVE_REQUEST=d.solicitud?.id||'';
    consultarLive(0);
  }catch(e){$('liveBadge').className='badge stale';$('liveBadge').textContent='SIN RESPUESTA';$('liveMsg').textContent='No se pudo iniciar la consulta en vivo: '+e.message;$('liveRefresh').disabled=false}
 }
@@ -35,13 +35,14 @@ async function consultarLive(intento){
  try{
    const d=await api('live-status',{servicio_id:CURRENT_SERVICE,solicitud_id:LIVE_REQUEST}),r=d.solicitud;
    if(!r)throw new Error('Solicitud no encontrada');
-   const mDone=['OK','ERROR','NO_APLICA'].includes(r.mikrotik_estado),oDone=['OK','ERROR','NO_APLICA'].includes(r.olt_estado);
+   const done=v=>['OK','ERROR','NO_APLICA'].includes(v),mDone=done(r.mikrotik_estado),sDone=done(r.smartolt_estado),oDone=done(r.olt_estado);
    if(r.mikrotik_estado==='OK')renderMikrotikLive(r.mikrotik_resultado,r.mikrotik_respondido_at);
+   if(r.smartolt_estado==='OK')renderSmartoltLive(r.smartolt_resultado,r.smartolt_respondido_at);
    if(r.olt_estado==='OK')renderOltLive(r.olt_resultado,r.olt_respondido_at);
-   if(mDone&&oDone){
-     const okAny=r.mikrotik_estado==='OK'||r.olt_estado==='OK';
+   if(mDone&&sDone&&oDone){
+     const okAny=r.mikrotik_estado==='OK'||r.smartolt_estado==='OK'||r.olt_estado==='OK';
      $('liveBadge').className='badge '+(okAny?'live':'stale');$('liveBadge').textContent=okAny?'EN VIVO':'FINALIZADO';
-     $('liveMsg').textContent='MikroTik: '+r.mikrotik_estado+' · Huawei: '+r.olt_estado+' · '+new Date().toLocaleTimeString('es-EC');
+     $('liveMsg').textContent='MikroTik: '+r.mikrotik_estado+' · SmartOLT: '+r.smartolt_estado+' · Huawei: '+r.olt_estado+' · '+new Date().toLocaleTimeString('es-EC');
      $('liveRefresh').disabled=false;return;
    }
    if(intento>=30){
@@ -49,7 +50,7 @@ async function consultarLive(intento){
      $('liveMsg').textContent='No llegaron todas las respuestas. Se mantienen los últimos datos disponibles.';
      $('liveRefresh').disabled=false;return;
    }
-   $('liveMsg').textContent='Esperando respuesta… MikroTik: '+r.mikrotik_estado+' · Huawei: '+r.olt_estado;
+   $('liveMsg').textContent='Esperando respuesta… MikroTik: '+r.mikrotik_estado+' · SmartOLT: '+r.smartolt_estado+' · Huawei: '+r.olt_estado;
    LIVE_TIMER=setTimeout(()=>consultarLive(intento+1),2000);
  }catch(e){$('liveBadge').className='badge stale';$('liveBadge').textContent='ERROR';$('liveMsg').textContent=e.message;$('liveRefresh').disabled=false}
 }
@@ -77,29 +78,44 @@ function renderMikrotikLive(x,at){
  const configurado=(cfgPlan?cfgPlan+' · ':'')+(lim?lim[1]+'/'+lim[0]+' Mbps':'SIN DATO');
  $('mikrotik').innerHTML='<div class="row"><b>IP:</b> <span class="ip">'+esc(x?.ip||'SIN DATO')+'</span></div><div class="row"><b>RB:</b> '+esc(up(x?.router_nombre||'SIN DATO'))+'</div><div class="row"><b>Address-list:</b> '+esc(lists.length?lists.map(z=>z.list).filter(Boolean).join(' · '):'NO ENCONTRADA')+'</div><div class="row"><b>Comentario:</b> '+esc(lists.map(z=>z.comment).filter(Boolean).join(' · ')||exact?.comment||'SIN DATO')+'</div><div class="row"><b>Plan registrado:</b> '+esc(registrado)+'</div><div class="row"><b>Plan configurado MikroTik:</b> '+esc(configurado)+'</div><div class="row"><b>Validación AB:</b> '+estadoAB+(chk.registrado&&chk.configurado?' <span class="muted">'+esc(chk.registrado)+' vs '+esc(chk.configurado)+'</span>':'')+'</div><div class="row"><b>Queue cliente:</b> '+esc(exact?[exact.name,exact.parent].filter(Boolean).join(' · '):'NO ENCONTRADA')+'</div><div class="row"><b>Leído:</b> '+esc(ago(at||x?.read_at))+'</div>';
 }
-function renderOltLive(x,at){
- const o=CURRENT_ONT_CACHE||{},v=o?.vinculo||{},a=o?.actual||{};
- $('oltBadge').className='badge live';$('oltBadge').textContent='EN VIVO';
- const smartolt='<div class="row"><b>SN:</b> <span class="mono">'+esc(a?.sn||v?.sn||x?.onu_sn||x?.reported_sn||'SIN DATO')+'</span></div>'
-   +'<div class="row"><b>Modelo:</b> '+esc(a?.onu_type||'SIN DATO')+'</div>'
-   +'<div class="row"><b>Estado SmartOLT:</b> '+esc(up(a?.estado||v?.estado_vinculo||'SIN DATO'))+'</div>'
-   +'<div class="row"><b>OLT SmartOLT:</b> '+esc(up(a?.olt||v?.olt_nombre||'SIN DATO'))+'</div>'
-   +'<div class="row"><b>PON SmartOLT:</b> '+esc([a?.tarjeta||v?.tarjeta,a?.puerto||v?.puerto].filter(Boolean).join('/')||'SIN DATO')+'</div>'
-   +'<div class="row"><b>Posición ONU:</b> '+esc(a?.onu_asignada||v?.onu_posicion||'SIN DATO')+'</div>'
-   +'<div class="row"><b>Potencia Rx ONU:</b> '+esc(a?.senal_onu_dbm!=null?a.senal_onu_dbm+' dBm':'SIN DATO')+'</div>'
-   +'<div class="row"><b>Potencia Rx OLT:</b> '+esc(a?.senal_olt_dbm!=null?a.senal_olt_dbm+' dBm':'SIN DATO')+'</div>'
-   +'<div class="row"><b>Calidad:</b> '+esc(a?.calidad_senal||'SIN DATO')+'</div>'
-   +'<div class="row"><b>SmartOLT actualizado:</b> '+esc(ago(a?.updated_at||v?.sincronizado_at||v?.verificado_at))+'</div>';
- const huawei='<div class="row" style="margin-top:8px;padding-top:8px;border-top:1px solid #dbe5ef"><b>Huawei directo:</b> '+esc(up(x?.run_state||(x?.found?'ENCONTRADA':'NO ENCONTRADA')))+'</div>'
-   +'<div class="row"><b>PON Huawei:</b> '+esc(x?.pon||'SIN DATO')+'</div>'
-   +'<div class="row"><b>ONT-ID Huawei:</b> '+esc(x?.ont_id||'SIN DATO')+'</div>'
-   +'<div class="row"><b>Detalle Huawei:</b> '+esc(x?.descripcion||'SIN DATO')+'</div>'
-   +'<div class="row"><b>Huawei leído:</b> '+esc(ago(at||x?.read_at))+'</div>';
- $('ont').innerHTML=smartolt+huawei;
+function renderOntCombined(){
+ const o=CURRENT_ONT_CACHE||{},v=o?.vinculo||{},a=o?.actual||{},sl=CURRENT_SMARTOLT_LIVE||{},sn=sl?.normalized||{},h=CURRENT_HUAWEI_LIVE||{};
+ const hasLive=!!CURRENT_SMARTOLT_LIVE||!!CURRENT_HUAWEI_LIVE;
+ $('oltBadge').className='badge '+(hasLive?'live':'stale');$('oltBadge').textContent=hasLive?'EN VIVO':'CACHE';
+ const smartStatus=sn.status||a?.estado||v?.estado_vinculo||'SIN DATO';
+ const onuPower=sn.signal_onu_dbm!=null?sn.signal_onu_dbm:a?.senal_onu_dbm;
+ const oltPower=sn.signal_olt_dbm!=null?sn.signal_olt_dbm:a?.senal_olt_dbm;
+ const dist=sn.distance_m!=null?sn.distance_m:a?.distancia_m;
+ const smartAt=sl.responded_at||a?.updated_at||v?.sincronizado_at||v?.verificado_at;
+ let html='<div class="row"><b>SN:</b> <span class="mono">'+esc(sl?.sn||a?.sn||v?.sn||h?.onu_sn||h?.reported_sn||'SIN DATO')+'</span></div>'
+  +'<div class="row"><b>Modelo:</b> '+esc(a?.onu_type||'SIN DATO')+'</div>'
+  +'<div class="row"><b>Estado SmartOLT:</b> '+esc(up(smartStatus))+'</div>'
+  +'<div class="row"><b>OLT SmartOLT:</b> '+esc(up(a?.olt||v?.olt_nombre||'SIN DATO'))+'</div>'
+  +'<div class="row"><b>PON SmartOLT:</b> '+esc([a?.tarjeta||v?.tarjeta,a?.puerto||v?.puerto].filter(Boolean).join('/')||'SIN DATO')+'</div>'
+  +'<div class="row"><b>Posición ONU:</b> '+esc(a?.onu_asignada||v?.onu_posicion||'SIN DATO')+'</div>'
+  +'<div class="row"><b>Potencia Rx ONU:</b> '+esc(onuPower!=null?onuPower+' dBm':'SIN DATO')+'</div>'
+  +'<div class="row"><b>Potencia Rx OLT:</b> '+esc(oltPower!=null?oltPower+' dBm':'SIN DATO')+'</div>'
+  +'<div class="row"><b>Calidad:</b> '+esc(a?.calidad_senal||'SIN DATO')+'</div>'
+  +'<div class="row"><b>Distancia:</b> '+esc(dist!=null?dist+' m':'SIN DATO')+'</div>'
+  +'<div class="row"><b>SmartOLT:</b> '+esc((CURRENT_SMARTOLT_LIVE?'LIVE · ':'CACHE · ')+ago(smartAt))+'</div>';
+ if(CURRENT_HUAWEI_LIVE){
+   html+='<div class="row" style="margin-top:8px;padding-top:8px;border-top:1px solid #dbe5ef"><b>Huawei directo:</b> '+esc(up(h?.run_state||(h?.found?'ENCONTRADA':'NO ENCONTRADA')))+'</div>'
+   +'<div class="row"><b>PON Huawei:</b> '+esc(h?.pon||'SIN DATO')+'</div>'
+   +'<div class="row"><b>ONT-ID Huawei:</b> '+esc(h?.ont_id||'SIN DATO')+'</div>'
+   +'<div class="row"><b>Detalle Huawei:</b> '+esc(h?.descripcion||'SIN DATO')+'</div>'
+   +'<div class="row"><b>Huawei leído:</b> '+esc(ago(h?._responded_at||h?.read_at))+'</div>';
+ }
+ $('ont').innerHTML=html;
 }
+function renderSmartoltLive(x,at){CURRENT_SMARTOLT_LIVE={...(x||{}),responded_at:at};renderOntCombined()}
+function renderOltLive(x,at){CURRENT_HUAWEI_LIVE={...(x||{}),_responded_at:at};renderOntCombined()}
+
 function renderDetalle(d){const c=d.cliente||{},s=d.servicio||{},rb=d.mikrotik||{},o=d.ont||{};CURRENT_ONT_CACHE=o;CURRENT_PLAN=String(s.plan||'');CURRENT_PLAN_DETAIL=s.plan_detalle||null;CURRENT_CODE=String(s.codigo_servicio||'');const esFibra=String(s.tipo_conexion||'').toUpperCase().includes('FIBRA');$('oltPanel').classList.toggle('hidden',!esFibra);$('techGrid').style.gridTemplateColumns=esFibra?'':'1fr';$('clienteNombre').textContent=up(c.nombre_completo||'CLIENTE');$('consultadoAt').textContent='CONSULTADO '+ago(d.consultado_at);$('clienteDatos').innerHTML=dato('Identificación',c.identificacion)+dato('Teléfono',c.telefono)+dato('Correo',c.correo)+dato('Código de servicio',s.codigo_servicio||'SIN DATO','mono');$('servicioDatos').innerHTML=dato('Código',up(s.codigo_servicio))+dato('Plan',up(s.plan))+dato('IP',s.ip,'ip')+dato('Router',up(s.router))+dato('Conexión',up(s.tipo_conexion))+dato('Dirección',up(s.direccion))+dato('Estado',up(s.estado))+dato('Fecha instalación',s.fecha_instalacion);
  const snap=rb.snapshot||{},rr=rb.registro||{};const rbFresh=snap.snapshot_at&&(Date.now()-new Date(snap.snapshot_at).getTime())<180000;$('rbBadge').className='badge '+(rbFresh?'live':'stale');$('rbBadge').textContent=rbFresh?'SNAPSHOT RECIENTE':'SNAPSHOT / SIN DATO';$('mikrotik').innerHTML=rr?'<div class="row"><b>IP:</b> <span class="ip">'+esc(rr.address||s.ip||'SIN DATO')+'</span></div><div class="row"><b>Lista:</b> '+esc(rr.lista||'NO ENCONTRADA')+'</div><div class="row"><b>Comentario:</b> '+esc(rr.comentario||'SIN DATO')+'</div><div class="row"><b>Último snapshot:</b> '+esc(ago(rr.snapshot_at||snap.snapshot_at))+'</div>':'<div class="muted">No hay coincidencia actual de esa IP en el snapshot del router.</div>';
- const v=o?.vinculo,a=o?.actual;$('oltBadge').className='badge '+(a?'live':'stale');$('oltBadge').textContent=a?'SMARTOLT':'SIN VÍNCULO';$('ont').innerHTML=!v?'<div class="muted">No existe una ONT vinculada a este servicio.</div>':'<div class="row"><b>SN:</b> <span class="mono">'+esc(a?.sn||v.sn||'SIN DATO')+'</span></div><div class="row"><b>Modelo:</b> '+esc(a?.onu_type||'SIN DATO')+'</div><div class="row"><b>Estado:</b> '+esc(up(a?.estado||v.estado_vinculo||'SIN DATO'))+'</div><div class="row"><b>OLT:</b> '+esc(up(a?.olt||v.olt_nombre||'SIN DATO'))+'</div><div class="row"><b>PON:</b> '+esc([a?.tarjeta||v.tarjeta,a?.puerto||v.puerto].filter(Boolean).join('/')||'SIN DATO')+'</div><div class="row"><b>Posición ONU:</b> '+esc(a?.onu_asignada||v.onu_posicion||'SIN DATO')+'</div><div class="row"><b>Señal ONU:</b> '+esc(a?.senal_onu_dbm!=null?a.senal_onu_dbm+' dBm':'SIN DATO')+'</div><div class="row"><b>Señal OLT:</b> '+esc(a?.senal_olt_dbm!=null?a.senal_olt_dbm+' dBm':'SIN DATO')+'</div><div class="row"><b>Distancia:</b> '+esc(a?.distancia_m!=null?a.distancia_m+' m':'SIN DATO')+'</div><div class="row"><b>Actualizado:</b> '+esc(ago(a?.updated_at||v.sincronizado_at||v.verificado_at))+'</div>';
+ CURRENT_SMARTOLT_LIVE=null;CURRENT_HUAWEI_LIVE=null;
+ const v=o?.vinculo,a=o?.actual;
+ if(!v){$('oltBadge').className='badge stale';$('oltBadge').textContent='SIN VÍNCULO';$('ont').innerHTML='<div class="muted">No existe una ONT vinculada a este servicio.</div>'}
+ else renderOntCombined();
  const ipAcceso=String(s.ip||'').trim();$('accesoRemoto').innerHTML=ipAcceso?'<div class="muted">Acceso directo al router/equipo del cliente usando la IP registrada del servicio.</div><div class="actions"><button onclick="window.open(\'http://'+esc(ipAcceso)+':5000\',\'_blank\',\'noopener,noreferrer\')">🔗 ABRIR HTTP</button><button onclick="window.open(\'https://'+esc(ipAcceso)+':5000\',\'_blank\',\'noopener,noreferrer\')">🔒 ABRIR HTTPS</button></div><div class="muted" style="margin-top:8px">IP '+esc(ipAcceso)+' · puerto 5000. Si un protocolo no responde, prueba el otro.</div>':'<div class="muted">Este servicio no tiene una IP registrada, por lo que no se puede generar acceso directo todavía.</div>';
  const eq=d.equipos||[];$('equipos').innerHTML=eq.length?eq.map(e=>'<div class="equipment"><b>'+esc(up([e.producto,e.marca,e.modelo].filter(Boolean).join(' · ')||'EQUIPO'))+'</b><div class="muted">SN/MAC: <span class="mono">'+esc(e.serial||'SIN DATO')+'</span>'+(e.instalado_orden?' · '+esc(up(e.instalado_orden)):'')+'</div></div>').join(''):'<div class="muted">Todavía no hay equipos Wi‑Fi u otros equipos serializados vinculados a este servicio.</div>';
  const ot=d.trabajos||[];$('trabajos').innerHTML=ot.length?ot.map(x=>'<div class="work"><b>'+esc(up(x.id_orden))+' · '+esc(up(x.tipo_trabajo))+'</b><div class="muted">'+esc(up(x.estado))+' · '+esc(new Date(x.fecha_solicitud).toLocaleString('es-EC'))+(x.aceptado_por?.nombre?' · '+esc(up(x.aceptado_por.nombre)):'')+'</div></div>').join(''):'<div class="muted">No hay trabajos vinculados todavía.</div>'}
