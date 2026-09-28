@@ -108,7 +108,7 @@ async function cargarBajas(){
   box.innerHTML=xs.length?xs.map(x=>{
     const v=x.verificacion||null,rb=rbLabel(v),ol=oltLabel(v),sv=x.servicio||{};
     return '<div class="retireRow"><div class="retireTitle"><span class="pill">RETIRO COMPLETADO</span><b>'+esc(x.id_orden||'OT')+' · '+esc(up(x.cliente_nombre||''))+'</b></div>'+
-      '<div class="muted" style="margin-top:7px"><b>Servicio:</b> '+esc(sv.codigo_servicio_legacy||'SIN CÓDIGO')+' · <b>IP:</b> '+esc(sv.ip_cliente||'SIN IP')+' · <b>Router:</b> '+esc(x.router?.nombre||'SIN ROUTER')+'<br><b>Dirección:</b> '+esc(up(sv.direccion||'SIN DIRECCIÓN'))+'</div>'+
+      '<div class="muted" style="margin-top:7px"><b>Servicio:</b> '+esc(sv.codigo_servicio_legacy||'SIN CÓDIGO')+' · <b>IP:</b> '+esc(sv.ip_cliente||'SIN IP')+' · <b>Router:</b> '+esc(x.router?.nombre||'SIN ROUTER')+'<br><b>Dirección:</b> '+esc(up(sv.direccion||'SIN DIRECCIÓN'))+'<br><b>Responsable de baja:</b> '+esc(up(v?.responsable?.nombre||'POR ASIGNAR'))+(v?.responsable?.rol?' · '+esc(up(v.responsable.rol)):'')+'</div>'+
       '<div class="verifyGrid">'+vbox('MikroTik',rb[0],rb[1])+vbox('OLT / ONU',ol[0],ol[1])+'</div>'+
       (v&&v.onu_sn?'<div class="muted" style="margin-top:7px"><b>ONU:</b> '+esc(v.onu_sn)+' · '+esc(v.olt_codigo||'OLT POR CONFIRMAR')+'</div>':'')+
       '<div class="actions"><button onclick="verificarBaja(\''+esc(x.id)+'\')">🔎 VERIFICAR BAJA</button>'+
