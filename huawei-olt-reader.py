@@ -406,7 +406,42 @@ async def service_loop():
             print(json.dumps({"ok":False,"olt":OLT_NAME,"error":str(exc)},ensure_ascii=False))
         await asyncio.sleep(seconds)
 
+
+def self_test_parser():
+    """Prueba local del parser de baja. No conecta a la OLT ni al backend."""
+    sample_found = """
+F/S/P               : 0/1/12
+ONT-ID              : 6
+SN                  : HWTC3D4AEE32
+Run state           : online
+"""
+    sample_missing = """
+Failure: The ONT does not exist
+"""
+    found = parse_ont_info_by_sn(sample_found, "HWTC3D4AEE32")
+    missing = parse_ont_info_by_sn(sample_missing, "HWTC00000000")
+    ok_found = (
+        found.get("found") is True
+        and found.get("ont_id") == "6"
+        and found.get("pon") == "0/1/12"
+        and str(found.get("run_state") or "").lower() == "online"
+    )
+    ok_missing = missing.get("found") is False
+    return {
+        "ok": bool(ok_found and ok_missing),
+        "read_only": True,
+        "self_test": True,
+        "network_used": False,
+        "found_case": found,
+        "missing_case": missing,
+    }
+
+
 async def main():
+    if "--self-test" in sys.argv:
+        result = self_test_parser()
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result.get("ok") else 1
     if os.environ.get("OLT_SERVICE_MODE","0")=="1":
         await service_loop()
         return 0
