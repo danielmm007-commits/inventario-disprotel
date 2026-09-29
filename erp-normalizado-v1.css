@@ -1,16 +1,21 @@
-/* DISPROTEL ERP COMPACTO v2 */
+/* DISPROTEL · SISTEMA VISUAL ERP GLOBAL v3 */
 :root{
   --erp-font:Arial,"Segoe UI",sans-serif;
-  --erp-text:#1d323d;
-  --erp-muted:#6c7b84;
-  --erp-line:#d6dee3;
-  --erp-bg:#f4f6f7;
-  --erp-primary:#0f4b5b;
-  --erp-primary-dark:#0b3440;
-  --erp-ok:#1f7a4d;
-  --erp-warn:#9a6b00;
-  --erp-danger:#b43b43;
+  --erp-bg:#eef2f4;
+  --erp-surface:#ffffff;
+  --erp-surface-2:#f7f9fa;
+  --erp-text:#17313d;
+  --erp-muted:#687b85;
+  --erp-line:#d2dce1;
+  --erp-navy:#073f52;
+  --erp-teal:#0c7b6d;
+  --erp-blue:#176fa5;
+  --erp-blue-2:#2387bf;
+  --erp-ok:#1d8b57;
+  --erp-warn:#c18000;
+  --erp-danger:#c44646;
   --erp-radius:6px;
+  --erp-h:34px;
 }
 *{box-sizing:border-box}
 html{font-size:12px!important}
@@ -22,21 +27,28 @@ body{
   color:var(--erp-text)!important;
   background:var(--erp-bg)!important;
 }
-h1,h2,h3,h4{font-family:var(--erp-font)!important;margin-top:0!important;letter-spacing:0!important}
-h1{font-size:18px!important;line-height:1.15!important;font-weight:700!important}
+h1,h2,h3,h4{
+  font-family:var(--erp-font)!important;
+  letter-spacing:0!important;
+  text-transform:none!important;
+  color:var(--erp-text)!important;
+}
+h1{font-size:17px!important;line-height:1.15!important;font-weight:700!important}
 h2{font-size:14px!important;line-height:1.2!important;font-weight:700!important}
 h3{font-size:12px!important;line-height:1.2!important;font-weight:700!important}
 p,.muted,.sub,.hint,small{font-size:10px!important;line-height:1.3!important}
 .muted,.sub,.hint,small{color:var(--erp-muted)!important}
 
+/* CONTENEDOR GENERAL */
 .wrap{padding:8px 10px!important}
-.card,.panel,.group,.work,.module,.metric,.cliente,.servicio,.req,.cand,.hist,.basketBox,.evidence,.finalNote,.summary,.otMesa,.mesaReq{
+.card,.panel,.group,.work,.module,.metric,.cliente,.servicio,.req,.cand,.hist,
+.basketBox,.evidence,.finalNote,.summary,.otMesa,.mesaReq,.stat{
   border-radius:var(--erp-radius)!important;
   box-shadow:none!important;
 }
 .card,.panel{
   border:1px solid var(--erp-line)!important;
-  background:#fff!important;
+  background:var(--erp-surface)!important;
   padding:10px!important;
   margin:8px 0!important;
 }
@@ -44,82 +56,137 @@ p,.muted,.sub,.hint,small{font-size:10px!important;line-height:1.3!important}
   gap:6px!important;
 }
 
-/* encabezados y hero */
-.hero{
-  padding:10px 12px!important;
-  border-radius:7px!important;
+/* CABECERA DE MÓDULO: MISMA ESTRUCTURA EN TODO EL SISTEMA */
+.hero,.techHero{
+  background:linear-gradient(90deg,var(--erp-navy),var(--erp-teal))!important;
+  color:#fff!important;
+  border:0!important;
+  border-radius:6px!important;
+  padding:8px 10px!important;
   box-shadow:none!important;
-  background:#0f4160!important;
+  min-height:0!important;
 }
-.hero h1{font-size:18px!important;margin:0!important}
-.hero p{font-size:10px!important;margin:3px 0 0!important}
-.heroActions,.heroControls,.dashHeroActions{gap:6px!important}
-.actions{margin-top:8px!important}
-.actions a{
-  min-height:32px!important;
-  padding:7px 9px!important;
+.hero h1,.techHero h1,
+.hero h2,.techHero h2{
+  color:#fff!important;
+  font-size:16px!important;
+  line-height:1.1!important;
+  margin:0!important;
+}
+.hero p,.techHero p,
+.hero .muted,.techHero .muted{
+  color:#d8edf0!important;
+  font-size:9px!important;
+  margin:2px 0 0!important;
+}
+.eyebrow{
+  color:#a9d8dd!important;
+  font-size:8px!important;
+  letter-spacing:.06em!important;
+}
+.heroActions,.heroControls,.dashHeroActions{
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  flex-wrap:wrap!important;
+}
+.heroActions button,.heroControls button,.dashHeroActions button{
+  min-height:30px!important;
+  height:30px!important;
+  width:auto!important;
+  padding:5px 9px!important;
   border-radius:5px!important;
-  font-size:11px!important;
+  border:1px solid rgba(255,255,255,.3)!important;
+  background:rgba(255,255,255,.94)!important;
+  color:#17313d!important;
+  font-size:10px!important;
   font-weight:700!important;
   box-shadow:none!important;
 }
 
-/* formularios */
+/* BARRAS DE SECCIÓN */
+.sectionHead,.workHead,.sectionTitle,.head{
+  align-items:center!important;
+}
+.sectionHead h2,.workHead h2,.sectionTitle h2,.head h2{
+  font-size:14px!important;
+  color:var(--erp-navy)!important;
+}
+.sectionHead,.workHead{
+  border-bottom:2px solid #d9e8ec!important;
+  padding-bottom:5px!important;
+  margin-bottom:6px!important;
+}
+.sectionTitle{
+  margin:6px 0!important;
+}
+.sectionTitle:before{
+  content:"";
+  width:3px;
+  height:15px;
+  border-radius:2px;
+  background:var(--erp-teal);
+  flex:0 0 auto;
+}
+
+/* FORMULARIOS */
 label{
   display:block!important;
   font-size:10px!important;
-  line-height:1.2!important;
   font-weight:700!important;
-  color:#566b76!important;
+  color:#526a75!important;
   margin:7px 0 4px!important;
 }
 input,select,textarea{
-  width:100%;
   font-family:var(--erp-font)!important;
   font-size:12px!important;
   color:var(--erp-text)!important;
-  border:1px solid #c9d4da!important;
-  border-radius:5px!important;
+  border:1px solid #c5d1d7!important;
+  border-radius:4px!important;
   background:#fff!important;
   box-shadow:none!important;
 }
 input,select{
-  height:34px!important;
-  min-height:34px!important;
+  height:var(--erp-h)!important;
+  min-height:var(--erp-h)!important;
   padding:6px 8px!important;
 }
-textarea{min-height:64px!important;padding:7px 8px!important}
+textarea{min-height:62px!important;padding:7px 8px!important}
 
-/* botones */
+/* BOTONES */
 button,.btn,a.btn,[role="button"]{
   font-family:var(--erp-font)!important;
-  font-size:11px!important;
+  font-size:10px!important;
   line-height:1.1!important;
   font-weight:700!important;
   letter-spacing:0!important;
-  min-height:32px!important;
-  padding:7px 10px!important;
-  border-radius:5px!important;
+  min-height:30px!important;
+  padding:6px 9px!important;
+  border-radius:4px!important;
   box-shadow:none!important;
   transform:none!important;
-  transition:opacity .1s ease!important;
+  transition:opacity .1s ease,background .1s ease!important;
 }
-button:hover,.btn:hover,a.btn:hover,[role="button"]:hover,
+button:hover,.btn:hover,a.btn:hover,[role="button"]:hover{
+  transform:none!important;
+  box-shadow:none!important;
+  filter:none!important;
+  opacity:.92;
+}
 button:active,.btn:active,a.btn:active,[role="button"]:active{
   transform:none!important;
   box-shadow:none!important;
   filter:none!important;
+  opacity:.82;
 }
-button:hover,.btn:hover,a.btn:hover{opacity:.92}
-button:active,.btn:active,a.btn:active{opacity:.82}
 .secondary{
-  background:#edf1f3!important;
-  color:#2b4652!important;
-  border:1px solid #cbd5da!important;
+  background:#eef3f5!important;
+  color:#244653!important;
+  border:1px solid #c8d4da!important;
 }
 .okBtn,.save,.remoteOk{background:var(--erp-ok)!important;color:#fff!important}
 
-/* badges */
+/* ESTADOS Y BADGES */
 .badge,.pill,.statusBadge,.chip,.retBadge,.mesaActionChip,.supMesaChip,.supMeta span{
   border-radius:999px!important;
   font-size:8px!important;
@@ -129,85 +196,126 @@ button:active,.btn:active,a.btn:active{opacity:.82}
   box-shadow:none!important;
 }
 
-/* tarjetas de datos */
-.group,.work,.module,.metric,.cliente,.servicio,.req,.cand,.hist,.basketBox,.evidence{
+/* TARJETAS DE DATOS */
+.group,.work,.module,.metric,.cliente,.servicio,.req,.cand,.hist,.basketBox,.evidence,.stat{
   padding:8px!important;
   border:1px solid var(--erp-line)!important;
+  background:var(--erp-surface)!important;
+}
+.group:hover,.work:hover,.module:hover,.metric:hover{
+  box-shadow:none!important;
+  transform:none!important;
 }
 .members,.events,.ev,.dato,.equipment,.value,.row{font-size:11px!important}
 .label,.lbl,.dato b,.metric span,.mesaStat span{font-size:8px!important}
-.num,.metric b,.mesaStat b{font-size:17px!important}
+.num,.metric b,.mesaStat b,.stats strong{font-size:17px!important}
 .ip{font-size:16px!important}
 
-/* panel supervisor */
-.head h2,.sectionTitle h2{font-size:14px!important}
-.sectionTitle{margin:8px 0 5px!important}
-.module .icon{font-size:15px!important}
-.module h3{font-size:11px!important;margin:4px 0 2px!important}
-.module p{font-size:9px!important}
-.module,.metric{padding:8px!important}
-.stats,.works,.groups{margin-top:6px!important}
-.stat{padding:7px!important;border-radius:5px!important}
-.att{padding:7px!important;border-radius:5px!important;margin-top:5px!important}
-
-/* Mesa */
-#mesaTecnicaFernando{
-  padding:9px!important;
-  border:1px solid #2f6f90!important;
-  border-radius:6px!important;
+/* TABLAS */
+table{
+  width:100%!important;
+  border-collapse:collapse!important;
+  font-size:11px!important;
+  background:#fff!important;
 }
-.mesaHead h2{font-size:15px!important}
-.mesaHead p{font-size:9px!important}
-.mesaStats{margin:6px 0!important;gap:5px!important}
-.mesaStat{padding:6px 8px!important;border-radius:5px!important}
-.mesaTab{min-height:30px!important}
-.otMesa{margin-top:6px!important}
-.otHead{padding:8px!important}
-.otTitle{font-size:12px!important}
-.otMeta,.stepState{font-size:9px!important}
-.step{padding:8px!important}
-.step>b{font-size:11px!important}
-.mesaReq{padding:8px!important;margin-top:5px!important}
+thead th{
+  background:var(--erp-navy)!important;
+  color:#fff!important;
+  font-size:9px!important;
+  font-weight:700!important;
+  padding:6px!important;
+  border:1px solid #0c5369!important;
+}
+td{
+  padding:6px!important;
+  border:1px solid #d5dfe4!important;
+  vertical-align:middle!important;
+}
+tbody tr:nth-child(even){background:#fafcfc!important}
 
-/* soporte */
+/* PANELES DE SUPERVISIÓN */
+.metrics,.stats{gap:5px!important}
+.metric,.stat{padding:7px!important}
+.att{
+  padding:7px!important;
+  border-radius:5px!important;
+  margin-top:5px!important;
+  background:#fff8f8!important;
+}
+
+/* MESA TÉCNICA */
+#mesaTecnicaFernando{
+  padding:8px!important;
+  border:1px solid #5e91a7!important;
+  border-radius:5px!important;
+  background:#f8fbfc!important;
+}
+.mesaHead{
+  background:var(--erp-navy)!important;
+  color:#fff!important;
+  margin:-8px -8px 6px!important;
+  padding:7px 8px!important;
+}
+.mesaHead h2{
+  color:#fff!important;
+  font-size:14px!important;
+}
+.mesaHead p{color:#d7e9ed!important;font-size:9px!important}
+.mesaStats{margin:5px 0!important;gap:4px!important}
+.mesaStat{padding:6px!important;border-radius:4px!important}
+.mesaTab{min-height:28px!important;border-radius:4px!important}
+.otMesa{margin-top:5px!important}
+.otHead{padding:7px!important}
+.otTitle{font-size:11px!important}
+.otMeta,.stepState{font-size:9px!important}
+.step{padding:7px!important}
+.step>b{font-size:10px!important}
+
+/* SOPORTE */
 .stepHead h2{font-size:14px!important}
-.summary,.finalNote,.basketState{font-size:10px!important;padding:8px!important}
-.evType{padding:7px!important;border-radius:5px!important}
+.summary,.finalNote,.basketState{font-size:10px!important;padding:7px!important}
+.evType{padding:7px!important;border-radius:4px!important}
 .evType b{font-size:10px!important}
 .evType small{font-size:8px!important}
 .evidenceTypes{gap:5px!important}
 
-/* topbars/sidebar cuando esta hoja se carga en principal */
+/* SIDEBAR Y SHELL */
 .top,.topbar,.header{
   box-shadow:none!important;
-  border-radius:0!important;
 }
 .menuShell{gap:0!important}
 .menuAside{
   border-radius:0!important;
   box-shadow:none!important;
+  background:#083f50!important;
 }
 .menuAside button{
-  min-height:32px!important;
-  font-size:11px!important;
+  min-height:31px!important;
+  font-size:10px!important;
   padding:6px 8px!important;
+  border-radius:4px!important;
 }
-.sideTitle{font-size:11px!important}
+.menuAside button.on,.menuAside button.erpNavActive{
+  background:#1c86c8!important;
+  color:#fff!important;
+}
+.sideTitle{font-size:10px!important}
 .menuStage{border-radius:0!important}
 
-/* elimina adornos llamativos */
+/* QUITA DECORACIONES QUE NO APORTAN */
+.hero:after,.bg:before,.bg:after{display:none!important}
 .online,.connected,.conectado,.status-connected,.connection-ok,.server-ok,
 .metric.hot,.supMesaLate,.supStep.current,.supStep.paused{
   animation:none!important;
   box-shadow:none!important;
 }
-.hero:after,.bg:before,.bg:after{display:none!important}
 
+/* RESPONSIVE */
 @media(max-width:680px){
   html,body{font-size:12px!important}
-  h1{font-size:17px!important}
+  h1{font-size:16px!important}
   h2{font-size:14px!important}
-  button,.btn,a.btn{min-height:34px!important;font-size:11px!important}
+  button,.btn,a.btn{min-height:32px!important;font-size:10px!important}
   input,select{height:36px!important;min-height:36px!important;font-size:13px!important}
-  .card{padding:9px!important}
+  .card{padding:8px!important}
 }
