@@ -1,0 +1,172 @@
+/* DISPROTEL · Normalización visual ERP v1
+   Objetivo: proporciones consistentes, lectura compacta y lenguaje visual único. */
+:root{
+  --erp-font:Arial,"Segoe UI",sans-serif;
+  --erp-text:#18313d;
+  --erp-muted:#687b86;
+  --erp-line:#d7e1e6;
+  --erp-bg:#f3f6f8;
+  --erp-primary:#123b52;
+  --erp-primary-2:#176c8d;
+  --erp-ok:#19734b;
+  --erp-warn:#9a6700;
+  --erp-danger:#a53b45;
+  --erp-radius:10px;
+  --erp-control-h:38px;
+}
+html{font-size:13px!important}
+body{
+  font-family:var(--erp-font)!important;
+  font-size:13px!important;
+  line-height:1.4!important;
+  color:var(--erp-text)!important;
+  background-color:var(--erp-bg)!important;
+}
+h1,h2,h3,h4{font-family:var(--erp-font)!important;letter-spacing:0!important;text-transform:none}
+h1{font-size:20px!important;line-height:1.2!important;font-weight:700!important}
+h2{font-size:16px!important;line-height:1.25!important;font-weight:700!important}
+h3{font-size:14px!important;line-height:1.25!important;font-weight:700!important}
+p,.muted,.sub,.hint,small{line-height:1.4!important}
+.muted,.sub,.hint,small{font-size:11px!important;color:var(--erp-muted)!important}
+
+/* Tarjetas */
+.card,.panel,.group,.work,.module,.metric,.cliente,.servicio,.req,.cand,.hist,.basketBox,.evidence,.finalNote,.summary{
+  border-radius:var(--erp-radius)!important;
+  box-shadow:0 1px 3px rgba(20,48,62,.07)!important;
+}
+.card,.panel{border:1px solid var(--erp-line)!important}
+.card{padding:14px!important}
+.panel{padding:12px!important}
+
+/* Formularios */
+label{
+  font-size:11px!important;
+  line-height:1.25!important;
+  font-weight:700!important;
+  color:#526a76!important;
+  margin-bottom:5px!important;
+}
+input,select,textarea{
+  font-family:var(--erp-font)!important;
+  font-size:13px!important;
+  color:var(--erp-text)!important;
+  border:1px solid #c8d5dc!important;
+  border-radius:7px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+input,select{
+  min-height:var(--erp-control-h)!important;
+  height:var(--erp-control-h)!important;
+  padding:7px 10px!important;
+}
+textarea{min-height:72px!important;padding:9px 10px!important}
+
+/* Botones: ERP compacto, sin efecto WordArt */
+button,.btn,a.btn,[role="button"]{
+  font-family:var(--erp-font)!important;
+  font-size:12px!important;
+  line-height:1.2!important;
+  font-weight:700!important;
+  letter-spacing:0!important;
+  border-radius:7px!important;
+  min-height:36px!important;
+  padding:8px 12px!important;
+  box-shadow:none!important;
+  transform:none!important;
+  transition:background .12s ease,border-color .12s ease,opacity .12s ease!important;
+}
+button:hover,.btn:hover,a.btn:hover,[role="button"]:hover{
+  transform:none!important;
+  box-shadow:none!important;
+  filter:none!important;
+  opacity:.94;
+}
+button:active,.btn:active,a.btn:active,[role="button"]:active{
+  transform:none!important;
+  box-shadow:none!important;
+  filter:none!important;
+  opacity:.86;
+}
+.secondary{
+  background:#eef3f5!important;
+  color:#244653!important;
+  border:1px solid #cbd8de!important;
+}
+.okBtn,.save,.remoteOk{background:var(--erp-ok)!important;color:#fff!important}
+
+/* Badges */
+.badge,.pill,.statusBadge,.chip,.retBadge,.mesaActionChip,.supMesaChip,.supMeta span{
+  border-radius:999px!important;
+  font-size:9px!important;
+  line-height:1.15!important;
+  font-weight:700!important;
+  padding:4px 7px!important;
+  box-shadow:none!important;
+  letter-spacing:0!important;
+}
+
+/* Hero / encabezados: menos decorativos */
+.hero{
+  border-radius:12px!important;
+  padding:15px!important;
+  box-shadow:0 2px 8px rgba(14,45,65,.10)!important;
+}
+.hero h1{font-size:20px!important}
+.hero p{font-size:11px!important}
+.top{border-radius:10px!important;box-shadow:0 1px 4px rgba(20,48,62,.08)!important}
+
+/* Espaciado uniforme */
+.wrap{padding-top:12px!important}
+.card{margin-top:10px!important;margin-bottom:10px!important}
+.grid,.row,.actions,.tabs,.basketTools,.techGrid,.stats,.works,.groups,.modules,.metrics{gap:8px!important}
+.sectionTitle{margin-bottom:7px!important}
+.sectionTitle h2{font-size:16px!important}
+
+/* Tablas y datos */
+table{font-size:11px!important}
+th{font-size:10px!important;font-weight:700!important}
+th,td{padding:8px!important}
+.dato,.row,.equipment,.work,.members,.events,.ev,.value{font-size:12px!important}
+.dato b,.label,.lbl,.metric span,.mesaStat span{font-size:9px!important;font-weight:700!important}
+.ip{font-size:18px!important}
+
+/* Panel supervisor */
+.metric b,.num,.mesaStat b{font-size:19px!important}
+.module .icon{font-size:18px!important}
+.module h3{font-size:13px!important;margin:5px 0 3px!important}
+.module p{font-size:10px!important}
+.module,.metric{padding:10px!important;border-radius:10px!important}
+.module:hover,.metric:hover{transform:none!important;box-shadow:0 1px 3px rgba(20,48,62,.08)!important}
+
+/* Mesa técnica */
+#mesaTecnicaFernando{padding:12px!important;border-radius:11px!important}
+.mesaHead h2{font-size:17px!important}
+.otMesa{border-radius:9px!important}
+.otTitle{font-size:13px!important}
+.otMeta,.stepState{font-size:10px!important}
+.step{padding:11px!important}
+.step>b{font-size:12px!important}
+
+/* Soporte */
+.stepHead h2{font-size:16px!important}
+.summary,.finalNote,.basketState{font-size:11px!important;padding:10px!important}
+.evType{padding:9px!important;border-radius:8px!important}
+.evType b{font-size:11px!important}
+.evType small{font-size:9px!important}
+
+/* Evita animaciones llamativas en módulos normalizados */
+.online,.connected,.conectado,.status-connected,.connection-ok,.server-ok,
+.metric.hot,.supMesaLate,.supStep.current,.supStep.paused{
+  animation:none!important;
+}
+
+@media(max-width:680px){
+  html,body{font-size:12px!important}
+  h1{font-size:18px!important}
+  h2{font-size:15px!important}
+  h3{font-size:13px!important}
+  button,.btn,a.btn{font-size:12px!important;min-height:38px!important}
+  input,select{font-size:14px!important;min-height:40px!important;height:40px!important}
+  .card{padding:12px!important}
+}
