@@ -1,172 +1,213 @@
-/* DISPROTEL · Normalización visual ERP v1
-   Objetivo: proporciones consistentes, lectura compacta y lenguaje visual único. */
+/* DISPROTEL ERP COMPACTO v2 */
 :root{
   --erp-font:Arial,"Segoe UI",sans-serif;
-  --erp-text:#18313d;
-  --erp-muted:#687b86;
-  --erp-line:#d7e1e6;
-  --erp-bg:#f3f6f8;
-  --erp-primary:#123b52;
-  --erp-primary-2:#176c8d;
-  --erp-ok:#19734b;
-  --erp-warn:#9a6700;
-  --erp-danger:#a53b45;
-  --erp-radius:10px;
-  --erp-control-h:38px;
+  --erp-text:#1d323d;
+  --erp-muted:#6c7b84;
+  --erp-line:#d6dee3;
+  --erp-bg:#f4f6f7;
+  --erp-primary:#0f4b5b;
+  --erp-primary-dark:#0b3440;
+  --erp-ok:#1f7a4d;
+  --erp-warn:#9a6b00;
+  --erp-danger:#b43b43;
+  --erp-radius:6px;
 }
-html{font-size:13px!important}
+*{box-sizing:border-box}
+html{font-size:12px!important}
 body{
+  margin:0!important;
   font-family:var(--erp-font)!important;
-  font-size:13px!important;
-  line-height:1.4!important;
+  font-size:12px!important;
+  line-height:1.3!important;
   color:var(--erp-text)!important;
-  background-color:var(--erp-bg)!important;
+  background:var(--erp-bg)!important;
 }
-h1,h2,h3,h4{font-family:var(--erp-font)!important;letter-spacing:0!important;text-transform:none}
-h1{font-size:20px!important;line-height:1.2!important;font-weight:700!important}
-h2{font-size:16px!important;line-height:1.25!important;font-weight:700!important}
-h3{font-size:14px!important;line-height:1.25!important;font-weight:700!important}
-p,.muted,.sub,.hint,small{line-height:1.4!important}
-.muted,.sub,.hint,small{font-size:11px!important;color:var(--erp-muted)!important}
+h1,h2,h3,h4{font-family:var(--erp-font)!important;margin-top:0!important;letter-spacing:0!important}
+h1{font-size:18px!important;line-height:1.15!important;font-weight:700!important}
+h2{font-size:14px!important;line-height:1.2!important;font-weight:700!important}
+h3{font-size:12px!important;line-height:1.2!important;font-weight:700!important}
+p,.muted,.sub,.hint,small{font-size:10px!important;line-height:1.3!important}
+.muted,.sub,.hint,small{color:var(--erp-muted)!important}
 
-/* Tarjetas */
-.card,.panel,.group,.work,.module,.metric,.cliente,.servicio,.req,.cand,.hist,.basketBox,.evidence,.finalNote,.summary{
+.wrap{padding:8px 10px!important}
+.card,.panel,.group,.work,.module,.metric,.cliente,.servicio,.req,.cand,.hist,.basketBox,.evidence,.finalNote,.summary,.otMesa,.mesaReq{
   border-radius:var(--erp-radius)!important;
-  box-shadow:0 1px 3px rgba(20,48,62,.07)!important;
+  box-shadow:none!important;
 }
-.card,.panel{border:1px solid var(--erp-line)!important}
-.card{padding:14px!important}
-.panel{padding:12px!important}
+.card,.panel{
+  border:1px solid var(--erp-line)!important;
+  background:#fff!important;
+  padding:10px!important;
+  margin:8px 0!important;
+}
+.grid,.row,.actions,.tabs,.basketTools,.techGrid,.stats,.works,.groups,.modules,.metrics{
+  gap:6px!important;
+}
 
-/* Formularios */
-label{
+/* encabezados y hero */
+.hero{
+  padding:10px 12px!important;
+  border-radius:7px!important;
+  box-shadow:none!important;
+  background:#0f4160!important;
+}
+.hero h1{font-size:18px!important;margin:0!important}
+.hero p{font-size:10px!important;margin:3px 0 0!important}
+.heroActions,.heroControls,.dashHeroActions{gap:6px!important}
+.actions{margin-top:8px!important}
+.actions a{
+  min-height:32px!important;
+  padding:7px 9px!important;
+  border-radius:5px!important;
   font-size:11px!important;
-  line-height:1.25!important;
   font-weight:700!important;
-  color:#526a76!important;
-  margin-bottom:5px!important;
+  box-shadow:none!important;
+}
+
+/* formularios */
+label{
+  display:block!important;
+  font-size:10px!important;
+  line-height:1.2!important;
+  font-weight:700!important;
+  color:#566b76!important;
+  margin:7px 0 4px!important;
 }
 input,select,textarea{
+  width:100%;
   font-family:var(--erp-font)!important;
-  font-size:13px!important;
+  font-size:12px!important;
   color:var(--erp-text)!important;
-  border:1px solid #c8d5dc!important;
-  border-radius:7px!important;
+  border:1px solid #c9d4da!important;
+  border-radius:5px!important;
   background:#fff!important;
   box-shadow:none!important;
 }
 input,select{
-  min-height:var(--erp-control-h)!important;
-  height:var(--erp-control-h)!important;
-  padding:7px 10px!important;
+  height:34px!important;
+  min-height:34px!important;
+  padding:6px 8px!important;
 }
-textarea{min-height:72px!important;padding:9px 10px!important}
+textarea{min-height:64px!important;padding:7px 8px!important}
 
-/* Botones: ERP compacto, sin efecto WordArt */
+/* botones */
 button,.btn,a.btn,[role="button"]{
   font-family:var(--erp-font)!important;
-  font-size:12px!important;
-  line-height:1.2!important;
+  font-size:11px!important;
+  line-height:1.1!important;
   font-weight:700!important;
   letter-spacing:0!important;
-  border-radius:7px!important;
-  min-height:36px!important;
-  padding:8px 12px!important;
+  min-height:32px!important;
+  padding:7px 10px!important;
+  border-radius:5px!important;
   box-shadow:none!important;
   transform:none!important;
-  transition:background .12s ease,border-color .12s ease,opacity .12s ease!important;
+  transition:opacity .1s ease!important;
 }
-button:hover,.btn:hover,a.btn:hover,[role="button"]:hover{
-  transform:none!important;
-  box-shadow:none!important;
-  filter:none!important;
-  opacity:.94;
-}
+button:hover,.btn:hover,a.btn:hover,[role="button"]:hover,
 button:active,.btn:active,a.btn:active,[role="button"]:active{
   transform:none!important;
   box-shadow:none!important;
   filter:none!important;
-  opacity:.86;
 }
+button:hover,.btn:hover,a.btn:hover{opacity:.92}
+button:active,.btn:active,a.btn:active{opacity:.82}
 .secondary{
-  background:#eef3f5!important;
-  color:#244653!important;
-  border:1px solid #cbd8de!important;
+  background:#edf1f3!important;
+  color:#2b4652!important;
+  border:1px solid #cbd5da!important;
 }
 .okBtn,.save,.remoteOk{background:var(--erp-ok)!important;color:#fff!important}
 
-/* Badges */
+/* badges */
 .badge,.pill,.statusBadge,.chip,.retBadge,.mesaActionChip,.supMesaChip,.supMeta span{
   border-radius:999px!important;
-  font-size:9px!important;
-  line-height:1.15!important;
+  font-size:8px!important;
+  line-height:1!important;
   font-weight:700!important;
-  padding:4px 7px!important;
+  padding:3px 6px!important;
   box-shadow:none!important;
-  letter-spacing:0!important;
 }
 
-/* Hero / encabezados: menos decorativos */
-.hero{
-  border-radius:12px!important;
-  padding:15px!important;
-  box-shadow:0 2px 8px rgba(14,45,65,.10)!important;
+/* tarjetas de datos */
+.group,.work,.module,.metric,.cliente,.servicio,.req,.cand,.hist,.basketBox,.evidence{
+  padding:8px!important;
+  border:1px solid var(--erp-line)!important;
 }
-.hero h1{font-size:20px!important}
-.hero p{font-size:11px!important}
-.top{border-radius:10px!important;box-shadow:0 1px 4px rgba(20,48,62,.08)!important}
+.members,.events,.ev,.dato,.equipment,.value,.row{font-size:11px!important}
+.label,.lbl,.dato b,.metric span,.mesaStat span{font-size:8px!important}
+.num,.metric b,.mesaStat b{font-size:17px!important}
+.ip{font-size:16px!important}
 
-/* Espaciado uniforme */
-.wrap{padding-top:12px!important}
-.card{margin-top:10px!important;margin-bottom:10px!important}
-.grid,.row,.actions,.tabs,.basketTools,.techGrid,.stats,.works,.groups,.modules,.metrics{gap:8px!important}
-.sectionTitle{margin-bottom:7px!important}
-.sectionTitle h2{font-size:16px!important}
+/* panel supervisor */
+.head h2,.sectionTitle h2{font-size:14px!important}
+.sectionTitle{margin:8px 0 5px!important}
+.module .icon{font-size:15px!important}
+.module h3{font-size:11px!important;margin:4px 0 2px!important}
+.module p{font-size:9px!important}
+.module,.metric{padding:8px!important}
+.stats,.works,.groups{margin-top:6px!important}
+.stat{padding:7px!important;border-radius:5px!important}
+.att{padding:7px!important;border-radius:5px!important;margin-top:5px!important}
 
-/* Tablas y datos */
-table{font-size:11px!important}
-th{font-size:10px!important;font-weight:700!important}
-th,td{padding:8px!important}
-.dato,.row,.equipment,.work,.members,.events,.ev,.value{font-size:12px!important}
-.dato b,.label,.lbl,.metric span,.mesaStat span{font-size:9px!important;font-weight:700!important}
-.ip{font-size:18px!important}
+/* Mesa */
+#mesaTecnicaFernando{
+  padding:9px!important;
+  border:1px solid #2f6f90!important;
+  border-radius:6px!important;
+}
+.mesaHead h2{font-size:15px!important}
+.mesaHead p{font-size:9px!important}
+.mesaStats{margin:6px 0!important;gap:5px!important}
+.mesaStat{padding:6px 8px!important;border-radius:5px!important}
+.mesaTab{min-height:30px!important}
+.otMesa{margin-top:6px!important}
+.otHead{padding:8px!important}
+.otTitle{font-size:12px!important}
+.otMeta,.stepState{font-size:9px!important}
+.step{padding:8px!important}
+.step>b{font-size:11px!important}
+.mesaReq{padding:8px!important;margin-top:5px!important}
 
-/* Panel supervisor */
-.metric b,.num,.mesaStat b{font-size:19px!important}
-.module .icon{font-size:18px!important}
-.module h3{font-size:13px!important;margin:5px 0 3px!important}
-.module p{font-size:10px!important}
-.module,.metric{padding:10px!important;border-radius:10px!important}
-.module:hover,.metric:hover{transform:none!important;box-shadow:0 1px 3px rgba(20,48,62,.08)!important}
+/* soporte */
+.stepHead h2{font-size:14px!important}
+.summary,.finalNote,.basketState{font-size:10px!important;padding:8px!important}
+.evType{padding:7px!important;border-radius:5px!important}
+.evType b{font-size:10px!important}
+.evType small{font-size:8px!important}
+.evidenceTypes{gap:5px!important}
 
-/* Mesa técnica */
-#mesaTecnicaFernando{padding:12px!important;border-radius:11px!important}
-.mesaHead h2{font-size:17px!important}
-.otMesa{border-radius:9px!important}
-.otTitle{font-size:13px!important}
-.otMeta,.stepState{font-size:10px!important}
-.step{padding:11px!important}
-.step>b{font-size:12px!important}
+/* topbars/sidebar cuando esta hoja se carga en principal */
+.top,.topbar,.header{
+  box-shadow:none!important;
+  border-radius:0!important;
+}
+.menuShell{gap:0!important}
+.menuAside{
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+.menuAside button{
+  min-height:32px!important;
+  font-size:11px!important;
+  padding:6px 8px!important;
+}
+.sideTitle{font-size:11px!important}
+.menuStage{border-radius:0!important}
 
-/* Soporte */
-.stepHead h2{font-size:16px!important}
-.summary,.finalNote,.basketState{font-size:11px!important;padding:10px!important}
-.evType{padding:9px!important;border-radius:8px!important}
-.evType b{font-size:11px!important}
-.evType small{font-size:9px!important}
-
-/* Evita animaciones llamativas en módulos normalizados */
+/* elimina adornos llamativos */
 .online,.connected,.conectado,.status-connected,.connection-ok,.server-ok,
 .metric.hot,.supMesaLate,.supStep.current,.supStep.paused{
   animation:none!important;
+  box-shadow:none!important;
 }
+.hero:after,.bg:before,.bg:after{display:none!important}
 
 @media(max-width:680px){
   html,body{font-size:12px!important}
-  h1{font-size:18px!important}
-  h2{font-size:15px!important}
-  h3{font-size:13px!important}
-  button,.btn,a.btn{font-size:12px!important;min-height:38px!important}
-  input,select{font-size:14px!important;min-height:40px!important;height:40px!important}
-  .card{padding:12px!important}
+  h1{font-size:17px!important}
+  h2{font-size:14px!important}
+  button,.btn,a.btn{min-height:34px!important;font-size:11px!important}
+  input,select{height:36px!important;min-height:36px!important;font-size:13px!important}
+  .card{padding:9px!important}
 }
