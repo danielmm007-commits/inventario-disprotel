@@ -59,10 +59,14 @@ function nombrePerfil(v){
     ['FERNANDO','MOLINA','Fernando Molina'],['CARLOS','MOLINA','Carlos Luis Molina'],['JONATHAN','OROZCO','Jonathan Orozco'],
     ['FRANKLIN','OROZCO','Franklin Orozco'],['STALIN','VILCA','Stalin Vilca'],['STALIN','MOLINA','Stalin Molina'],
     ['BRISA','PURUNCAJAS','Brisa Puruncajas'],['THALIA','CALAPAQUI','Thalia Calapaqui'],['JOSUE','MOLINA','Josue Molina'],
-    ['MATEO','BARBOSA','Mateo Barbosa'],['DANIEL','MOLINA','Daniel Molina'],['DIEGO','MANCERO','Diego Mancero']
+    ['MATEO','BARBOSA','Mateo Barbosa'],['DANIEL','MOLINA','Daniel Molina'],['DIEGO','MANCERO','Diego Mancero'],
+    ['BRYAN','GARCIA','Bryan Garcia'],['BRAYAN','GARCIA','Bryan Garcia']
   ];
   for(const [a,b,out] of rules)if(n.includes(a)&&n.includes(b))return out;
-  const p=raw.split(/\s+/).filter(Boolean);return p.length>=2?p[0]+' '+p[1]:raw||'Usuario';
+  const p=raw.split(/\s+/).filter(Boolean);
+  if(p.length>=4)return p[0]+' '+p[p.length-2];
+  if(p.length>=2)return p[0]+' '+p[1];
+  return raw||'Usuario';
 }
 const isRoot=me.rol==='ADMINISTRADOR SUPREMO'||me.es_admin_principal===true;if(!me.usuario)location.href='login-general-v2.html';whoName.textContent=nombrePerfil(me.nombre||me.usuario);whoRole.textContent=me.rol||'USUARIO';if(isRoot){rootArea.classList.add('show');command.classList.add('show');rootBadge.textContent='◆ ADMINISTRADOR SUPREMO'}
 function push(layer,hash){history.pushState({layer},'',hash)}function abrirTrabajos(){workOverlay.classList.add('show');document.body.style.overflow='hidden';push('trabajos','#trabajos-por-aceptar')}function abrirProceso(){processOverlay.classList.add('show');document.body.style.overflow='hidden';push('proceso','#trabajos-en-proceso')}function abrirFinalizados(){finishedOverlay.classList.add('show');document.body.style.overflow='hidden';push('finalizados','#trabajos-finalizados')}
