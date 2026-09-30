@@ -9,8 +9,33 @@
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
 button,input,select{font:inherit}.wrap{padding:12px;max-width:1600px;margin:auto}.hero{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(105deg,#073f52,#0a6f75);color:#fff;border-radius:10px;padding:12px 14px;box-shadow:var(--shadow)}
 .hero small{font-size:9px;font-weight:800;letter-spacing:.08em;color:#bfe8ea}.hero h1{margin:2px 0;font-size:22px}.hero p{margin:0;color:#d8eff0;font-size:11px}.heroActions{display:flex;gap:7px;align-items:center}.pill{padding:7px 9px;border-radius:999px;background:#ffffff18;border:1px solid #ffffff45;font-size:9px;font-weight:900}.refresh{border:1px solid #d4e3ea;background:#fff;color:#173646;border-radius:7px;padding:8px 11px;font-weight:900;cursor:pointer}
-.metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:9px}.metric{background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px;box-shadow:var(--shadow)}.metric strong{display:block;font-size:24px}.metric span{display:block;margin-top:3px;font-size:8px;font-weight:900;color:var(--muted)}.metric.ok strong{color:var(--green)}.metric.warn strong{color:var(--orange)}.metric.bad strong{color:var(--red)}
-.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:9px;margin-top:9px}.panel{background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px;box-shadow:var(--shadow)}.panel h2{margin:0;font-size:14px;color:#0a4b5f}.sub{font-size:9px;color:var(--muted);margin:3px 0 8px}.oltGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.oltCard{border:1px solid #d9e5ea;border-radius:8px;padding:9px;background:#f9fbfc}.oltHead{display:flex;justify-content:space-between;gap:8px;align-items:start}.oltHead b{font-size:11px}.statusDot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px #1aad6430}.oltNums{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:7px}.oltNums div{padding:5px;border-radius:5px;background:#fff;border:1px solid #e1e9ed;text-align:center}.oltNums strong{display:block;font-size:13px}.oltNums span{font-size:7px;color:var(--muted);font-weight:800}
+.metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:9px}
+.metric{position:relative;overflow:hidden;background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 12px 10px 44px;box-shadow:var(--shadow);min-height:72px;transition:.18s ease}
+.metric:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(7,42,70,.12)}
+.metric:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#6f8490}
+.metric .metricIcon{position:absolute;left:11px;top:15px;width:25px;height:25px;border-radius:8px;display:grid;place-items:center;font-size:15px;background:#edf3f6;color:#47616e}
+.metric strong{display:block;font-size:24px;line-height:1}.metric span{display:block;margin-top:6px;font-size:8px;font-weight:900;color:var(--muted);letter-spacing:.02em}
+.metric.total:before{background:#2879b9}.metric.total .metricIcon{background:#e7f2fb;color:#1767a4}.metric.total strong{color:#16557f}
+.metric.ok:before{background:var(--green)}.metric.ok .metricIcon{background:#e7f8ef;color:#16824c}.metric.ok strong{color:var(--green)}
+.metric.bad:before{background:var(--red)}.metric.bad .metricIcon{background:#fdeeee;color:#b83232}.metric.bad strong{color:var(--red)}
+.metric.warn:before{background:var(--orange)}.metric.warn .metricIcon{background:#fff4df;color:#b96c05}.metric.warn strong{color:var(--orange)}
+.metric.pendingM:before{background:#8b5cf6}.metric.pendingM .metricIcon{background:#f1ecff;color:#6f45d5}.metric.pendingM strong{color:#7048c8}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:9px;margin-top:9px}.panel{background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px;box-shadow:var(--shadow)}.panel h2{margin:0;font-size:14px;color:#0a4b5f}.sub{font-size:9px;color:var(--muted);margin:3px 0 8px}.oltGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.oltCard{border:1px solid #d9e5ea;border-radius:10px;padding:9px;background:linear-gradient(180deg,#fbfdfe,#f6fafc);transition:.18s ease}
+.oltCard:hover{transform:translateY(-1px);border-color:#c4dce7;box-shadow:0 7px 18px rgba(8,55,82,.08)}
+.oltHead{display:flex;justify-content:space-between;gap:8px;align-items:center}.oltHead b{font-size:11px}
+.oltLive{display:flex;align-items:center;gap:5px;font-size:7px;font-weight:900;color:#16824c;white-space:nowrap}
+.statusDot{width:9px;height:9px;border-radius:50%;background:#19a45f;box-shadow:0 0 0 0 rgba(25,164,95,.55);animation:oltPulse 1.7s infinite}
+@keyframes oltPulse{0%{box-shadow:0 0 0 0 rgba(25,164,95,.5)}65%{box-shadow:0 0 0 6px rgba(25,164,95,0)}100%{box-shadow:0 0 0 0 rgba(25,164,95,0)}}
+.oltNums{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:7px}.oltNums div{padding:6px 4px;border-radius:6px;background:#fff;border:1px solid #e1e9ed;text-align:center}
+.oltNums strong{display:block;font-size:14px;line-height:1.1}.oltNums span{font-size:7px;color:var(--muted);font-weight:900;display:block;margin-top:3px}
+.oltNums .nTotal{background:#eef6fc;border-color:#d2e6f5}.oltNums .nTotal strong{color:#1767a4}
+.oltNums .nOnline{background:#ecf9f2;border-color:#cdebdc}.oltNums .nOnline strong{color:#17864f}
+.oltNums .nOffline{background:#fff0f0;border-color:#f2d0d0}.oltNums .nOffline strong{color:#be3737}
+.oltNums .nWarn{background:#fff7e9;border-color:#f4dfb7}.oltNums .nWarn strong{color:#b76b08}
+.oltNums .nCrit{background:#fdecec;border-color:#efc7c7}.oltNums .nCrit strong{color:#c82f2f}
+.oltNums .nNoRx{background:#f1f3f5;border-color:#dfe4e7}.oltNums .nNoRx strong{color:#667681}
 .pending{display:grid;gap:6px}.pendingItem{border:1px solid #f0d8a9;background:#fff9e9;border-radius:7px;padding:8px;font-size:9px}.pendingItem b{display:block;font-size:10px;color:#8c5a00}.pendingEmpty{font-size:10px;color:#66808d;padding:8px;border:1px dashed #cedce3;border-radius:7px}
 .filters{display:grid;grid-template-columns:minmax(220px,1.6fr) repeat(4,minmax(120px,.8fr)) auto;gap:7px;margin-top:9px}.filters input,.filters select{width:100%;border:1px solid #cadbe4;border-radius:7px;background:#fff;padding:9px 10px;font-size:10px}.filters button{border:0;border-radius:7px;padding:9px 12px;background:#0c5d8b;color:#fff;font-weight:900;cursor:pointer}
 .tablePanel{margin-top:9px;padding:0;overflow:hidden}.tableHead{display:flex;justify-content:space-between;align-items:center;padding:10px 11px;border-bottom:1px solid var(--line)}.tableHead b{font-size:13px}.tableHead span{font-size:9px;color:var(--muted)}.tableWrap{overflow:auto;max-height:calc(100vh - 385px)}table{width:100%;border-collapse:collapse;min-width:1150px}th{position:sticky;top:0;background:#edf3f6;color:#264654;font-size:8px;text-transform:uppercase;letter-spacing:.03em;text-align:left;padding:8px;border-bottom:1px solid #d4e0e6;z-index:2}td{padding:8px;border-bottom:1px solid #e7edef;font-size:9px;vertical-align:top}tbody tr:hover{background:#f6fafc}.badge{display:inline-flex;align-items:center;padding:4px 6px;border-radius:999px;font-size:8px;font-weight:900}.online{background:#e6f7ed;color:#167a45}.offline{background:#fdecec;color:#aa2f2f}.sig-normal{background:#e6f7ed;color:#167a45}.sig-advertencia{background:#fff4d8;color:#986800}.sig-critica{background:#fdecec;color:#aa2f2f}.sig-sin_dato{background:#eef2f4;color:#6f7e87}.viewBtn{border:0;border-radius:6px;padding:6px 8px;background:#146fb3;color:#fff;font-size:8px;font-weight:900;cursor:pointer}.pager{display:flex;justify-content:flex-end;align-items:center;gap:6px;padding:8px 10px}.pager button{border:1px solid #cddde5;background:#fff;border-radius:6px;padding:6px 9px;font-size:9px;font-weight:900;cursor:pointer}.pager button:disabled{opacity:.4;cursor:not-allowed}
@@ -27,16 +52,16 @@ button,input,select{font:inherit}.wrap{padding:12px;max-width:1600px;margin:auto
   </section>
 
   <section class="metrics">
-    <div class="metric"><strong id="mTotal">—</strong><span>ONU AUTORIZADAS / CACHE</span></div>
-    <div class="metric ok"><strong id="mOnline">—</strong><span>EN LÍNEA</span></div>
-    <div class="metric bad"><strong id="mOffline">—</strong><span>DESCONECTADAS</span></div>
-    <div class="metric warn"><strong id="mWarn">—</strong><span>SEÑAL ADVERTENCIA</span></div>
-    <div class="metric bad"><strong id="mCritical">—</strong><span>SEÑAL CRÍTICA</span></div>
-    <div class="metric warn"><strong id="mPending">—</strong><span>ESPERANDO AUTORIZACIÓN</span></div>
+    <div class="metric total"><div class="metricIcon">◉</div><strong id="mTotal">—</strong><span>ONU AUTORIZADAS / CACHE</span></div>
+    <div class="metric ok"><div class="metricIcon">●</div><strong id="mOnline">—</strong><span>EN LÍNEA</span></div>
+    <div class="metric bad"><div class="metricIcon">↯</div><strong id="mOffline">—</strong><span>DESCONECTADAS</span></div>
+    <div class="metric warn"><div class="metricIcon">!</div><strong id="mWarn">—</strong><span>SEÑAL ADVERTENCIA</span></div>
+    <div class="metric bad"><div class="metricIcon">⚠</div><strong id="mCritical">—</strong><span>SEÑAL CRÍTICA</span></div>
+    <div class="metric pendingM"><div class="metricIcon">⌁</div><strong id="mPending">—</strong><span>ESPERANDO AUTORIZACIÓN</span></div>
   </section>
 
   <section class="layout">
-    <article class="panel"><h2>Estado por OLT</h2><div class="sub">Conteos obtenidos del cache de sincronización de SmartOLT.</div><div class="oltGrid" id="oltGrid"><div class="loading">Consultando OLT…</div></div></article>
+    <article class="panel"><h2>Estado por OLT</h2><div class="sub">Resumen operativo de la última lectura disponible en caché local.</div><div class="oltGrid" id="oltGrid"><div class="loading">Consultando OLT…</div></div></article>
     <article class="panel"><h2>ONU detectadas</h2><div class="sub">Autofind informado por el lector OLT.</div><div class="pending" id="pendingBox"><div class="loading">Consultando…</div></div></article>
   </section>
 
@@ -82,7 +107,7 @@ async function loadSummary(){
   $('mTotal').textContent=s.total??0;$('mOnline').textContent=s.online??0;$('mOffline').textContent=s.offline??0;$('mWarn').textContent=s.warning??0;$('mCritical').textContent=s.critical??0;$('mPending').textContent=s.pending_autofind??0;
   const sync=d.sync||{};$('syncStatus').textContent=sync.ultimo_error?'⚠ CACHE CON ERROR':'● SOLO LECTURA · CACHE LOCAL';
   const olts=d.olts||[];
-  $('oltGrid').innerHTML=olts.length?olts.map(x=>'<div class="oltCard"><div class="oltHead"><b>'+esc(x.olt)+'</b><span class="statusDot"></span></div><div class="oltNums"><div><strong>'+x.total+'</strong><span>TOTAL</span></div><div><strong>'+x.online+'</strong><span>ONLINE</span></div><div><strong>'+x.offline+'</strong><span>OFFLINE</span></div><div><strong>'+x.warning+'</strong><span>ADVERT.</span></div><div><strong>'+x.critical+'</strong><span>CRÍTICA</span></div><div><strong>'+x.no_signal+'</strong><span>SIN RX</span></div></div></div>').join(''):'<div class="pendingEmpty">No hay OLT en el cache actual.</div>';
+  $('oltGrid').innerHTML=olts.length?olts.map(x=>'<div class="oltCard"><div class="oltHead"><b>'+esc(x.olt)+'</b><span class="oltLive" title="Datos disponibles en la caché local"><span class="statusDot"></span>ACTIVA</span></div><div class="oltNums"><div class="nTotal"><strong>'+x.total+'</strong><span>◉ TOTAL</span></div><div class="nOnline"><strong>'+x.online+'</strong><span>● ONLINE</span></div><div class="nOffline"><strong>'+x.offline+'</strong><span>↯ OFFLINE</span></div><div class="nWarn"><strong>'+x.warning+'</strong><span>! ADVERT.</span></div><div class="nCrit"><strong>'+x.critical+'</strong><span>⚠ CRÍTICA</span></div><div class="nNoRx"><strong>'+x.no_signal+'</strong><span>○ SIN RX</span></div></div></div>').join(''):'<div class="pendingEmpty">No hay OLT en el cache actual.</div>';
   $('pendingBox').innerHTML=(d.pending||[]).length?(d.pending||[]).map(x=>'<div class="pendingItem"><b>'+esc(x.olt_nombre||x.olt_codigo||'OLT')+'</b><div>SN: '+esc(x.onu_sn||'—')+'</div><div>PON: '+esc(x.pon||'—')+' · '+esc(x.modelo||'Modelo sin dato')+'</div></div>').join(''):'<div class="pendingEmpty">No hay ONU nuevas en autofind.</div>';
   const current=$('olt').value;$('olt').innerHTML='<option value="">Todas las OLT</option>'+olts.map(x=>'<option value="'+esc(x.olt)+'">'+esc(x.olt)+'</option>').join('');$('olt').value=current;
 }
