@@ -128,16 +128,36 @@ function ensureMenuShell(){
     menuFrame.onload=()=>{
       if(menuFrame.src==='about:blank')return;
       menuFrame.style.visibility='visible';menuFrame.removeAttribute('aria-busy');
-      try{const d=menuFrame.contentDocument,path=menuFrame.contentWindow.location.pathname;if(/login-general|principal\.html/.test(path)){goMenuHome();return}d.addEventListener('click',e=>{const control=e.target.closest('button,a');if(control&&norm(control.textContent).includes('ATRAS')){e.preventDefault();e.stopImmediatePropagation();goMenuHome()}},true)}catch(e){console.warn('Navegación interna:',e)}
+      try{
+        const w=menuFrame.contentWindow,d=menuFrame.contentDocument,path=w.location.pathname,href=w.location.pathname.split('/').pop()+w.location.search+w.location.hash;
+        if(/login-general|principal\.html/.test(path)){goMenuHome();return}
+        let saved=null;try{saved=JSON.parse(localStorage.getItem(moduleStateKey)||'null')}catch{}
+        if(saved?.href){
+          saved.childHref=href;
+          localStorage.setItem(moduleStateKey,JSON.stringify(saved));
+        }
+        if(saved?.childHref===href&&Number.isFinite(Number(saved.scrollY)))setTimeout(()=>w.scrollTo(0,Number(saved.scrollY)||0),40);
+        let t=0;
+        w.addEventListener('scroll',()=>{clearTimeout(t);t=setTimeout(()=>{try{const st=JSON.parse(localStorage.getItem(moduleStateKey)||'null');if(!st?.href)return;st.childHref=w.location.pathname.split('/').pop()+w.location.search+w.location.hash;st.scrollY=w.scrollY||0;localStorage.setItem(moduleStateKey,JSON.stringify(st))}catch{}},120)},{passive:true});
+        d.addEventListener('click',e=>{const control=e.target.closest('button,a');if(control&&norm(control.textContent).includes('ATRAS')){e.preventDefault();e.stopImmediatePropagation();goMenuHome()}},true)
+      }catch(e){console.warn('Navegación interna:',e)}
     };
     aside.querySelectorAll('[data-href]').forEach(btn=>btn.onclick=()=>{
       const moduleTitle=btn.querySelector('span')?.textContent||'Módulo';
-      localStorage.setItem(moduleStateKey,JSON.stringify({href:btn.dataset.href,title:moduleTitle}));
+      localStorage.setItem(moduleStateKey,JSON.stringify({href:btn.dataset.href,title:moduleTitle,childHref:null,scrollY:0}));
       mobileBar.querySelector('.mobileModuleTitle').textContent=moduleTitle;
       menuFrame.style.visibility='hidden';menuFrame.setAttribute('aria-busy','true');menuFrame.src=directModuleUrl(btn.dataset.href);
       document.body.classList.add('moduleOpen');aside.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===btn))
     });
-    const restoreSavedModule=()=>{try{const saved=JSON.parse(localStorage.getItem(moduleStateKey)||'null');if(!saved?.href)return;const wanted=new URL(saved.href,location.href).pathname,restore=[...aside.querySelectorAll('[data-href]')].find(btn=>new URL(btn.dataset.href,location.href).pathname===wanted),framePath=(()=>{try{return menuFrame.contentWindow.location.pathname}catch{return''}})();if(restore&&(!document.body.classList.contains('moduleOpen')||framePath!==wanted))restore.click()}catch{}};[40,500,1400].forEach(delay=>setTimeout(restoreSavedModule,delay))
+    const restoreSavedModule=()=>{try{
+      const saved=JSON.parse(localStorage.getItem(moduleStateKey)||'null');if(!saved?.href)return;
+      const wanted=new URL(saved.href,location.href).pathname,restore=[...aside.querySelectorAll('[data-href]')].find(btn=>new URL(btn.dataset.href,location.href).pathname===wanted);
+      if(!restore)return;
+      const target=saved.childHref||directModuleUrl(saved.href),current=(()=>{try{return menuFrame.contentWindow.location.pathname.split('/').pop()+menuFrame.contentWindow.location.search+menuFrame.contentWindow.location.hash}catch{return''}})();
+      mobileBar.querySelector('.mobileModuleTitle').textContent=saved.title||restore.querySelector('span')?.textContent||'Módulo';
+      document.body.classList.add('moduleOpen');aside.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===restore));
+      if(!current||current==='about:blank'||!current.startsWith(String(target).split('?')[0])){menuFrame.style.visibility='hidden';menuFrame.setAttribute('aria-busy','true');menuFrame.src=target}
+    }catch{}};[40,500,1400].forEach(delay=>setTimeout(restoreSavedModule,delay))
     document.documentElement.dataset.panelStaticHydrated='1';
   }
 
