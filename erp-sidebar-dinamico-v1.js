@@ -1,7 +1,7 @@
 (()=>{
   if(window.__disprotelErpSidebarV1)return;window.__disprotelErpSidebarV1=true;
   const mq=window.matchMedia('(max-width:680px)');
-  let activeNavHref='__home__';
+  let activeNavHref=(()=>{try{return JSON.parse(localStorage.getItem('disprotel_last_module_v1')||'null')?.href||'__home__'}catch{return'__home__'}})();
   function role(){try{return String(JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'{}').rol||'').toLocaleUpperCase('es-EC')}catch{return''}}
   function isSupervisorTecnico(){const r=role();return /SUPERVISOR/.test(r)&&/T[ÉE]CNICO/.test(r)}
   function setSupervisorButton(btn,icon,label,href){if(!btn)return;btn.dataset.href=href;btn.innerHTML=icon+' <span>'+label+'</span>';btn.title=label}
@@ -39,8 +39,17 @@
   }
   function restoreActive(aside){
     if(!aside)return;
+    try{
+      const saved=JSON.parse(localStorage.getItem('disprotel_last_module_v1')||'null');
+      if(saved?.href)activeNavHref=saved.href;
+    }catch{}
     const buttons=[...aside.querySelectorAll('button')];
-    const active=activeNavHref==='__home__'?aside.querySelector('.erpHomeButton'):buttons.find(b=>String(b.dataset?.href||'')===activeNavHref);
+    const active=activeNavHref==='__home__'
+      ?aside.querySelector('.erpHomeButton')
+      :buttons.find(b=>{
+        const a=String(b.dataset?.href||''),x=String(activeNavHref||'');
+        try{return new URL(a,location.href).pathname===new URL(x,location.href).pathname}catch{return a===x}
+      });
     if(active)markActive(aside,active);
   }
   function ensureHomeButton(aside){let b=aside.querySelector('.erpHomeButton');if(b)return b;const title=aside.querySelector('.sideTitle');if(!title)return null;b=document.createElement('button');b.type='button';b.className='erpHomeButton';b.title='Inicio · Panel general';b.setAttribute('aria-label','Volver al panel general');b.innerHTML='<span aria-hidden="true">🏠</span><span>Inicio</span>';b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();localStorage.removeItem('disprotel_last_module_v1');markActive(aside,b);location.href='principal.html'});title.insertAdjacentElement('afterend',b);return b}
