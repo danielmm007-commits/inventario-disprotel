@@ -123,3 +123,127 @@ button:not(:disabled):active,a.btn:not(.disabled):active,.btn:not(.disabled):act
   .menuAside button{min-height:40px!important;padding:7px!important;font-size:17px!important}
   .menuStage{border-radius:14px!important}
 }
+
+
+/* DISPROTEL PROFESSIONAL UI v4 FINAL */
+:root{
+  --ui-font:"Segoe UI",Roboto,Arial,sans-serif;
+  --ui-text:#1f3540;
+  --ui-muted:#6d7f88;
+  --ui-line:#d5e0e5;
+  --ui-surface:#ffffff;
+  --ui-soft:#f6f9fa;
+  --ui-navy:#073f52;
+  --ui-teal:#0b766b;
+  --ui-blue:#176fa5;
+  --ui-ok:#238a5a;
+  --ui-warn:#b77a00;
+  --ui-danger:#bb4141;
+}
+html,body{font-family:var(--ui-font)!important;color:var(--ui-text)!important}
+body{font-weight:400!important;letter-spacing:0!important}
+h1,h2,h3,h4,h5,h6{font-family:var(--ui-font)!important;font-weight:600!important;letter-spacing:0!important}
+p,span,div,td,th,label,input,select,textarea,button{font-family:var(--ui-font)!important}
+small,.muted,.sub,.hint{font-weight:400!important;color:var(--ui-muted)!important}
+label,.label,.lbl,.mesaStat span,.metric span{font-weight:500!important}
+strong,b{font-weight:600!important}
+
+/* Jerarquía: superficies tranquilas, color solo donde aporta */
+.card,.panel,.module,.group,.work,.stat,.metric,.otMesa,.mesaReq,.step,.summary,.basketBox,.evidence{
+  box-shadow:none!important;
+  border-color:var(--ui-line)!important;
+}
+.card,.panel,.module,.group,.work,.stat,.metric,.summary,.basketBox,.evidence{
+  background:var(--ui-surface)!important;
+}
+.sectionHead,.sectionTitle,.workHead,.stepHead{color:var(--ui-text)!important}
+.sectionTitle:before{background:var(--ui-teal)!important}
+
+/* Cabeceras: identidad sin aspecto publicitario */
+.hero,.techHero,.dashHero,.mesaHead{
+  background:linear-gradient(90deg,#083f50,#0b766b)!important;
+  color:#fff!important;
+  box-shadow:none!important;
+  border-radius:6px!important;
+}
+.hero h1,.hero h2,.techHero h1,.techHero h2,.dashHero h1,.dashHero h2,.mesaHead h1,.mesaHead h2{
+  color:#fff!important;font-weight:600!important
+}
+.hero p,.techHero p,.dashHero p,.mesaHead p{color:#d9ecee!important;font-weight:400!important}
+
+/* Botones: tacto de software, no cartel */
+button,.btn,a.btn,[role="button"],.familyCard{
+  font-weight:600!important;
+  box-shadow:none!important;
+  transform:none!important;
+  filter:none!important;
+  transition:background-color .14s ease,border-color .14s ease,color .14s ease,opacity .14s ease,transform .08s ease!important;
+}
+button:not(:disabled):hover,.btn:not(.disabled):hover,a.btn:not(.disabled):hover,[role="button"]:not([aria-disabled="true"]):hover,.familyCard:hover{
+  transform:none!important;
+  box-shadow:none!important;
+  filter:none!important;
+  opacity:.94!important;
+}
+button:not(:disabled):active,.btn:not(.disabled):active,a.btn:not(.disabled):active,[role="button"]:not([aria-disabled="true"]):active,.familyCard:active{
+  transform:translateY(1px)!important;
+  box-shadow:none!important;
+  filter:none!important;
+  opacity:.86!important;
+}
+button:focus-visible,.btn:focus-visible,a.btn:focus-visible,[role="button"]:focus-visible{
+  outline:2px solid rgba(23,111,165,.28)!important;
+  outline-offset:2px!important;
+}
+.heroActions,.heroControls,.dashHeroActions{gap:6px!important}
+.heroActions button,.heroControls button,.dashHeroActions button{
+  min-height:30px!important;height:30px!important;
+  padding:5px 9px!important;
+  border-radius:4px!important;
+  font-size:10px!important;
+  font-weight:600!important;
+  background:#fff!important;
+  color:var(--ui-text)!important;
+  border:1px solid #c7d5da!important;
+  box-shadow:none!important;
+}
+
+/* Estados vivos pero discretos */
+.online,.connected,.conectado,.status-connected,.connection-ok,.server-ok,[data-status="connected"],[data-connection="online"],.panelConnected{
+  background:#188653!important;
+  color:#fff!important;
+  border:1px solid #5ac88d!important;
+  box-shadow:none!important;
+  animation:none!important;
+  font-weight:600!important;
+}
+.badge,.pill,.statusBadge,.chip,.retBadge,.mesaActionChip,.supMesaChip{
+  font-weight:600!important;
+  box-shadow:none!important;
+}
+
+/* Movimiento sutil en elementos interactivos */
+.menuAside button,.tabs button,.tab,.mesaTab,.dashItem,.work,.module{
+  transition:background-color .14s ease,border-color .14s ease,color .14s ease,opacity .14s ease!important;
+}
+.menuAside button:hover,.tabs button:hover,.tab:hover,.mesaTab:hover{opacity:.94!important}
+.menuAside button.on,.menuAside button.erpNavActive{background:#1b82bd!important;color:#fff!important}
+.dashItem:hover,.work:hover,.module:hover{background:#f8fbfc!important;border-color:#c9d9e0!important}
+
+/* Indicadores de carga: movimiento solo cuando comunica estado */
+.loading,[aria-busy="true"]{cursor:progress!important}
+@keyframes uiSpin{to{transform:rotate(360deg)}}
+.loading .refreshIcon,.erpModuleLoader i{animation:uiSpin .7s linear infinite!important}
+@keyframes uiFadeIn{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+.menuFrame:not(.erpPreparing),.modal.show,.toast.show,.msg.ok,.msg.err{animation:uiFadeIn .14s ease-out}
+
+/* Inputs y tablas con jerarquía limpia */
+input,select,textarea{font-weight:400!important}
+thead th{font-weight:600!important;letter-spacing:.01em!important}
+tbody td{font-weight:400!important}
+table .badge,table .pill{font-weight:600!important}
+
+/* Respeto por accesibilidad */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
