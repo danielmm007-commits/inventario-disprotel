@@ -162,11 +162,12 @@ function renderMesaActions(){
 function mesaReqLine(r){
  const names=(r.acciones||[]).map(x=>MESA_ACTIONS[x]?.[1]||x.replaceAll('_',' ')).join(' · '),res=r.resultado||{},pot=res.verificacion_potencia||null,ev=res.evidencia_potencia||null;
  let extra='';
- if(pot){
-   const vals=[['Estado',pot.estado||'—'],['Rx ONU',pot.rx_onu_dbm!=null?String(pot.rx_onu_dbm)+' dBm':'—'],['Rx OLT',pot.rx_olt_dbm!=null?String(pot.rx_olt_dbm)+' dBm':'—'],['OLT',pot.olt||'—'],['PON',[pot.tarjeta,pot.puerto].filter(Boolean).join('/')||'—'],['ONT-ID',pot.ont_id||'—'],['SN',pot.sn||'—'],['Fuente',pot.fuente||'SMARTOLT'],['Lectura',pot.leido_at?fmt(pot.leido_at):'—']];
-   extra+='<div style="margin-top:7px;padding:8px;border:1px solid #d7e4ea;border-radius:8px;background:#f8fbfc">'+vals.map(v=>'<div><b>'+esc(v[0])+':</b> '+esc(v[1])+'</div>').join('')+'</div>';
+ if(pot||ev?.url){
+   const vals=pot?[['Estado',pot.estado||'—'],['Rx ONU',pot.rx_onu_dbm!=null?String(pot.rx_onu_dbm)+' dBm':'—'],['Rx OLT',pot.rx_olt_dbm!=null?String(pot.rx_olt_dbm)+' dBm':'—'],['OLT',pot.olt||'—'],['PON',[pot.tarjeta,pot.puerto].filter(Boolean).join('/')||'—'],['ONT-ID',pot.ont_id||'—'],['SN',pot.sn||'—'],['Fuente',pot.fuente||'SMARTOLT'],['Lectura',pot.leido_at?fmt(pot.leido_at):'—']]:[];
+   const left='<div class="mesaPowerData"><b>📊 Lectura óptica</b>'+vals.map(v=>'<div style="margin-top:3px"><b>'+esc(v[0])+':</b> '+esc(v[1])+'</div>').join('')+'</div>';
+   const right='<div class="mesaPowerEvidence"><b>📷 Evidencia de Mesa Técnica</b>'+(ev?.url?'<img data-mesa-power-evidence="'+esc(r.id)+'" src="'+esc(ev.url)+'" alt="Evidencia potencia SmartOLT" onclick="window.open(this.src,\'_blank\')">'+(ev.subido_at?'<div class="muted">Guardada '+esc(fmt(ev.subido_at))+'</div>':''):'<div class="muted" style="margin-top:6px">Sin captura disponible.</div>')+'</div>';
+   extra='<div class="mesaPowerGrid">'+left+right+'</div>';
  }
- if(ev?.url)extra+='<div style="margin-top:7px"><b>📷 Evidencia de Mesa Técnica</b><div style="margin-top:5px"><img src="'+esc(ev.url)+'" alt="Evidencia potencia SmartOLT" style="display:block;width:100%;max-height:230px;object-fit:contain;background:#111;border:1px solid #d7e1e5;border-radius:8px;cursor:pointer" onclick="window.open(this.src,\'_blank\')"></div>'+(ev.subido_at?'<div class="muted" style="margin-top:4px">Guardada '+esc(fmt(ev.subido_at))+'</div>':'')+'</div>';
  return '<div style="padding:7px 0;border-bottom:1px solid #e5ecef"><b>'+(r.estado==='ATENDIDO'?'✅':'⏳')+' '+esc(names)+'</b><div class="muted">'+esc(fmt(r.solicitado_at))+(r.estado==='ATENDIDO'&&r.atendido_at?' · atendido '+esc(fmt(r.atendido_at)):'')+'</div>'+extra+'</div>'
 }
 async function mesaStatus(){if(!['SOPORTE_TECNICO','CAMBIO_EQUIPOS','REUBICACION'].includes(DATA?.orden?.tipo_trabajo))return;try{const d=await post(MESA_API,{action:'status',orden_id:ORDEN});MESA_STATE=d;const rs=d.requerimientos||[];$('mesaSoporteEstado').innerHTML=rs.length?rs.map(mesaReqLine).join(''):'<div class="muted">Todavía no hay requerimientos enviados a Mesa Técnica.</div>';renderMesaActions()}catch(e){$('mesaSoporteEstado').textContent='No se pudo consultar Mesa técnica: '+e.message}}
