@@ -109,10 +109,19 @@ async function openDetail(id){
     $('detailBody').innerHTML='<div class="detailGrid">'+items.map(x=>'<div class="detail"><b>'+esc(x[0])+'</b><span>'+esc(x[1]??'—')+'</span></div>').join('')+'</div>'+(s.id?'<div class="serviceBox"><h3>Servicio DISPROTEL vinculado</h3><p><b>Cliente:</b> '+esc(s.cliente?.nombre_completo||o.nombre||'—')+'</p><p><b>Servicio:</b> '+esc(s.codigo_servicio_legacy||'—')+' · <b>Plan:</b> '+esc(s.plan_codigo||'—')+'</p><p><b>IP:</b> '+esc(s.ip_cliente||'—')+' · <b>Dirección:</b> '+esc(s.direccion||'—')+'</p><p><b>Coincidencia:</b> '+esc(v.metodo_coincidencia||'—')+' · <b>Confianza:</b> '+esc(v.confianza??'—')+'</p></div>':'<div class="serviceBox"><h3>Sin servicio vinculado</h3><p>La ONU existe en el cache, pero todavía no tiene una relación confirmada con un servicio DISPROTEL.</p></div>');
   }catch(e){$('detailBody').innerHTML='<div class="loading">No se pudo cargar: '+esc(e.message)+'</div>'}
 }
-async function refreshAll(btn){
-  btn?.classList.add('loading');try{await Promise.all([loadSummary(),loadList(false)])}catch(e){alert(e.message)}finally{btn?.classList.remove('loading')}
+async function refreshAll(btn,full=false){
+  btn?.classList.add('loading');
+  const original=btn?.textContent;
+  try{
+    if(full){
+      if(btn)btn.textContent='⟳ Sincronizando…';
+      await call({action:'full-sync'});
+    }
+    await Promise.all([loadSummary(),loadList(false)]);
+  }catch(e){alert(e.message)}
+  finally{if(btn){btn.classList.remove('loading');btn.textContent=original||'↻ Actualizar'}}
 }
-$('refreshBtn').onclick=e=>refreshAll(e.currentTarget);$('searchBtn').onclick=()=>loadList(true).catch(e=>alert(e.message));$('q').addEventListener('keydown',e=>{if(e.key==='Enter')loadList(true).catch(x=>alert(x.message))});
+$('refreshBtn').onclick=e=>refreshAll(e.currentTarget,true);$('searchBtn').onclick=()=>loadList(true).catch(e=>alert(e.message));$('q').addEventListener('keydown',e=>{if(e.key==='Enter')loadList(true).catch(x=>alert(x.message))});
 ['olt','tarjeta','puerto','estado'].forEach(id=>$(id).onchange=()=>loadList(true).catch(e=>alert(e.message)));
 $('prev').onclick=()=>{state.offset=Math.max(0,state.offset-state.limit);loadList(false).catch(e=>alert(e.message))};$('next').onclick=()=>{if(state.offset+state.limit<state.total){state.offset+=state.limit;loadList(false).catch(e=>alert(e.message))}};
 $('closeModal').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};document.addEventListener('keydown',e=>{if(e.key==='Escape')$('modal').classList.remove('show')});
