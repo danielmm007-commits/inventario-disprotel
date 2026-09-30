@@ -129,7 +129,7 @@ function mesaEtapaOpciones(){
  const o=DATA?.orden||{},tipo=up(o.servicio?.tipo_conexion||o.plan_solicitado||''),fibra=/FIBRA/.test(tipo),radio=/RADIO|INALAMBR|INALÁMBR|WIRELESS/.test(tipo),st=MESA_STATE||{},rs=st.requerimientos||[];
  const pending=rs.some(r=>r.estado==='PENDIENTE');
  if(pending)return {bloqueada:true,codes:[],texto:'⏳ Mesa Técnica todavía atiende el requerimiento anterior.'};
- const atendidas=new Set(rs.filter(r=>r.estado==='ATENDIDO').flatMap(r=>Array.isArray(r.acciones)?r.acciones:[]));
+ const solicitadas=new Set(rs.flatMap(r=>Array.isArray(r.acciones)?r.acciones:[]));
  const onuPend=st.onu&&['SOLICITADO','REQUIERE_CORRECCION'].includes(st.onu.estado),ipPend=st.ip?.solicitud?.estado==='PENDIENTE';
  if(onuPend||ipPend)return {bloqueada:true,codes:[],texto:'⏳ Primero debe terminar la activación o validación pendiente.'};
  const ipLista=o.ip_creacion_estado==='CONFIRMADA'||st.ip?.solicitud?.estado==='ASIGNADA';
@@ -139,8 +139,11 @@ function mesaEtapaOpciones(){
  if(!ipLista)prep.splice(Math.max(0,prep.length-1),0,'CONFIRMAR_IP_ACTUAL','ASIGNAR_NUEVA_IP');
  else prep.splice(Math.max(0,prep.length-1),0,'ASIGNAR_NUEVA_IP');
  const final=ipLista?['VERIFICAR_ACCESO_REMOTO','VERIFICAR_CONECTIVIDAD']:[];
- const codes=[...new Set([...prep,...final])].filter(x=>!atendidas.has(x));
- return {bloqueada:false,codes,texto:codes.length?(ipLista?'Servicio con IP lista. Puedes pedir únicamente acciones que todavía no hayan sido atendidas en esta OT.':'Primero deja listo el servicio y la IP. Las acciones ya resueltas no vuelven a solicitarse.'):'✅ Las acciones de Mesa Técnica disponibles para esta OT ya fueron atendidas.'};
+ if(solicitadas.has('VERIFICAR_POTENCIA'))prep=prep.filter(x=>x!=='ACTIVAR_CAMBIAR_ONU');
+ const finalYaSolicitada=['VERIFICAR_ACCESO_REMOTO','VERIFICAR_CONECTIVIDAD'].some(x=>solicitadas.has(x));
+ if(finalYaSolicitada)prep=[];
+ const codes=[...new Set([...prep,...final])].filter(x=>!solicitadas.has(x));
+ return {bloqueada:false,codes,texto:codes.length?(ipLista?'Solo se muestran acciones que aún no han sido solicitadas y que corresponden al siguiente paso lógico.':'Primero deja listo el servicio y la IP. Cada acción desaparece después de solicitarla.'):'✅ No hay más acciones de Mesa Técnica pendientes para esta etapa.'};
 }
 function actualizarMesaResumen(){const arr=[...MESA_SELECTED];$('mesaPickerResumen').textContent=arr.length?'Seleccionadas: '+arr.map(x=>MESA_ACTIONS[x]?.[1]||x).join(' · '):'Ninguna acción seleccionada.';$('mesaPickerBtn').textContent=arr.length?'▾ '+arr.length+' ACCIÓN'+(arr.length>1?'ES':'')+' SELECCIONADA'+(arr.length>1?'S':''):'▾ SELECCIONAR ACCIONES'}
 function renderMesaActions(){
