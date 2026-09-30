@@ -1,6 +1,6 @@
 (()=>{
   const ASSIGNED=new Set(['ASIGNADA','ASIGNADO','PENDIENTE_RECEPCION','PENDIENTE_CONFIRMACION']);
-  let view='available',busy=false,autoFocused=false,allDetailsOpen=true;
+  let view='available',busy=false,autoFocused=false,allDetailsOpen=true,initialViewChosen=false;
   const css=`
   .attentionSwitch{display:none;grid-template-columns:repeat(4,1fr);gap:10px;margin:13px 0}
   .attentionSwitch.show{display:grid}
@@ -21,14 +21,16 @@
   .jobInstall .workKind{background:#eaf5ff;color:#075da8}
   .jobClosedOk .workKind{background:#e8f8ee;color:#126239}
   .jobClosedCancel .workKind{background:#fdecec;color:#991b1b}
-  .attentionMode .job.jobCompact:not(.expanded)>:not(.workKind):not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle),.workGrid.allDetailsCollapsed .job.jobCompact:not(.expanded)>:not(.workKind):not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle){display:none!important}.workGrid.allDetailsOpen .workKind,.workGrid.allDetailsOpen .jobQuickMeta,.workGrid.allDetailsOpen .jobToggle{display:none!important}
-  .jobToggle{position:relative;display:flex!important;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:11px;padding:12px 14px!important;border:1px solid #b7d7e9!important;border-radius:14px!important;background:linear-gradient(135deg,#eaf7ff,#ffffff 46%,#dcefff)!important;color:#082b5c!important;font-size:13px!important;font-weight:1000!important;letter-spacing:.02em;box-shadow:0 7px 18px #176fc426;overflow:hidden;animation:jobTogglePulse 1.8s ease-in-out infinite}
-  .jobToggle:before{content:'📋';width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#fff;border:1px solid #cbe2ee;box-shadow:0 4px 10px #082b5c17;font-size:18px}
-  .jobToggle:after{content:'';position:absolute;inset:-40% auto -40% -55%;width:48%;background:linear-gradient(90deg,transparent,#ffffff9c,transparent);transform:rotate(16deg);animation:jobToggleShine 2.6s ease-in-out infinite;pointer-events:none}
+  .attentionMode .job.jobCompact:not(.expanded)>:not(.workKind):not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle):not(.jobQuickContinue),.workGrid.allDetailsCollapsed .job.jobCompact:not(.expanded)>:not(.workKind):not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle):not(.jobQuickContinue){display:none!important}.workGrid.allDetailsOpen .workKind,.workGrid.allDetailsOpen .jobQuickMeta,.workGrid.allDetailsOpen .jobToggle{display:none!important}
+  .jobToggle{position:relative;display:flex!important;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:7px;padding:7px 10px!important;border:1px solid #c9d9e0!important;border-radius:4px!important;background:#f5f8f9!important;color:#36515d!important;font-size:10px!important;font-weight:600!important;letter-spacing:0;box-shadow:none!important;overflow:hidden;animation:none!important}
+  .jobQuickContinue{display:flex!important;align-items:center;justify-content:center;width:100%;margin-top:7px;min-height:32px!important;padding:7px 10px!important;border:1px solid #0b7469!important;border-radius:4px!important;background:#0b7469!important;color:#fff!important;font-size:11px!important;font-weight:600!important;box-shadow:none!important;cursor:pointer;transition:background-color .14s ease,opacity .14s ease,transform .08s ease!important}
+  .jobQuickContinue:hover{background:#09675e!important;opacity:.96!important;transform:none!important}.jobQuickContinue:active{transform:translateY(1px)!important;opacity:.88!important}
+  .jobToggle:before{content:'▾';display:inline;color:#60737c;font-size:10px}
+  .jobToggle:after{content:none!important}
   .jobSupport .jobToggle{border-color:#f2c77c!important;background:linear-gradient(135deg,#fff7e8,#ffffff 48%,#ffe9bf)!important;color:#754500!important;box-shadow:0 7px 18px #f59e0b2e}
   .jobInstall .jobToggle{border-color:#9ccbea!important;background:linear-gradient(135deg,#eaf7ff,#ffffff 48%,#d8edff)!important;color:#075da8!important}
-  .job.expanded .jobToggle{animation:none;background:#17313d!important;color:#fff!important;border-color:#17313d!important}
-  .job.expanded .jobToggle:before{content:'↑';color:#17313d}
+  .job.expanded .jobToggle{animation:none;background:#eef3f5!important;color:#36515d!important;border-color:#c9d9e0!important}
+  .job.expanded .jobToggle:before{content:'▴';color:#60737c}
   .job button:disabled,.job a.disabledAction{background:#dbe5ea!important;color:#72848d!important;border-color:#c8d6dd!important;box-shadow:none!important;filter:grayscale(.2)!important;opacity:.88!important;cursor:not-allowed!important;animation:none!important}
   @keyframes jobTogglePulse{0%,100%{transform:translateY(0);filter:brightness(1)}50%{transform:translateY(-1px);filter:brightness(1.08);box-shadow:0 10px 24px #176fc43a}}
   @keyframes jobToggleShine{0%,55%{left:-55%}85%,100%{left:120%}}
@@ -96,8 +98,11 @@
     if(cls){job.classList.add(...cls.split(/\s+/).filter(Boolean));const k=document.createElement('span');k.className='workKind';k.textContent=label;job.prepend(k)}
     const id=job.dataset.ordenId||'';
     if(id&&window.__disprotelOpenJobId===id)job.classList.add('expanded');
-    const b=document.createElement('button');b.type='button';b.className='jobToggle';b.textContent=job.classList.contains('expanded')?'OCULTAR DETALLE':'VER TRABAJO Y ACCIONES';
-    b.onclick=()=>{job.classList.toggle('expanded');window.__disprotelOpenJobId=job.classList.contains('expanded')?id:'';b.textContent=job.classList.contains('expanded')?'OCULTAR DETALLE':'VER TRABAJO Y ACCIONES'};
+    if(job.closest('#mios')&&state(job)==='EN_PROCESO'&&id&&!job.querySelector('.jobQuickContinue')){
+      const q=document.createElement('button');q.type='button';q.className='jobQuickContinue';q.textContent='▶ CONTINUAR SOPORTE';q.onclick=e=>{e.stopPropagation();if(typeof window.abrirSoporte==='function')window.abrirSoporte(id)};job.appendChild(q)
+    }
+    const b=document.createElement('button');b.type='button';b.className='jobToggle';b.textContent=job.classList.contains('expanded')?'OCULTAR DETALLE':'VER DETALLE';
+    b.onclick=()=>{job.classList.toggle('expanded');window.__disprotelOpenJobId=job.classList.contains('expanded')?id:'';b.textContent=job.classList.contains('expanded')?'OCULTAR DETALLE':'VER DETALLE'};
     job.appendChild(b);
   }
   function ensure(){
@@ -128,6 +133,7 @@
     const ui=ensure();if(!ui){busy=false;return}
     if(focusAttentionOnce()){busy=false;setTimeout(apply,0);return}
     const mode=familySelected(),c=counts(),available=document.querySelector('.workPanel.available'),assigned=document.querySelector('.workPanel.assigned'),mine=document.querySelector('.workPanel.active'),history=document.querySelector('.workPanel.history');
+    if(mode&&!initialViewChosen){view=c.active>0?'active':c.assigned>0?'assigned':c.available>0?'available':'done';initialViewChosen=true}
     ui.nav.classList.toggle('show',mode);ui.grid.classList.toggle('attentionMode',mode);ui.grid.classList.toggle('allDetailsOpen',!mode&&allDetailsOpen);ui.grid.classList.toggle('allDetailsCollapsed',!mode&&!allDetailsOpen);const all=document.getElementById('familyAll');if(all)all.textContent=mode?'Ver todas':allDetailsOpen?'Ocultar tarjetas':'Mostrar tarjetas';
     ui.nav.querySelectorAll('.attentionTab').forEach(b=>{const k=b.dataset.view,n=c[k],count=b.querySelector('.attentionCount');b.classList.toggle('on',k===view);b.classList.toggle('needsAttention',n>0);if(count.textContent!==String(n))count.textContent=n});
     available?.classList.toggle('boardVisible',mode&&view==='available');
