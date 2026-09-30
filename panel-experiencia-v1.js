@@ -6,16 +6,20 @@
   if(!me?.usuario)return;
   const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
   function nombrePerfil(v){
-    const raw=String(v||'').trim(),n=norm(raw);
+    const raw=String(v||'').trim(),n=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
     const rules=[
       ['DANIELA','VELASTEGUI','Daniela Velastegui'],['MAYRA','MOLINA','Mayra Molina'],['RUBI','PAZMINO','Rubi Pazmiño'],
       ['FERNANDO','MOLINA','Fernando Molina'],['CARLOS','MOLINA','Carlos Luis Molina'],['JONATHAN','OROZCO','Jonathan Orozco'],
       ['FRANKLIN','OROZCO','Franklin Orozco'],['STALIN','VILCA','Stalin Vilca'],['STALIN','MOLINA','Stalin Molina'],
       ['BRISA','PURUNCAJAS','Brisa Puruncajas'],['THALIA','CALAPAQUI','Thalia Calapaqui'],['JOSUE','MOLINA','Josue Molina'],
-      ['MATEO','BARBOSA','Mateo Barbosa'],['DANIEL','MOLINA','Daniel Molina'],['DIEGO','MANCERO','Diego Mancero']
+      ['MATEO','BARBOSA','Mateo Barbosa'],['DANIEL','MOLINA','Daniel Molina'],['DIEGO','MANCERO','Diego Mancero'],
+      ['BRYAN','GARCIA','Bryan Garcia'],['BRAYAN','GARCIA','Bryan Garcia']
     ];
     for(const [a,b,out] of rules)if(n.includes(a)&&n.includes(b))return out;
-    const p=raw.split(/\s+/).filter(Boolean);return p.length>=2?p[0]+' '+p[1]:raw||'Usuario';
+    const p=raw.split(/\s+/).filter(Boolean);
+    if(p.length>=4)return p[0]+' '+p[p.length-2];
+    if(p.length>=2)return p[0]+' '+p[1];
+    return raw||'Usuario';
   }
   const role=norm(me.rol),level=role.includes('SUPREMO')?'supremo':role.includes('SUPERVISOR')?'supervisor':role.includes('ADMINISTRADOR')?'administrador':'operativo',isRubi=norm(me.nombre).includes('RUBI PAZMINO')||norm(me.nombre).includes('SANDRA RUBI');
   const headers=()=>({'Content-Type':'application/json','x-user':me.usuario||'','x-pin':me.pin||'','x-session':me.session_token||''});
