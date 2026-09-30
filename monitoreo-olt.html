@@ -80,7 +80,7 @@ async function loadSummary(){
   const d=await call({action:'summary'});
   const s=d.summary||{};
   $('mTotal').textContent=s.total??0;$('mOnline').textContent=s.online??0;$('mOffline').textContent=s.offline??0;$('mWarn').textContent=s.warning??0;$('mCritical').textContent=s.critical??0;$('mPending').textContent=s.pending_autofind??0;
-  const sync=d.sync||{};$('syncStatus').textContent=sync.ultimo_error?'⚠ SINCRONIZACIÓN CON ERROR':'● SOLO LECTURA · '+(sync.ultimo_modo||'CACHE');
+  const sync=d.sync||{};$('syncStatus').textContent=sync.ultimo_error?'⚠ CACHE CON ERROR':'● SOLO LECTURA · CACHE LOCAL';
   const olts=d.olts||[];
   $('oltGrid').innerHTML=olts.length?olts.map(x=>'<div class="oltCard"><div class="oltHead"><b>'+esc(x.olt)+'</b><span class="statusDot"></span></div><div class="oltNums"><div><strong>'+x.total+'</strong><span>TOTAL</span></div><div><strong>'+x.online+'</strong><span>ONLINE</span></div><div><strong>'+x.offline+'</strong><span>OFFLINE</span></div><div><strong>'+x.warning+'</strong><span>ADVERT.</span></div><div><strong>'+x.critical+'</strong><span>CRÍTICA</span></div><div><strong>'+x.no_signal+'</strong><span>SIN RX</span></div></div></div>').join(''):'<div class="pendingEmpty">No hay OLT en el cache actual.</div>';
   $('pendingBox').innerHTML=(d.pending||[]).length?(d.pending||[]).map(x=>'<div class="pendingItem"><b>'+esc(x.olt_nombre||x.olt_codigo||'OLT')+'</b><div>SN: '+esc(x.onu_sn||'—')+'</div><div>PON: '+esc(x.pon||'—')+' · '+esc(x.modelo||'Modelo sin dato')+'</div></div>').join(''):'<div class="pendingEmpty">No hay ONU nuevas en autofind.</div>';
@@ -109,19 +109,16 @@ async function openDetail(id){
     $('detailBody').innerHTML='<div class="detailGrid">'+items.map(x=>'<div class="detail"><b>'+esc(x[0])+'</b><span>'+esc(x[1]??'—')+'</span></div>').join('')+'</div>'+(s.id?'<div class="serviceBox"><h3>Servicio DISPROTEL vinculado</h3><p><b>Cliente:</b> '+esc(s.cliente?.nombre_completo||o.nombre||'—')+'</p><p><b>Servicio:</b> '+esc(s.codigo_servicio_legacy||'—')+' · <b>Plan:</b> '+esc(s.plan_codigo||'—')+'</p><p><b>IP:</b> '+esc(s.ip_cliente||'—')+' · <b>Dirección:</b> '+esc(s.direccion||'—')+'</p><p><b>Coincidencia:</b> '+esc(v.metodo_coincidencia||'—')+' · <b>Confianza:</b> '+esc(v.confianza??'—')+'</p></div>':'<div class="serviceBox"><h3>Sin servicio vinculado</h3><p>La ONU existe en el cache, pero todavía no tiene una relación confirmada con un servicio DISPROTEL.</p></div>');
   }catch(e){$('detailBody').innerHTML='<div class="loading">No se pudo cargar: '+esc(e.message)+'</div>'}
 }
-async function refreshAll(btn,full=false){
+async function refreshAll(btn){
   btn?.classList.add('loading');
   const original=btn?.textContent;
   try{
-    if(full){
-      if(btn)btn.textContent='⟳ Sincronizando…';
-      await call({action:'full-sync'});
-    }
+    if(btn)btn.textContent='⟳ Actualizando vista…';
     await Promise.all([loadSummary(),loadList(false)]);
   }catch(e){alert(e.message)}
   finally{if(btn){btn.classList.remove('loading');btn.textContent=original||'↻ Actualizar'}}
 }
-$('refreshBtn').onclick=e=>refreshAll(e.currentTarget,true);$('searchBtn').onclick=()=>loadList(true).catch(e=>alert(e.message));$('q').addEventListener('keydown',e=>{if(e.key==='Enter')loadList(true).catch(x=>alert(x.message))});
+$('refreshBtn').onclick=e=>refreshAll(e.currentTarget);$('searchBtn').onclick=()=>loadList(true).catch(e=>alert(e.message));$('q').addEventListener('keydown',e=>{if(e.key==='Enter')loadList(true).catch(x=>alert(x.message))});
 ['olt','tarjeta','puerto','estado'].forEach(id=>$(id).onchange=()=>loadList(true).catch(e=>alert(e.message)));
 $('prev').onclick=()=>{state.offset=Math.max(0,state.offset-state.limit);loadList(false).catch(e=>alert(e.message))};$('next').onclick=()=>{if(state.offset+state.limit<state.total){state.offset+=state.limit;loadList(false).catch(e=>alert(e.message))}};
 $('closeModal').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};document.addEventListener('keydown',e=>{if(e.key==='Escape')$('modal').classList.remove('show')});
