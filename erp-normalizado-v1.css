@@ -1,6 +1,6 @@
 /* DISPROTEL · SISTEMA VISUAL ERP GLOBAL v3 */
 :root{
-  --erp-font:Arial,"Segoe UI",sans-serif;
+  --erp-font:"Segoe UI",Roboto,Arial,sans-serif;
   --erp-bg:#eef2f4;
   --erp-surface:#ffffff;
   --erp-surface-2:#f7f9fa;
@@ -33,9 +33,9 @@ h1,h2,h3,h4{
   text-transform:none!important;
   color:var(--erp-text)!important;
 }
-h1{font-size:17px!important;line-height:1.15!important;font-weight:700!important}
-h2{font-size:14px!important;line-height:1.2!important;font-weight:700!important}
-h3{font-size:12px!important;line-height:1.2!important;font-weight:700!important}
+h1{font-size:17px!important;line-height:1.2!important;font-weight:600!important}
+h2{font-size:14px!important;line-height:1.25!important;font-weight:600!important}
+h3{font-size:12px!important;line-height:1.25!important;font-weight:600!important}
 p,.muted,.sub,.hint,small{font-size:10px!important;line-height:1.3!important}
 .muted,.sub,.hint,small{color:var(--erp-muted)!important}
 
@@ -100,7 +100,7 @@ p,.muted,.sub,.hint,small{font-size:10px!important;line-height:1.3!important}
   background:rgba(255,255,255,.94)!important;
   color:#17313d!important;
   font-size:10px!important;
-  font-weight:700!important;
+  font-weight:600!important;
   box-shadow:none!important;
 }
 
