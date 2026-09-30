@@ -35,11 +35,17 @@
   document.addEventListener('focusout',e=>{const k=keyFor(e.target);if(k)guardar(e.target)},true);
 
   const obs=new MutationObserver(()=>requestAnimationFrame(restaurar));
-  const iniciar=()=>{
+  function limpiarBannerMesaLegacy(){
+  [...document.querySelectorAll('section,div')].forEach(el=>{
+    const t=(el.textContent||'').trim();
+    if(t.includes('Funciones conectadas actualmente')&&t.length<300)el.style.display='none';
+  });
+}
+const iniciar=()=>{limpiarBannerMesaLegacy();
     const lista=document.getElementById('lista');
     if(lista)obs.observe(lista,{childList:true,subtree:true});
-    restaurar();
-    if(!document.getElementById('mesaTecnicaFernandoScript')){const s=document.createElement('script');s.id='mesaTecnicaFernandoScript';s.src='mesa-tecnica-fernando-v1.js?v=20260929-1552';document.head.appendChild(s)}
+    restaurar();limpiarBannerMesaLegacy();
+    if(!document.getElementById('mesaTecnicaFernandoScript')){const s=document.createElement('script');s.id='mesaTecnicaFernandoScript';s.src='mesa-tecnica-fernando-v1.js?v=20260929-2048';document.head.appendChild(s)}
   };
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',iniciar):iniciar();
 
