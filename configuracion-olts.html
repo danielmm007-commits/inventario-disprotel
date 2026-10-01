@@ -78,7 +78,23 @@ function render(){
 }
 async function load(){try{const d=await call({action:'list'});rows=d.rows||[];render()}catch(e){$('grid').innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}
 function openForm(row=null){
- $('formTitle').textContent=row?'Editar OLT':'Agregar OLT';$('id').value=row?.id||'';$('codigo').value=row?.codigo||'';$('nombre').value=row?.nombre||'';$('host').value=row?.host||'';$('puerto').value=row?.puerto||23;$('protocolo').value=row?.protocolo||'TELNET';$('modelo').value=row?.modelo||'';$('prompt').value=row?.prompt||'';$('intervalo').value=String(row?.intervalo_seg||300);$('orden').value=row?.orden||0;$('activo').checked=row?.activo!==false;$('modal').classList.add('show');
+ $('formTitle').textContent=row?'Editar OLT':'Agregar OLT';
+ $('id').value=row?.id||'';
+ $('codigo').value=row?.codigo||'';
+ $('nombre').value=row?.nombre||'';
+ $('host').value=row?.host||'';
+ $('puerto').value=row?.puerto||23;
+ $('protocolo').value=row?.protocolo||'TELNET';
+ $('modelo').value=row?.modelo||'';
+ $('prompt').value=row?.prompt||'';
+ $('credUser').value='';
+ $('credSecret').value='';
+ $('credUser').placeholder=row?.credenciales_configuradas?'Guardado; escribe solo para cambiar':'Usuario de acceso';
+ $('credSecret').placeholder=row?.credenciales_configuradas?'Guardada; escribe solo para cambiar':'Clave de acceso';
+ $('intervalo').value=String(row?.intervalo_seg||300);
+ $('orden').value=row?.orden||0;
+ $('activo').checked=row?.activo!==false;
+ $('modal').classList.add('show');
 }
 window.editOlt=id=>openForm(rows.find(x=>x.id===id));
 window.toggleOlt=async(id,activo)=>{try{await call({action:'toggle',id,activo});toast(activo?'OLT activada':'OLT desactivada');await load()}catch(e){alert(e.message)}};
