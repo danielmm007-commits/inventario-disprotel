@@ -440,6 +440,10 @@ def olt_config_call(action, payload=None):
 
 
 def local_credentials(cfg):
+    remote_user=str(cfg.get("usuario") or "")
+    remote_password=str(cfg.get("password") or "")
+    if remote_user and remote_password:
+        return remote_user,remote_password
     code=re.sub(r"[^A-Z0-9]+","_",str(cfg.get("codigo") or "").upper()).strip("_")
     user=os.environ.get(f"OLT_{code}_USER","")
     password=os.environ.get(f"OLT_{code}_PASSWORD","")
@@ -447,7 +451,6 @@ def local_credentials(cfg):
         user=user or os.environ.get("OLT_USER","")
         password=password or os.environ.get("OLT_PASSWORD","")
     return user,password
-
 
 async def open_configured_olt(cfg):
     protocol=str(cfg.get("protocolo") or "TELNET").upper()
