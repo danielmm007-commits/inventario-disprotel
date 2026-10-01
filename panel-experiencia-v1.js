@@ -111,6 +111,8 @@ function ensureMenuShell(){
     if(consultaAllowed&&!cards.some(x=>String(x.href||'').includes('consulta-clientes.html')))cards.push({title:'Consulta de clientes',icon:'🔎',href:'consulta-clientes.html?v='+Date.now(),i:cards.length});
     const oltAllowed=me?.es_admin_principal===true||['TECNICO','SUPERVISOR TECNICO','ADMINISTRADOR','ADMINISTRADOR SUPREMO'].includes(role.trim());
     if(oltAllowed&&!cards.some(x=>String(x.href||'').includes('monitoreo-olt.html')))cards.push({title:'Monitoreo OLT / ONU',icon:'📡',href:'monitoreo-olt.html?v='+Date.now(),i:cards.length});
+    const oltAdminAllowed=me?.es_admin_principal===true||['SUPERVISOR TECNICO','ADMINISTRADOR','ADMINISTRADOR SUPREMO'].includes(role.trim());
+    if(oltAdminAllowed&&!cards.some(x=>String(x.href||'').includes('configuracion-olts.html')))cards.push({title:'Configuración de OLT',icon:'⚙️',href:'configuracion-olts.html?v='+Date.now(),i:cards.length});
 
     aside.innerHTML='<div class="sideTitle"><div class="navAvatar">'+(avatarEmoji[prefs.avatar_tipo]||'🧑')+'</div><b>Navegación</b><small>Módulos habilitados para ti</small></div><div class="navGroup">MÓDULOS PRINCIPALES</div>'+cards.map(x=>'<button data-href="'+x.href.replace(/"/g,'&quot;')+'">'+x.icon+' <span>'+x.title+'</span></button>').join('');
 
