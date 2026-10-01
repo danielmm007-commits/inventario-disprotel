@@ -124,7 +124,7 @@ $('form').onsubmit=async e=>{e.preventDefault();try{
  toast('OLT guardada correctamente','success','Configuración protegida y lista para la PC scanner.');
  await load();
 }catch(err){toast(err.message,'error')}};
-$('newBtn').onclick=()=>openForm();$('reloadBtn').onclick=load;$('closeBtn').onclick=$('cancelBtn').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};
+$('eyeBtn').onclick=()=>{const i=$('credSecret');i.type=i.type==='password'?'text':'password';$('eyeBtn').textContent=i.type==='password'?'👁':'🙈'};$('newBtn').onclick=()=>openForm();$('reloadBtn').onclick=load;$('closeBtn').onclick=$('cancelBtn').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};
 load();
 </script>
 </body>
