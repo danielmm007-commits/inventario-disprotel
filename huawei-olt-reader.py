@@ -407,6 +407,198 @@ async def run_once():
     return payload
 
 
+
+# ===== AGENTE MULTI OLT DINÁMICO =====
+# Activar con OLT_MULTI_MODE=1.
+# La configuración no sensible (IP, puerto, nombre, intervalo) viene del sistema.
+# Las credenciales permanecen locales en la PC scanner:
+#   OLT_<CODIGO>_USER / OLT_<CODIGO>_PASSWORD
+# Ejemplo: OLT_LATACUNGA_USER / OLT_LATACUNGA_PASSWORD
+
+def olt_config_call(action, payload=None):
+    import urllib.request
+    base=os.environ.get("SUPABASE_URL","https://ajnbswrwnjpjypjiorye.supabase.co").rstrip("/")
+    token=os.environ.get("DETECTOR_TOKEN","")
+    if not token:
+        raise RuntimeError("Falta DETECTOR_TOKEN para modo multi OLT.")
+    data={"action":action}
+    if payload:
+        data.update(payload)
+    req=urllib.request.Request(
+        base+"/functions/v1/inventario-olts-config",
+        data=json.dumps(data).encode(),
+        headers={
+            "Authorization":"Bearer "+token,
+            "Content-Type":"application/json",
+            "Accept":"application/json"
+        },
+        method="POST"
+    )
+    with urllib.request.urlopen(req,timeout=25) as resp:
+        raw=resp.read().decode("utf-8")
+        return json.loads(raw) if raw else {"ok":True}
+
+
+def local_credentials(cfg):
+    code=re.sub(r"[^A-Z0-9]+","_",str(cfg.get("codigo") or "").upper()).strip("_")
+    user=os.environ.get(f"OLT_{code}_USER","")
+    password=os.environ.get(f"OLT_{code}_PASSWORD","")
+    if code=="SALCEDO":
+        user=user or os.environ.get("OLT_USER","")
+        password=password or os.environ.get("OLT_PASSWORD","")
+    return user,password
+
+
+async def open_configured_olt(cfg):
+    protocol=str(cfg.get("protocolo") or "TELNET").upper()
+    if protocol!="TELNET":
+        raise RuntimeError("El agente actual soporta TELNET; SSH todavía no está habilitado.")
+    user,password=local_credentials(cfg)
+    if not user or not password:
+        raise RuntimeError("Credenciales locales no configuradas para "+str(cfg.get("codigo") or "OLT"))
+    host=str(cfg.get("host") or "").strip()
+    port=int(cfg.get("puerto") or 23)
+    reader,writer=await telnetlib3.open_connection(host=host,port=port,shell=None,connect_minwait=0.05)
+    await read_until(reader,"User name:")
+    writer.write(user+"\n"); await writer.drain()
+    await read_until(reader,"User password:")
+    writer.write(password+"\n"); await writer.drain()
+    login=await read_until(reader,">")
+    if ">" not in login:
+        writer.close()
+        raise RuntimeError("No se obtuvo prompt de usuario de la OLT.")
+    writer.write("enable\n"); await writer.drain()
+    enable=await read_until(reader,"#")
+    if "#" not in enable:
+        writer.close()
+        raise RuntimeError("No se obtuvo prompt privilegiado de la OLT.")
+    return reader,writer
+
+
+async def configured_autofind(cfg):
+    reader=writer=None
+    try:
+        reader,writer=await open_configured_olt(cfg)
+        writer.write("display ont autofind all\n"); await writer.drain()
+        response=""
+        prompt=str(cfg.get("prompt") or "").strip()
+        while True:
+            chunk=await asyncio.wait_for(reader.read(1024),timeout=15)
+            if not chunk:
+                break
+            response+=chunk
+            if "{ <cr>||<K> }:" in response and "Command:" not in response:
+                writer.write("\n"); await writer.drain(); await asyncio.sleep(0.15)
+            if "Press 'Q' to break" in chunk or "More" in chunk:
+                writer.write(" "); await writer.drain(); await asyncio.sleep(0.15)
+            if prompt and prompt in response:
+                break
+            if not prompt and response.rstrip().endswith("#"):
+                break
+        if "Failure: The automatically found ONTs do not exist" in response:
+            return []
+        return parse_autofind(response)
+    finally:
+        if writer is not None:
+            try:
+                writer.write("quit\n"); await writer.drain()
+            except Exception:
+                pass
+            try:
+                writer.close()
+            except Exception:
+                pass
+
+
+async def test_configured_olt(cfg):
+    reader=writer=None
+    try:
+        reader,writer=await open_configured_olt(cfg)
+        return {"ok":True,"codigo":cfg.get("codigo"),"host":cfg.get("host"),"read_at":datetime.now(timezone.utc).isoformat()}
+    finally:
+        if writer is not None:
+            try: writer.close()
+            except Exception: pass
+
+
+async def handle_olt_test_queue():
+    data=olt_config_call("scanner-test-pending") or {}
+    results=[]
+    for row in data.get("tests") or []:
+        cfg=row.get("olt")
+        if isinstance(cfg,list):
+            cfg=cfg[0] if cfg else None
+        if not cfg:
+            continue
+        user,password=local_credentials(cfg)
+        try:
+            result=await test_configured_olt(cfg)
+            olt_config_call("scanner-test-result",{"id":row.get("id"),"ok":True,"resultado":result,"credentials_ready":bool(user and password)})
+            results.append({"codigo":cfg.get("codigo"),"ok":True})
+        except Exception as exc:
+            olt_config_call("scanner-test-result",{"id":row.get("id"),"ok":False,"error":str(exc),"credentials_ready":bool(user and password)})
+            results.append({"codigo":cfg.get("codigo"),"ok":False,"error":str(exc)})
+    return results
+
+
+async def poll_configured_olt(cfg):
+    user,password=local_credentials(cfg)
+    try:
+        onts=await configured_autofind(cfg)
+        saved=olt_config_call("scanner-snapshot",{
+            "olt_id":cfg.get("id"),
+            "olt_codigo":cfg.get("codigo"),
+            "olt_nombre":cfg.get("nombre"),
+            "onts":onts,
+            "credentials_ready":bool(user and password)
+        })
+        return {"ok":True,"read_only":True,"codigo":cfg.get("codigo"),"olt":cfg.get("nombre"),"pending_count":len(onts),"backend":saved}
+    except Exception as exc:
+        try:
+            olt_config_call("scanner-heartbeat",{"olt_id":cfg.get("id"),"ok":False,"error":str(exc),"credentials_ready":bool(user and password)})
+        except Exception:
+            pass
+        return {"ok":False,"read_only":True,"codigo":cfg.get("codigo"),"olt":cfg.get("nombre"),"error":str(exc)}
+
+
+async def multi_olt_service_loop():
+    tick=max(2,int(os.environ.get("OLT_MULTI_TICK_SECONDS","5")))
+    next_due={}
+    signature=None
+    print(json.dumps({"ok":True,"multi_olt":True,"read_only":True,"message":"Agente Huawei multi OLT iniciado","tick_seconds":tick},ensure_ascii=False))
+    while True:
+        try:
+            tests=await handle_olt_test_queue()
+            if tests:
+                print(json.dumps({"ok":True,"trigger":"PRUEBAS_OLT","tests":tests},ensure_ascii=False))
+            cfg_data=olt_config_call("scanner-list") or {}
+            olts=cfg_data.get("olts") or []
+            now=asyncio.get_running_loop().time()
+            current=tuple((str(x.get("id")),int(x.get("intervalo_seg") or 300),int(x.get("orden") or 0)) for x in olts)
+            if current!=signature:
+                next_due={}
+                count=max(1,len(olts))
+                for index,cfg in enumerate(olts):
+                    interval=max(60,int(cfg.get("intervalo_seg") or 300))
+                    next_due[str(cfg.get("id"))]=now+(index*(interval/count))
+                signature=current
+                print(json.dumps({"ok":True,"multi_olt":True,"configured":len(olts),"schedule":[{"codigo":x.get("codigo"),"intervalo_seg":x.get("intervalo_seg")} for x in olts]},ensure_ascii=False))
+            for cfg in olts:
+                oid=str(cfg.get("id") or "")
+                if not oid:
+                    continue
+                due=next_due.get(oid,now)
+                if now<due:
+                    continue
+                result=await poll_configured_olt(cfg)
+                print(json.dumps(result,ensure_ascii=False))
+                interval=max(60,int(cfg.get("intervalo_seg") or 300))
+                next_due[oid]=max(due+interval,asyncio.get_running_loop().time()+1)
+        except Exception as exc:
+            print(json.dumps({"ok":False,"multi_olt":True,"error":str(exc)},ensure_ascii=False))
+        await asyncio.sleep(tick)
+
+
 async def service_loop():
     seconds=max(5,int(os.environ.get("OLT_POLL_SECONDS","10")))
     print(json.dumps({
@@ -501,6 +693,9 @@ async def main():
         result = self_test_parser()
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("ok") else 1
+    if os.environ.get("OLT_MULTI_MODE","0")=="1":
+        await multi_olt_service_loop()
+        return 0
     if os.environ.get("OLT_SERVICE_MODE","0")=="1":
         await service_loop()
         return 0
