@@ -55,6 +55,7 @@
 
 <script>
 const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-olts-config';
+const CRED_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-olt-credenciales';
 const KEY='disprotel_login_general_v2';
 let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
 if(!me?.usuario)location.href='login-general-v2.html';
