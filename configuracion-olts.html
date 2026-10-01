@@ -43,12 +43,11 @@
 <div class="field"><label>Protocolo</label><select id="protocolo"><option>TELNET</option><option>SSH</option></select></div>
 <div class="field"><label>Modelo</label><input id="modelo" placeholder="MA5800 / MA5680T"></div>
 <div class="field full"><label>Prompt OLT</label><input id="prompt" placeholder="OLT-ACC-DISPROTEL...#"><span class="hint">Opcional. Si se conoce, ayuda al lector a detectar el fin de cada comando.</span></div>
-<div class="field"><label>Usuario OLT</label><input id="usuario" autocomplete="off" placeholder="Dejar vacío para conservar"></div>
-<div class="field"><label>Contraseña OLT</label><input id="password" type="password" autocomplete="new-password" placeholder="Dejar vacío para conservar"></div>
+<div class="field full"><label>Credenciales</label><div class="notice">🔐 Por seguridad, usuario y contraseña se mantienen únicamente en la PC scanner. Este módulo administra IP, puerto, modelo, estado y programación de lectura.</div></div>
 <div class="field"><label>Lectura cada</label><select id="intervalo"><option value="300">5 minutos</option><option value="600">10 minutos</option><option value="900">15 minutos</option></select></div>
 <div class="field"><label>Orden</label><input id="orden" type="number" value="0"></div>
 <div class="field full"><label><input id="activo" type="checkbox" checked style="width:auto"> OLT activa para monitoreo</label></div>
-<div class="notice">🔐 Las credenciales no se muestran nuevamente en el navegador. Se almacenan cifradas y únicamente la PC scanner autorizada puede recibirlas para conectarse a la OLT.</div>
+<div class="notice">🔐 La PC scanner usa credenciales locales por código de OLT. El sistema central nunca devuelve contraseñas al navegador.</div>
 <div class="formActions"><button type="button" class="btn" id="cancelBtn">Cancelar</button><button class="btn save" type="submit">Guardar OLT</button></div>
 </form>
 </section></div>
@@ -76,7 +75,7 @@ function render(){
 }
 async function load(){try{const d=await call({action:'list'});rows=d.rows||[];render()}catch(e){$('grid').innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}
 function openForm(row=null){
- $('formTitle').textContent=row?'Editar OLT':'Agregar OLT';$('id').value=row?.id||'';$('codigo').value=row?.codigo||'';$('nombre').value=row?.nombre||'';$('host').value=row?.host||'';$('puerto').value=row?.puerto||23;$('protocolo').value=row?.protocolo||'TELNET';$('modelo').value=row?.modelo||'';$('prompt').value=row?.prompt||'';$('usuario').value='';$('password').value='';$('intervalo').value=String(row?.intervalo_seg||300);$('orden').value=row?.orden||0;$('activo').checked=row?.activo!==false;$('modal').classList.add('show');
+ $('formTitle').textContent=row?'Editar OLT':'Agregar OLT';$('id').value=row?.id||'';$('codigo').value=row?.codigo||'';$('nombre').value=row?.nombre||'';$('host').value=row?.host||'';$('puerto').value=row?.puerto||23;$('protocolo').value=row?.protocolo||'TELNET';$('modelo').value=row?.modelo||'';$('prompt').value=row?.prompt||'';$('intervalo').value=String(row?.intervalo_seg||300);$('orden').value=row?.orden||0;$('activo').checked=row?.activo!==false;$('modal').classList.add('show');
 }
 window.editOlt=id=>openForm(rows.find(x=>x.id===id));
 window.toggleOlt=async(id,activo)=>{try{await call({action:'toggle',id,activo});toast(activo?'OLT activada':'OLT desactivada');await load()}catch(e){alert(e.message)}};
@@ -93,7 +92,7 @@ window.testOlt=async id=>{
   alert('La PC scanner todavía no respondió. Verifica que el agente Huawei esté ejecutándose.');
  }catch(e){alert(e.message)}
 };
-$('form').onsubmit=async e=>{e.preventDefault();try{await call({action:'save',id:$('id').value||null,codigo:$('codigo').value,nombre:$('nombre').value,host:$('host').value,puerto:Number($('puerto').value||23),protocolo:$('protocolo').value,modelo:$('modelo').value,prompt:$('prompt').value,usuario:$('usuario').value,password:$('password').value,intervalo_seg:Number($('intervalo').value),orden:Number($('orden').value||0),activo:$('activo').checked});$('modal').classList.remove('show');toast('OLT guardada');await load()}catch(err){alert(err.message)}};
+$('form').onsubmit=async e=>{e.preventDefault();try{await call({action:'save',id:$('id').value||null,codigo:$('codigo').value,nombre:$('nombre').value,host:$('host').value,puerto:Number($('puerto').value||23),protocolo:$('protocolo').value,modelo:$('modelo').value,prompt:$('prompt').value,intervalo_seg:Number($('intervalo').value),orden:Number($('orden').value||0),activo:$('activo').checked});$('modal').classList.remove('show');toast('OLT guardada');await load()}catch(err){alert(err.message)}};
 $('newBtn').onclick=()=>openForm();$('reloadBtn').onclick=load;$('closeBtn').onclick=$('cancelBtn').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};
 load();
 </script>
