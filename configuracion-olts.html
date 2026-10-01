@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Configuración OLT · DISPROTEL</title>
+<style>
+:root{--navy:#082b5c;--teal:#0b6b70;--blue:#1676c8;--green:#16864f;--orange:#d8870b;--red:#c53b3b;--ink:#183142;--muted:#6d818e;--line:#d6e2e8;--bg:#eef4f7;--shadow:0 10px 28px rgba(7,42,70,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}button,input,select{font:inherit}.wrap{max-width:1450px;margin:auto;padding:12px}
+.hero{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(105deg,#073f52,#0a6f75);color:#fff;border-radius:11px;padding:13px 15px;box-shadow:var(--shadow)}.hero small{font-size:9px;font-weight:900;letter-spacing:.1em;color:#bfe8ea}.hero h1{margin:3px 0;font-size:22px}.hero p{margin:0;color:#d8eff0;font-size:11px}.actions{display:flex;gap:7px}.btn{border:0;border-radius:8px;padding:9px 12px;font-weight:900;cursor:pointer}.btn.primary{background:#fff;color:#0d4e63}.btn.secondary{background:#ffffff17;color:#fff;border:1px solid #ffffff55}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:9px}.stat{background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 12px}.stat strong{font-size:22px}.stat span{display:block;font-size:8px;color:var(--muted);font-weight:900;margin-top:3px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:9px}.card{background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px;box-shadow:var(--shadow)}.head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.title b{display:block;font-size:12px}.title small{color:var(--muted);font-size:9px}.state{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;font-size:8px;font-weight:900}.dot{width:8px;height:8px;border-radius:50%}.state.ONLINE{background:#e9f7ef;color:#147a46}.state.ONLINE .dot{background:#18a35f;animation:pulse 1.7s infinite}.state.RETRASADA{background:#fff4df;color:#a96607}.state.RETRASADA .dot{background:#e59a17}.state.OFFLINE,.state.ERROR{background:#fdecec;color:#a92f2f}.state.OFFLINE .dot,.state.ERROR .dot{background:#cc4141}.state.SIN_LECTURA,.state.DESACTIVADA{background:#eef2f4;color:#657883}.state.SIN_LECTURA .dot,.state.DESACTIVADA .dot{background:#83939c}@keyframes pulse{0%{box-shadow:0 0 0 0 #18a35f66}65%{box-shadow:0 0 0 6px #18a35f00}100%{box-shadow:0 0 0 0 #18a35f00}}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}.meta div{background:#f7fafb;border:1px solid #e3ebef;border-radius:7px;padding:7px}.meta b{display:block;font-size:7px;color:#758992;text-transform:uppercase}.meta span{font-size:10px;font-weight:800}.last{margin-top:8px;padding:7px 8px;border-radius:7px;background:#f1f7f9;font-size:9px;color:#536a75}.cardActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.cardActions button{border:1px solid #ccdce4;background:#fff;border-radius:7px;padding:7px 8px;font-size:8px;font-weight:900;cursor:pointer}.cardActions .test{background:#eaf6ff;color:#1267a3;border-color:#c8e3f5}.cardActions .toggleOff{background:#fff0f0;color:#a93131;border-color:#efcece}
+.empty{grid-column:1/-1;padding:24px;text-align:center;background:#fff;border:1px dashed #cbdbe3;border-radius:10px;color:#6d818e}
+.modal{position:fixed;inset:0;background:#06172e99;display:none;align-items:center;justify-content:center;padding:16px;z-index:60}.modal.show{display:flex}.dialog{width:min(720px,100%);max-height:94vh;overflow:auto;background:#f8fbfc;border-radius:14px;border:1px solid #d9e5eb;box-shadow:0 28px 80px #071a3860}.dialogHead{position:sticky;top:0;background:#fff;padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.dialogHead h2{margin:0;font-size:16px}.close{width:34px;height:34px;border:1px solid #cddce4;background:#fff;border-radius:8px;cursor:pointer}.form{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:13px}.field{display:grid;gap:4px}.field.full{grid-column:1/-1}.field label{font-size:8px;font-weight:900;color:#617985;text-transform:uppercase}.field input,.field select{width:100%;border:1px solid #cbdce4;border-radius:8px;padding:9px;background:#fff;font-size:10px}.hint{font-size:8px;color:#80919a}.formActions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:7px;margin-top:3px}.save{background:#0d6387;color:#fff}.notice{grid-column:1/-1;padding:8px;border-radius:8px;background:#eef7fa;border:1px solid #cfe2e9;color:#54707b;font-size:9px;line-height:1.45}
+.toast{position:fixed;right:15px;bottom:15px;max-width:360px;background:#fff;border:1px solid #cfe0e7;border-radius:10px;padding:11px 13px;box-shadow:0 15px 40px #071a3830;display:none;font-size:10px}.toast.show{display:block}
+@media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.hero{align-items:flex-start;flex-direction:column}.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.form{grid-template-columns:1fr}.field.full,.formActions,.notice{grid-column:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<section class="hero">
+  <div><small>RED GPON · ADMINISTRACIÓN</small><h1>Configuración de OLT</h1><p>Registra las Huawei que atenderá la PC scanner. El monitoreo usa caché propia y lecturas directas a la OLT.</p></div>
+  <div class="actions"><button class="btn secondary" id="reloadBtn">↻ Actualizar</button><button class="btn primary" id="newBtn">＋ Agregar OLT</button></div>
+</section>
+<section class="stats">
+  <div class="stat"><strong id="sTotal">0</strong><span>OLT REGISTRADAS</span></div>
+  <div class="stat"><strong id="sActive">0</strong><span>ACTIVAS</span></div>
+  <div class="stat"><strong id="sOnline">0</strong><span>RESPONDIENDO</span></div>
+  <div class="stat"><strong id="sIssue">0</strong><span>CON RETRASO / ERROR</span></div>
+</section>
+<section class="grid" id="grid"><div class="empty">Consultando OLT…</div></section>
+</div>
+
+<div class="modal" id="modal"><section class="dialog">
+<div class="dialogHead"><h2 id="formTitle">Agregar OLT</h2><button class="close" id="closeBtn">✕</button></div>
+<form class="form" id="form">
+<input type="hidden" id="id">
+<div class="field"><label>Código</label><input id="codigo" required placeholder="LATACUNGA"></div>
+<div class="field"><label>Nombre</label><input id="nombre" required placeholder="DISPROTEL LATACUNGA"></div>
+<div class="field"><label>IP / Host</label><input id="host" required placeholder="10.10.30.5"></div>
+<div class="field"><label>Puerto</label><input id="puerto" type="number" value="23" min="1" max="65535"></div>
+<div class="field"><label>Protocolo</label><select id="protocolo"><option>TELNET</option><option>SSH</option></select></div>
+<div class="field"><label>Modelo</label><input id="modelo" placeholder="MA5800 / MA5680T"></div>
+<div class="field full"><label>Prompt OLT</label><input id="prompt" placeholder="OLT-ACC-DISPROTEL...#"><span class="hint">Opcional. Si se conoce, ayuda al lector a detectar el fin de cada comando.</span></div>
+<div class="field"><label>Usuario OLT</label><input id="usuario" autocomplete="off" placeholder="Dejar vacío para conservar"></div>
+<div class="field"><label>Contraseña OLT</label><input id="password" type="password" autocomplete="new-password" placeholder="Dejar vacío para conservar"></div>
+<div class="field"><label>Lectura cada</label><select id="intervalo"><option value="300">5 minutos</option><option value="600">10 minutos</option><option value="900">15 minutos</option></select></div>
+<div class="field"><label>Orden</label><input id="orden" type="number" value="0"></div>
+<div class="field full"><label><input id="activo" type="checkbox" checked style="width:auto"> OLT activa para monitoreo</label></div>
+<div class="notice">🔐 Las credenciales no se muestran nuevamente en el navegador. Se almacenan cifradas y únicamente la PC scanner autorizada puede recibirlas para conectarse a la OLT.</div>
+<div class="formActions"><button type="button" class="btn" id="cancelBtn">Cancelar</button><button class="btn save" type="submit">Guardar OLT</button></div>
+</form>
+</section></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-olts-config';
+const KEY='disprotel_login_general_v2';
+let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
+if(!me?.usuario)location.href='login-general-v2.html';
+const $=id=>document.getElementById(id),headers=()=>({'Content-Type':'application/json','x-session':me.session_token||'','x-user':me.usuario||'','x-pin':me.pin||''});
+let rows=[];
+async function call(body){const r=await fetch(API,{method:'POST',headers:headers(),body:JSON.stringify(body)}),d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw new Error(d.error||'No se pudo completar la operación');return d}
+function esc(v){return String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))}
+function ago(sec){if(sec==null)return 'Sin lectura';if(sec<60)return 'hace '+sec+' s';if(sec<3600)return 'hace '+Math.floor(sec/60)+' min';if(sec<86400)return 'hace '+Math.floor(sec/3600)+' h';return 'hace '+Math.floor(sec/86400)+' d'}
+function toast(msg){$('toast').textContent=msg;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),3500)}
+function render(){
+ $('sTotal').textContent=rows.length;$('sActive').textContent=rows.filter(x=>x.activo).length;$('sOnline').textContent=rows.filter(x=>x.estado_visual==='ONLINE').length;$('sIssue').textContent=rows.filter(x=>['RETRASADA','OFFLINE','ERROR'].includes(x.estado_visual)).length;
+ $('grid').innerHTML=rows.length?rows.map(x=>`<article class="card">
+ <div class="head"><div class="title"><b>${esc(x.nombre)}</b><small>${esc(x.codigo)} · ${esc(x.marca||'HUAWEI')} ${esc(x.modelo||'')}</small></div><span class="state ${esc(x.estado_visual)}"><i class="dot"></i>${esc(x.estado_visual.replace('_',' '))}</span></div>
+ <div class="meta"><div><b>IP / Puerto</b><span>${esc(x.host)}:${esc(x.puerto)}</span></div><div><b>Protocolo</b><span>${esc(x.protocolo)}</span></div><div><b>Ciclo</b><span>${Math.round((x.intervalo_seg||300)/60)} min</span></div><div><b>Credenciales</b><span>${x.credenciales_configuradas?'✓ Configuradas':'⚠ Pendientes'}</span></div></div>
+ <div class="last"><b>Última respuesta:</b> ${ago(x.age_seconds)}${x.ultimo_error?' · '+esc(x.ultimo_error):''}</div>
+ <div class="cardActions"><button class="test" onclick="testOlt('${x.id}')">⚡ Probar conexión</button><button onclick="editOlt('${x.id}')">✎ Editar</button><button class="${x.activo?'toggleOff':''}" onclick="toggleOlt('${x.id}',${!x.activo})">${x.activo?'⏸ Desactivar':'▶ Activar'}</button></div>
+ </article>`).join(''):'<div class="empty">Todavía no hay OLT registradas. Usa “Agregar OLT”.</div>';
+}
+async function load(){try{const d=await call({action:'list'});rows=d.rows||[];render()}catch(e){$('grid').innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}
+function openForm(row=null){
+ $('formTitle').textContent=row?'Editar OLT':'Agregar OLT';$('id').value=row?.id||'';$('codigo').value=row?.codigo||'';$('nombre').value=row?.nombre||'';$('host').value=row?.host||'';$('puerto').value=row?.puerto||23;$('protocolo').value=row?.protocolo||'TELNET';$('modelo').value=row?.modelo||'';$('prompt').value=row?.prompt||'';$('usuario').value='';$('password').value='';$('intervalo').value=String(row?.intervalo_seg||300);$('orden').value=row?.orden||0;$('activo').checked=row?.activo!==false;$('modal').classList.add('show');
+}
+window.editOlt=id=>openForm(rows.find(x=>x.id===id));
+window.toggleOlt=async(id,activo)=>{try{await call({action:'toggle',id,activo});toast(activo?'OLT activada':'OLT desactivada');await load()}catch(e){alert(e.message)}};
+window.testOlt=async id=>{
+ try{
+  const d=await call({action:'test',id}),testId=d.test.id;toast('Prueba enviada a la PC scanner…');
+  const deadline=Date.now()+65000;
+  while(Date.now()<deadline){
+   await new Promise(r=>setTimeout(r,2000));
+   const s=await call({action:'test-status',id:testId}),t=s.test||{};
+   if(t.estado==='OK'){toast('✓ Conexión correcta con la OLT');await load();return}
+   if(t.estado==='ERROR'){alert('La OLT no respondió: '+(t.error||'Error de conexión'));await load();return}
+  }
+  alert('La PC scanner todavía no respondió. Verifica que el agente Huawei esté ejecutándose.');
+ }catch(e){alert(e.message)}
+};
+$('form').onsubmit=async e=>{e.preventDefault();try{await call({action:'save',id:$('id').value||null,codigo:$('codigo').value,nombre:$('nombre').value,host:$('host').value,puerto:Number($('puerto').value||23),protocolo:$('protocolo').value,modelo:$('modelo').value,prompt:$('prompt').value,usuario:$('usuario').value,password:$('password').value,intervalo_seg:Number($('intervalo').value),orden:Number($('orden').value||0),activo:$('activo').checked});$('modal').classList.remove('show');toast('OLT guardada');await load()}catch(err){alert(err.message)}};
+$('newBtn').onclick=()=>openForm();$('reloadBtn').onclick=load;$('closeBtn').onclick=$('cancelBtn').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};
+load();
+</script>
+</body>
+</html>
