@@ -63,6 +63,7 @@ if(!me?.usuario)location.href='login-general-v2.html';
 const $=id=>document.getElementById(id),headers=()=>({'Content-Type':'application/json','x-session':me.session_token||'','x-user':me.usuario||'','x-pin':me.pin||''});
 let rows=[];
 async function call(body){const r=await fetch(API,{method:'POST',headers:headers(),body:JSON.stringify(body)}),d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw new Error(d.error||'No se pudo completar la operación');return d}
+async function saveCreds(oltId,login,secret){const r=await fetch(CRED_API,{method:'POST',headers:headers(),body:JSON.stringify({olt_id:oltId,login,secret})}),d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw new Error(d.error||'No se pudieron guardar las credenciales');return d}
 function esc(v){return String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))}
 function ago(sec){if(sec==null)return 'Sin lectura';if(sec<60)return 'hace '+sec+' s';if(sec<3600)return 'hace '+Math.floor(sec/60)+' min';if(sec<86400)return 'hace '+Math.floor(sec/3600)+' h';return 'hace '+Math.floor(sec/86400)+' d'}
 let toastTimer=null;function toast(msg,type='info',detail=''){const el=$('toast');clearTimeout(toastTimer);el.className='toast show '+type;if(type==='success'){el.innerHTML='<div><strong>'+esc(msg)+'</strong><span>'+esc(detail||'La PC scanner confirmó respuesta de la Huawei OLT.')+'</span></div>'}else{el.textContent=msg}toastTimer=setTimeout(()=>{el.className='toast'},type==='success'?5200:3500)}
