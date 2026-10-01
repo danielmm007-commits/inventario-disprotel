@@ -116,7 +116,14 @@ window.testOlt=async id=>{
  }catch(e){toast(e.message,'error')}
  finally{if(btn){btn.classList.remove('busy');setTimeout(()=>{btn.innerHTML=original},900)}}
 };
-$('form').onsubmit=async e=>{e.preventDefault();try{await call({action:'save',id:$('id').value||null,codigo:$('codigo').value,nombre:$('nombre').value,host:$('host').value,puerto:Number($('puerto').value||23),protocolo:$('protocolo').value,modelo:$('modelo').value,prompt:$('prompt').value,intervalo_seg:Number($('intervalo').value),orden:Number($('orden').value||0),activo:$('activo').checked});$('modal').classList.remove('show');toast('OLT guardada');await load()}catch(err){alert(err.message)}};
+$('form').onsubmit=async e=>{e.preventDefault();try{
+ const saved=await call({action:'save',id:$('id').value||null,codigo:$('codigo').value,nombre:$('nombre').value,host:$('host').value,puerto:Number($('puerto').value||23),protocolo:$('protocolo').value,modelo:$('modelo').value,prompt:$('prompt').value,intervalo_seg:Number($('intervalo').value),orden:Number($('orden').value||0),activo:$('activo').checked});
+ const login=$('credUser').value.trim(),secret=$('credSecret').value;
+ if(login||secret)await saveCreds(saved.row.id,login,secret);
+ $('modal').classList.remove('show');
+ toast('OLT guardada correctamente','success','Configuración protegida y lista para la PC scanner.');
+ await load();
+}catch(err){toast(err.message,'error')}};
 $('newBtn').onclick=()=>openForm();$('reloadBtn').onclick=load;$('closeBtn').onclick=$('cancelBtn').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};
 load();
 </script>
