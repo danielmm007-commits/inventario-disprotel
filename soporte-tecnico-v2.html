@@ -171,8 +171,11 @@ function renderMesaActions(){
  });
 }
 function mesaReqLine(r){
- const names=(r.acciones||[]).map(x=>MESA_ACTIONS[x]?.[1]||x.replaceAll('_',' ')).join(' · '),res=r.resultado||{},pot=res.verificacion_potencia||null,ev=res.evidencia_potencia||null,ip=res.verificacion_ip||null,done=r.estado==='ATENDIDO';
+ const names=(r.acciones||[]).map(x=>MESA_ACTIONS[x]?.[1]||x.replaceAll('_',' ')).join(' · '),res=r.resultado||{},pot=res.verificacion_potencia||null,ev=res.evidencia_potencia||null,ip=res.verificacion_ip||null,onuEv=res.evidencia_onu||null,onuRes=res.activacion_onu||null,done=r.estado==='ATENDIDO';
  let extra='';
+ if(onuEv||onuRes){
+   extra+='<div class="mesaMirrorStatus '+(done?'ok':'pending')+'"><div><b>📡 ONU/ONT:</b> '+esc(onuRes?.estado||'CONFIRMADA')+'</div>'+(onuEv?.confirmado_at?'<div><b>Confirmada:</b> '+esc(fmt(onuEv.confirmado_at))+'</div>':'')+(onuEv?.url?'<div style="margin-top:6px"><img src="'+esc(onuEv.url)+'" alt="Evidencia ONU" style="max-width:360px;width:100%;max-height:180px;object-fit:contain;border:1px solid #d8e2e6;border-radius:4px;background:#111" onclick="window.open(this.src,\'_blank\')"></div>':'')+'</div>';
+ }
  if(ip){
    const st=String(ip.estado||'').toUpperCase(),label=done?'✅ Confirmada por MikroTik':st==='PENDIENTE'?'⏳ Consultando MikroTik':st==='OK'&&ip.encontrada!==true?'❌ IP no encontrada':st==='ERROR'?'⚠️ Error de consulta':'Pendiente';
    extra+='<div class="mesaMirrorStatus '+(done?'ok':'pending')+'"><div><b>🌐 IP actual:</b> '+esc(ip.ip||'—')+'</div><div><b>Router:</b> '+esc(ip.router_nombre||'—')+'</div><div><b>Resultado:</b> '+esc(label)+'</div>'+(ip.respondido_at?'<div class="muted">'+esc(fmt(ip.respondido_at))+'</div>':'')+'</div>';
