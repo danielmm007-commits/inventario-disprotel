@@ -65,7 +65,7 @@
   const rubiMenuKey='disprotel_rubi_menu_v1';let prefs={panel_vista:'COMPACTA',avatar_tipo:me.avatar_tipo||'NEUTRO'};localStorage.setItem('disprotel_panel_vista','COMPACTA')
   const avatarEmoji={MASCULINO:'👨',FEMENINO:'👩',NEUTRO:'🧑'};
   const menuPilot=true,moduleStateKey='disprotel_last_module_v1';let menuShell=null,menuHome=null,menuFrame=null;
-  function directModuleUrl(raw){try{const u=new URL(raw,location.href);if(u.pathname.endsWith('/modulo-integrado.html')){const src=u.searchParams.get('src');return src?src+(src.includes('?')?'&':'?')+'menu=1&v='+Date.now():raw}const file=u.pathname.split('/').pop();if(file==='trabajos-tecnicos.html'){u.searchParams.set('_nav',String(Date.now()));return file+'?'+u.searchParams.toString()}return file+u.search}catch{return raw}}
+  function directModuleUrl(raw){try{const u=new URL(raw,location.href);if(u.pathname.endsWith('/modulo-integrado.html')){const src=u.searchParams.get('src');return src?src+(src.includes('?')?'&':'?')+'menu=1&v='+Date.now():raw}const file=u.pathname.split('/').pop();if(['trabajos-tecnicos.html','panel-general-supervisor-visual.html','panel-supervisor-vivo-v2.html','solicitudes-oficina.html','asignacion-ip.html'].includes(file))u.searchParams.set('_nav',String(Date.now()));return file+(u.searchParams.toString()?'?'+u.searchParams.toString():'')+u.hash}catch{return raw}}
   function metricByLabel(label){const stat=[...document.querySelectorAll('.main .stat')].find(x=>norm(x.querySelector('.lbl')?.textContent).includes(norm(label)));return stat?.querySelector('.num')?.textContent?.trim()||'0'}
   function syncAttentionIndicators(){const count=id=>Number(String(document.getElementById(id)?.textContent||'0').replace(/[^\d.-]/g,''))||0,mark=id=>document.getElementById(id)?.closest('.dashMetric')?.classList.toggle('metricAttention',count(id)>0);if(isRubi){['dashTransfers','dashSerialsPending','dashSupport'].forEach(mark)}else{['dashAvailable','dashPending','dashTransfers'].forEach(mark);document.getElementById('dashProcess')?.closest('.dashMetric')?.classList.remove('metricAttention')}const technicalPending=isRubi?count('dashSupport')>0:count('dashAvailable')>0,transferPending=count('dashTransfers')>0;document.querySelectorAll('.menuAside button[data-href]').forEach(button=>{const title=norm(button.textContent),technical=title.includes('AREA TECNICA')||title.includes('ATENCION CLIENTES'),transfer=title.includes('TRANSFERENCIAS');button.classList.toggle('navAttention',(technical&&technicalPending)||(transfer&&transferPending))})}
   let techAudioCtx=null;function unlockTechAudio(){try{techAudioCtx=techAudioCtx||new(window.AudioContext||window.webkitAudioContext)();if(techAudioCtx.state==='suspended')techAudioCtx.resume()}catch{}}
@@ -126,8 +126,37 @@ function ensureMenuShell(){
     const attentionObserver=new MutationObserver(syncAttentionIndicators);attentionObserver.observe(dash,{childList:true,subtree:true,characterData:true});
     syncTechnicalMetrics();
 
+    let moduleLoadSeq=0,moduleLoadRetryTimer=0;
+    function frameLooksBlank(){
+      try{
+        const w=menuFrame.contentWindow,d=menuFrame.contentDocument,path=String(w?.location?.pathname||'');
+        if(!path||path==='about:blank')return true;
+        if(d?.readyState!=='complete')return false;
+        const body=d.body;if(!body)return true;
+        const text=String(body.innerText||'').replace(/\s+/g,'').trim();
+        const visible=[...body.children].some(el=>{const s=w.getComputedStyle(el);return s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity||1)>0&&(el.getBoundingClientRect().width>2||el.getBoundingClientRect().height>2)});
+        return !text&&!visible;
+      }catch{return false}
+    }
+    function loadModuleFrame(raw,{retry=false}={}){
+      const seq=++moduleLoadSeq,target=directModuleUrl(raw);
+      clearTimeout(moduleLoadRetryTimer);
+      menuFrame.style.visibility='hidden';menuFrame.setAttribute('aria-busy','true');
+      menuFrame.dataset.loadSeq=String(seq);menuFrame.dataset.sourceHref=String(raw||'');
+      menuFrame.src=target;
+      moduleLoadRetryTimer=setTimeout(()=>{
+        if(Number(menuFrame.dataset.loadSeq)!==seq||document.body.classList.contains('moduleOpen')===false)return;
+        if(!frameLooksBlank())return;
+        if(menuFrame.dataset.retrySeq===String(seq))return;
+        menuFrame.dataset.retrySeq=String(seq);
+        const retryTarget=directModuleUrl(raw);
+        menuFrame.src='about:blank';
+        setTimeout(()=>{if(Number(menuFrame.dataset.loadSeq)===seq)menuFrame.src=retryTarget},40);
+      },1800);
+    }
     const goMenuHome=()=>{
       localStorage.removeItem(moduleStateKey);
+      clearTimeout(moduleLoadRetryTimer);moduleLoadSeq++;
       document.body.classList.remove('moduleOpen');
       menuFrame.src='about:blank';
       menuFrame.style.visibility='hidden';
@@ -135,8 +164,10 @@ function ensureMenuShell(){
     };
     mobileBar.querySelector('.mobileModuleBack').onclick=goMenuHome;
     menuFrame.onload=()=>{
-      if(menuFrame.src==='about:blank')return;
+      let loadedPath='';try{loadedPath=String(menuFrame.contentWindow?.location?.pathname||'')}catch{}
+      if(menuFrame.src==='about:blank'||loadedPath==='about:blank')return;
       menuFrame.style.visibility='visible';menuFrame.removeAttribute('aria-busy');
+      if(!frameLooksBlank())menuFrame.dataset.retrySeq='';
       try{
         const w=menuFrame.contentWindow,d=menuFrame.contentDocument,path=w.location.pathname,href=w.location.pathname.split('/').pop()+w.location.search+w.location.hash;
         if(/login-general|principal\.html/.test(path)){goMenuHome();return}
@@ -155,7 +186,7 @@ function ensureMenuShell(){
       const moduleTitle=btn.querySelector('span')?.textContent||'Módulo';
       localStorage.setItem(moduleStateKey,JSON.stringify({href:btn.dataset.href,title:moduleTitle,childHref:null,scrollY:0}));
       mobileBar.querySelector('.mobileModuleTitle').textContent=moduleTitle;
-      menuFrame.style.visibility='hidden';menuFrame.setAttribute('aria-busy','true');menuFrame.src=directModuleUrl(btn.dataset.href);
+      loadModuleFrame(btn.dataset.href);
       document.body.classList.add('moduleOpen');aside.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===btn))
     });
     const restoreSavedModule=()=>{try{
@@ -168,7 +199,7 @@ function ensureMenuShell(){
       aside.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===restore));
       const homeBtn=[...aside.querySelectorAll('button')].find(x=>norm(x.textContent)==='INICIO');
       if(homeBtn)homeBtn.classList.remove('on');
-      if(!current||current==='about:blank'||!current.startsWith(String(target).split('?')[0])){menuFrame.style.visibility='hidden';menuFrame.setAttribute('aria-busy','true');menuFrame.src=target}
+      if(!current||current==='about:blank'||!current.startsWith(String(target).split('?')[0]))loadModuleFrame(saved.childHref||saved.href)
     }catch{}};[40,500,1400].forEach(delay=>setTimeout(restoreSavedModule,delay))
     document.documentElement.dataset.panelStaticHydrated='1';
   }
