@@ -4,7 +4,7 @@
 .powerMirrorEvidence img{display:block;width:min(100%,520px);height:160px;object-fit:contain;background:#111;border-radius:7px;border:1px solid #d7e1e5;cursor:pointer;margin:6px auto 0}
 .powerMirrorEvidence .muted{margin-top:6px}
 @media(max-width:820px){.powerMirrorGrid{grid-template-columns:1fr}.powerMirrorEvidence img{width:100%;height:auto;max-height:220px}}
-</style><link rel="stylesheet" href="erp-normalizado-v1.css?v=20260930-ui4"></head><body><div class="wrap"><section class="card"><h1 id="tituloTrabajo">🛠️ ATENCIÓN TÉCNICA</h1><div id="head" class="muted">Cargando soporte…</div><div class="finalNote" style="margin-top:10px">La toma del trabajo, salida, llegada, pausa y reasignación se controlan desde el panel técnico. Aquí registras únicamente lo realizado en sitio.</div><a class="btn secondary" href="trabajos-tecnicos.html">← VOLVER A TRABAJOS</a></section><section id="ordenCard" class="card hidden"><span class="badge">1 · DATOS DEL CLIENTE Y SERVICIO</span><h2 id="ordenTitulo" style="margin-top:10px"></h2><div id="ordenDatos" class="summary"></div></section><section id="hallazgoCard" class="card hidden">
+.mesaMirrorReq{padding:9px 10px;margin:7px 0;border:1px solid #e5c36d;border-left:4px solid #d89d16;border-radius:6px;background:#fffaf0}.mesaMirrorReq.done{border-color:#a8d8bd;border-left-color:#238a5a;background:#f4fbf7}.mesaMirrorReqHead{display:flex;align-items:center;justify-content:space-between;gap:8px}.mesaMirrorReqHead>b{font-size:11px;font-weight:600}.mesaMirrorReqHead>span{font-size:8px;font-weight:600;padding:3px 6px;border-radius:999px;background:#fff0bd;color:#765200}.mesaMirrorReq.done .mesaMirrorReqHead>span{background:#dff4e8;color:#17643f}.mesaMirrorStatus{margin-top:7px;padding:7px 8px;border-radius:5px;background:#fff;border:1px solid #ead9aa;font-size:10px;display:grid;gap:3px}.mesaMirrorStatus.ok{border-color:#b8dec8;background:#f7fcf9}</style><link rel="stylesheet" href="erp-normalizado-v1.css?v=20260930-ui4"></head><body><div class="wrap"><section class="card"><h1 id="tituloTrabajo">🛠️ ATENCIÓN TÉCNICA</h1><div id="head" class="muted">Cargando soporte…</div><div class="finalNote" style="margin-top:10px">La toma del trabajo, salida, llegada, pausa y reasignación se controlan desde el panel técnico. Aquí registras únicamente lo realizado en sitio.</div><a class="btn secondary" href="trabajos-tecnicos.html">← VOLVER A TRABAJOS</a></section><section id="ordenCard" class="card hidden"><span class="badge">1 · DATOS DEL CLIENTE Y SERVICIO</span><h2 id="ordenTitulo" style="margin-top:10px"></h2><div id="ordenDatos" class="summary"></div></section><section id="hallazgoCard" class="card hidden">
 <div class="stepHead"><div><h2 style="margin:0">2 · Hallazgo en sitio <span id="hallazgoEstado"></span></h2><div class="muted">Selecciona lo que realmente encontraste. El sistema mostrará únicamente soluciones compatibles y preparará los pasos siguientes.</div></div></div>
 <div id="hallazgoResumenCompacto" class="hidden"></div>
 <div id="hallazgoEditor">
@@ -143,8 +143,6 @@ function estabilizarMesaEvidencias(d){
 }
 function mesaEtapaOpciones(){
  const o=DATA?.orden||{},tipo=up(o.servicio?.tipo_conexion||o.plan_solicitado||''),fibra=/FIBRA/.test(tipo),radio=/RADIO|INALAMBR|INALÁMBR|WIRELESS/.test(tipo),st=MESA_STATE||{},rs=st.requerimientos||[];
- const pending=rs.some(r=>r.estado==='PENDIENTE');
- if(pending)return {bloqueada:true,codes:[],texto:'⏳ Mesa Técnica todavía atiende el requerimiento anterior.'};
  const solicitadas=new Set(rs.flatMap(r=>Array.isArray(r.acciones)?r.acciones:[]));
  const onuPend=st.onu&&['SOLICITADO','REQUIERE_CORRECCION'].includes(st.onu.estado),ipPend=st.ip?.solicitud?.estado==='PENDIENTE';
  if(onuPend||ipPend)return {bloqueada:true,codes:[],texto:'⏳ Primero debe terminar la activación o validación pendiente.'};
@@ -155,9 +153,6 @@ function mesaEtapaOpciones(){
  if(!ipLista)prep.splice(Math.max(0,prep.length-1),0,'CONFIRMAR_IP_ACTUAL','ASIGNAR_NUEVA_IP');
  else prep.splice(Math.max(0,prep.length-1),0,'ASIGNAR_NUEVA_IP');
  const final=ipLista?['VERIFICAR_ACCESO_REMOTO','VERIFICAR_CONECTIVIDAD']:[];
- if(solicitadas.has('VERIFICAR_POTENCIA'))prep=prep.filter(x=>x!=='ACTIVAR_CAMBIAR_ONU');
- const finalYaSolicitada=['VERIFICAR_ACCESO_REMOTO','VERIFICAR_CONECTIVIDAD'].some(x=>solicitadas.has(x));
- if(finalYaSolicitada)prep=[];
  const codes=[...new Set([...prep,...final])].filter(x=>!solicitadas.has(x));
  return {bloqueada:false,codes,texto:codes.length?(ipLista?'Solo se muestran acciones que aún no han sido solicitadas y que corresponden al siguiente paso lógico.':'Primero deja listo el servicio y la IP. Cada acción desaparece después de solicitarla.'):'✅ No hay más acciones de Mesa Técnica pendientes para esta etapa.'};
 }
@@ -176,15 +171,19 @@ function renderMesaActions(){
  });
 }
 function mesaReqLine(r){
- const names=(r.acciones||[]).map(x=>MESA_ACTIONS[x]?.[1]||x.replaceAll('_',' ')).join(' · '),res=r.resultado||{},pot=res.verificacion_potencia||null,ev=res.evidencia_potencia||null;
+ const names=(r.acciones||[]).map(x=>MESA_ACTIONS[x]?.[1]||x.replaceAll('_',' ')).join(' · '),res=r.resultado||{},pot=res.verificacion_potencia||null,ev=res.evidencia_potencia||null,ip=res.verificacion_ip||null,done=r.estado==='ATENDIDO';
  let extra='';
+ if(ip){
+   const st=String(ip.estado||'').toUpperCase(),label=done?'✅ Confirmada por MikroTik':st==='PENDIENTE'?'⏳ Consultando MikroTik':st==='OK'&&ip.encontrada!==true?'❌ IP no encontrada':st==='ERROR'?'⚠️ Error de consulta':'Pendiente';
+   extra+='<div class="mesaMirrorStatus '+(done?'ok':'pending')+'"><div><b>🌐 IP actual:</b> '+esc(ip.ip||'—')+'</div><div><b>Router:</b> '+esc(ip.router_nombre||'—')+'</div><div><b>Resultado:</b> '+esc(label)+'</div>'+(ip.respondido_at?'<div class="muted">'+esc(fmt(ip.respondido_at))+'</div>':'')+'</div>';
+ }
  if(pot||ev?.url){
    const vals=pot?[['Estado',pot.estado||'—'],['Rx ONU',pot.rx_onu_dbm!=null?String(pot.rx_onu_dbm)+' dBm':'—'],['Rx OLT',pot.rx_olt_dbm!=null?String(pot.rx_olt_dbm)+' dBm':'—'],['OLT',pot.olt||'—'],['PON',[pot.tarjeta,pot.puerto].filter(Boolean).join('/')||'—'],['ONT-ID',pot.ont_id||'—'],['SN',pot.sn||'—'],['Distancia',pot.distancia_m!=null?String(pot.distancia_m)+' m':'—'],['Fuente',pot.fuente||'SMARTOLT'],['Lectura',pot.leido_at?fmt(pot.leido_at):'—']]:[];
    const data='<div class="powerMirrorData"><div class="muted" style="margin:0 0 5px"><b>📊 LECTURA ÓPTICA</b></div>'+vals.map(v=>'<div style="margin-top:3px"><b>'+esc(v[0])+':</b> '+esc(v[1])+'</div>').join('')+'</div>';
    const evidence='<div class="powerMirrorEvidence"><div class="muted" style="margin:0 0 5px"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+(ev?.url?'<img data-power-evidence="'+esc(r.id)+'" src="'+esc(ev.url)+'" alt="Evidencia potencia SmartOLT" onclick="window.open(this.src,\'_blank\')"><div class="muted">✅ Captura SmartOLT guardada'+(ev.subido_at?' · '+esc(fmt(ev.subido_at)):'')+'</div>':'<div class="muted">Sin captura disponible.</div>')+'</div>';
-   extra='<div class="powerMirrorGrid">'+data+evidence+'</div>';
+   extra+='<div class="powerMirrorGrid">'+data+evidence+'</div>';
  }
- return '<div style="padding:7px 0;border-bottom:1px solid #e5ecef"><b>'+(r.estado==='ATENDIDO'?'✅':'⏳')+' '+esc(names)+'</b><div class="muted">'+esc(fmt(r.solicitado_at))+(r.estado==='ATENDIDO'&&r.atendido_at?' · atendido '+esc(fmt(r.atendido_at)):'')+'</div>'+extra+'</div>'
+ return '<div class="mesaMirrorReq '+(done?'done':'pending')+'"><div class="mesaMirrorReqHead"><b>'+(done?'✅ ATENDIDO':'⏳ ESPERANDO MESA TÉCNICA')+' · '+esc(names)+'</b><span>'+(done?'ATENDIDO':'PENDIENTE')+'</span></div><div class="muted">'+esc(fmt(r.solicitado_at))+(done&&r.atendido_at?' · atendido '+esc(fmt(r.atendido_at)):'')+'</div>'+extra+'</div>'
 }
 async function mesaStatus(){if(!['SOPORTE_TECNICO','CAMBIO_EQUIPOS','REUBICACION'].includes(DATA?.orden?.tipo_trabajo))return;try{const d=estabilizarMesaEvidencias(await post(MESA_API,{action:'status',orden_id:ORDEN}));MESA_STATE=d;const rs=d.requerimientos||[],sig=JSON.stringify(rs);if(sig!==MESA_RENDER_SIG){MESA_RENDER_SIG=sig;$('mesaSoporteEstado').innerHTML=rs.length?rs.map(mesaReqLine).join(''):'<div class="muted">Todavía no hay requerimientos enviados a Mesa Técnica.</div>';renderMesaActions()}}catch(e){$('mesaSoporteEstado').textContent='No se pudo consultar Mesa técnica: '+e.message}}
 let MESA_MIRROR_TIMER=null;function iniciarEspejoMesa(){if(MESA_MIRROR_TIMER)return;MESA_MIRROR_TIMER=setInterval(()=>{if(!document.hidden&&ORDEN&&DATA?.orden?.estado==='EN_PROCESO')mesaStatus()},8000)}document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ORDEN)mesaStatus()});
