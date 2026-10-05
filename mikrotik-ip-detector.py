@@ -8,6 +8,7 @@ SUPABASE_URL=os.environ.get('SUPABASE_URL','https://ajnbswrwnjpjypjiorye.supabas
 DETECTOR_TOKEN=os.environ.get('DETECTOR_TOKEN','')
 POLL_SECONDS=max(5,int(os.environ.get('POLL_SECONDS','15')))
 TZ=ZoneInfo(os.environ.get('MIKROTIK_TIMEZONE','America/Guayaquil'))
+SMARTOLT_AUTO_SYNC=os.environ.get('SMARTOLT_AUTO_SYNC','0').strip()=='1'
 SMARTOLT_SYNC_SECONDS=max(600,int(os.environ.get('SMARTOLT_SYNC_SECONDS','600')))
 _last_smartolt_sync=0
 _smartolt_sync_running=False
@@ -70,6 +71,8 @@ def _smartolt_sync_worker():
 
 def lanzar_smartolt_sync_si_corresponde():
     global _last_smartolt_sync,_smartolt_sync_running
+    if not SMARTOLT_AUTO_SYNC:
+        return
     now=time.time()
     if _smartolt_sync_running or now-_last_smartolt_sync<SMARTOLT_SYNC_SECONDS:
         return
@@ -187,7 +190,7 @@ def atender_consultas_en_vivo(router):
 
 def main():
     by_id={str(r['router_id']):r for r in ROUTERS if r.get('router_id') and r.get('password')}
-    print(f'DISPROTEL detector IP iniciado · cada {POLL_SECONDS}s · RB configurados: {len(by_id)}')
+    print(f'DISPROTEL detector IP iniciado · cada {POLL_SECONDS}s · RB configurados: {len(by_id)} · SmartOLT auto-sync: {"ACTIVO" if SMARTOLT_AUTO_SYNC else "DESACTIVADO"}')
     while True:
         try:
             lanzar_smartolt_sync_si_corresponde()
