@@ -67,10 +67,10 @@ async def run_command(command):
 
 async def main():
     commands=[
-        "display ont info ?",
-        "display ont ?"
+        "display ont info summary ?",
+        "display ont info 0 ?"
     ]
-    print(json.dumps({"ok":True,"read_only":True,"host":HOST,"purpose":"descubrir sintaxis valida de consulta ONT"},ensure_ascii=False))
+    print(json.dumps({"ok":True,"read_only":True,"host":HOST,"purpose":"descubrir sintaxis exacta de inventario ONT"},ensure_ascii=False))
     for command in commands:
         print("\n>>> "+command)
         raw=await run_command(command)
