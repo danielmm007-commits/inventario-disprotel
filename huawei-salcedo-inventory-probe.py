@@ -66,12 +66,16 @@ async def run_command(command):
             writer.close()
 
 async def main():
-    command="display ont info summary all"
-    print(json.dumps({"ok":True,"read_only":True,"host":HOST,"command":command},ensure_ascii=False))
-    raw=await run_command(command)
-    print("\n===== SALIDA HUAWEI =====\n")
-    print(raw)
-    print("\n===== FIN =====\n")
+    commands=[
+        "display ont info ?",
+        "display ont ?"
+    ]
+    print(json.dumps({"ok":True,"read_only":True,"host":HOST,"purpose":"descubrir sintaxis valida de consulta ONT"},ensure_ascii=False))
+    for command in commands:
+        print("\n>>> "+command)
+        raw=await run_command(command)
+        print(raw)
+        print("<<< FIN "+command+"\n")
     return 0
 
 if __name__=="__main__":
