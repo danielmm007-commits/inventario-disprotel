@@ -66,16 +66,12 @@ async def run_command(command):
             writer.close()
 
 async def main():
-    commands=[
-        "display ont info summary ?",
-        "display ont info 0 ?"
-    ]
-    print(json.dumps({"ok":True,"read_only":True,"host":HOST,"purpose":"descubrir sintaxis exacta de inventario ONT"},ensure_ascii=False))
-    for command in commands:
-        print("\n>>> "+command)
-        raw=await run_command(command)
-        print(raw)
-        print("<<< FIN "+command+"\n")
+    command="display ont info 0 all"
+    print(json.dumps({"ok":True,"read_only":True,"host":HOST,"purpose":"inventario masivo ONT SALCEDO","command":command},ensure_ascii=False))
+    raw=await run_command(command)
+    print("\n===== INVENTARIO HUAWEI SALCEDO =====\n")
+    print(raw)
+    print("\n===== FIN INVENTARIO =====\n")
     return 0
 
 if __name__=="__main__":
