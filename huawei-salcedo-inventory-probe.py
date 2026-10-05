@@ -39,14 +39,23 @@ async def run_command(command):
         writer.write(command+"\n"); await writer.drain()
 
         response=""
-        while PROMPT not in response:
-            chunk=await asyncio.wait_for(reader.read(2048),timeout=15)
+        loop=asyncio.get_running_loop()
+        deadline=loop.time()+35
+        while loop.time()<deadline:
+            try:
+                chunk=await asyncio.wait_for(reader.read(2048),timeout=5)
+            except asyncio.TimeoutError:
+                if response:
+                    break
+                continue
             if not chunk: break
             response+=chunk
             if "{ <cr>||<K> }:" in response and "Command:" not in response:
                 writer.write("\n"); await writer.drain(); await asyncio.sleep(0.1)
             if "Press 'Q' to break" in chunk or "More" in chunk:
                 writer.write(" "); await writer.drain(); await asyncio.sleep(0.1)
+            if PROMPT and PROMPT in response:
+                break
         return response
     finally:
         if writer is not None:
@@ -57,7 +66,7 @@ async def run_command(command):
             writer.close()
 
 async def main():
-    command="display ont info summary 0"
+    command="display ont info summary all"
     print(json.dumps({"ok":True,"read_only":True,"host":HOST,"command":command},ensure_ascii=False))
     raw=await run_command(command)
     print("\n===== SALIDA HUAWEI =====\n")
