@@ -67,11 +67,11 @@ async def run_command(command):
 
 async def main():
     commands=[
-        "display ont optical-info ?",
-        "display ont info 0 1 ?",
-        "display ont info 0 1 6 ?"
+        "display ont info 0 1 6 7",
+        "display ont info 0 1 6 0",
+        "display ont register-info ?"
     ]
-    print(json.dumps({"ok":True,"read_only":True,"host":HOST,"purpose":"descubrir potencia y detalle ONT SALCEDO"},ensure_ascii=False))
+    print(json.dumps({"ok":True,"read_only":True,"host":HOST,"purpose":"detalle real ONT offline/online y ayuda register-info SALCEDO"},ensure_ascii=False))
     for command in commands:
         print("\n>>> "+command)
         raw=await run_command(command)
