@@ -50,7 +50,7 @@ async def run_command(command):
                 continue
             if not chunk: break
             response+=chunk
-            if "{ <cr>||<K> }:" in response and "Command:" not in response:
+            if "{ <cr>" in response and "Command:" not in response:
                 writer.write("\n"); await writer.drain(); await asyncio.sleep(0.1)
             if "Press 'Q' to break" in chunk or "More" in chunk:
                 writer.write(" "); await writer.drain(); await asyncio.sleep(0.1)
@@ -98,7 +98,7 @@ async def run_sequence(commands):
                 if not chunk:
                     break
                 response+=chunk
-                if "{ <cr>||<K> }:" in response and "Command:" not in response:
+                if "{ <cr>" in response and "Command:" not in response:
                     writer.write("\n"); await writer.drain(); await asyncio.sleep(0.1)
                 if "Press 'Q' to break" in chunk or "More" in chunk:
                     writer.write(" "); await writer.drain(); await asyncio.sleep(0.1)
