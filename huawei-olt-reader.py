@@ -80,6 +80,39 @@ def parse_autofind(text):
 
 
 
+def parse_huawei_description(desc):
+    raw=str(desc or "").strip()
+    out={"nombre_cliente_huawei":None,"zona_huawei":None,"nap_huawei":None,"auth_huawei":None}
+    if not raw:
+        return out
+    parts=re.split(r"_zone_",raw,maxsplit=1,flags=re.IGNORECASE)
+    name_raw=parts[0] if parts else raw
+    rest=parts[1] if len(parts)>1 else ""
+    name=" ".join(x for x in name_raw.replace("_"," ").split() if x).strip()
+    if name:
+        out["nombre_cliente_huawei"]=name
+    zone_part=""
+    if rest:
+        zone_part=re.split(r"_descr_",rest,maxsplit=1,flags=re.IGNORECASE)[0]
+    zone=" ".join(x for x in zone_part.replace("_"," ").split() if x).strip()
+    if zone:
+        out["zona_huawei"]=zone
+        if zone.upper().startswith("NAP "):
+            out["nap_huawei"]=zone
+        else:
+            m=re.search(r"\bNAP\b.*",zone,re.IGNORECASE)
+            if m:
+                out["nap_huawei"]=m.group(0).strip()
+    m=re.search(r"_authd_(\d{8})",raw,re.IGNORECASE)
+    if m:
+        d=m.group(1)
+        try:
+            out["auth_huawei"]=f"{d[0:4]}-{d[4:6]}-{d[6:8]}"
+        except Exception:
+            pass
+    return out
+
+
 def parse_inventory_status(text):
     """Parsea estado + Description de 'display ont info 0 all'."""
     raw=str(text or "")
@@ -136,6 +169,7 @@ def parse_inventory_status(text):
                 ipm=re.search(r"(?<!\d)(?:\d{1,3}\.){3}\d{1,3}(?!\d)",desc)
                 if ipm:
                     row["ip_descripcion"]=ipm.group(0)
+                row.update(parse_huawei_description(desc))
         current_key=None
         desc_parts=[]
 
