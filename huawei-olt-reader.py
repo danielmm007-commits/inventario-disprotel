@@ -81,25 +81,25 @@ def parse_autofind(text):
 
 
 def parse_inventory_status(text):
-    """Parsea la tabla masiva de 'display ont info 0 all'."""
+    """Parsea estado + Description de 'display ont info 0 all'."""
+    raw=str(text or "")
     rows=[]
+    by_key={}
     rx=re.compile(
         r"(\d+/\s*\d+/\d+)\s+(\d+)\s+([0-9A-Fa-f]{16})\s+"
         r"(\S+)\s+(online|offline)\s+(\S+)\s+(\S+)\s+(\S+)",
         re.IGNORECASE
     )
-    seen=set()
-    for line in str(text or "").splitlines():
+    for line in raw.splitlines():
         m=rx.search(line)
         if not m:
             continue
         fsp=re.sub(r"\s+","",m.group(1))
         ont_id=int(m.group(2))
         key=(fsp,ont_id)
-        if key in seen:
+        if key in by_key:
             continue
-        seen.add(key)
-        rows.append({
+        row={
             "fsp":fsp,
             "ont_id":ont_id,
             "sn":m.group(3).upper(),
@@ -108,7 +108,71 @@ def parse_inventory_status(text):
             "config_state":m.group(6).lower(),
             "match_state":m.group(7).lower(),
             "protect_side":m.group(8).lower(),
-        })
+            "descripcion":None,
+            "ip_descripcion":None,
+        }
+        by_key[key]=row
+        rows.append(row)
+
+    # Huawei imprime después una segunda tabla:
+    # F/S/P   ONT-ID   Description
+    # La descripción puede continuar en una o varias líneas indentadas.
+    in_desc=False
+    current_key=None
+    desc_parts=[]
+    desc_rx=re.compile(r"^\s*(\d+)\s*/\s*(\d+)\s*/\s*(\d+)\s+(\d+)\s{2,}(.*\S)?\s*$")
+
+    def flush_description():
+        nonlocal current_key,desc_parts
+        if current_key is None:
+            return
+        row=by_key.get(current_key)
+        if row is not None:
+            # El salto de línea es sólo wrap del terminal Huawei: se concatena
+            # sin insertar caracteres que no existían en el comentario original.
+            desc="".join(desc_parts).strip()
+            if desc:
+                row["descripcion"]=desc
+                ipm=re.search(r"(?<!\d)(?:\d{1,3}\.){3}\d{1,3}(?!\d)",desc)
+                if ipm:
+                    row["ip_descripcion"]=ipm.group(0)
+        current_key=None
+        desc_parts=[]
+
+    for raw_line in raw.splitlines():
+        line=re.sub(r"\x1b\[[0-9;?]*[A-Za-z]","",raw_line)
+        if "F/S/P" in line and "ONT-ID" in line and "Description" in line:
+            flush_description()
+            in_desc=True
+            continue
+        if not in_desc:
+            continue
+        if "Press 'Q' to break" in line or "---- More" in line:
+            continue
+        m=desc_rx.match(line)
+        if m:
+            flush_description()
+            fsp=f"{int(m.group(1))}/{int(m.group(2))}/{int(m.group(3))}"
+            ont_id=int(m.group(4))
+            current_key=(fsp,ont_id)
+            first=(m.group(5) or "").strip()
+            desc_parts=[first] if first else []
+            continue
+        if current_key is not None:
+            stripped=line.strip()
+            if not stripped or set(stripped)=={"-"}:
+                continue
+            if stripped.startswith("In port ") or stripped.endswith("#"):
+                flush_description()
+                if stripped.startswith("In port "):
+                    continue
+                break
+            # Las líneas de continuación de Description llegan fuertemente
+            # indentadas y no repiten F/S/P ni ONT-ID.
+            if raw_line[:1].isspace():
+                desc_parts.append(stripped)
+
+    flush_description()
     return rows
 
 
