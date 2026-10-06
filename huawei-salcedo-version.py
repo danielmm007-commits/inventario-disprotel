@@ -86,20 +86,25 @@ async def run_sequence(commands):
         for command in commands:
             writer.write(command+"\n"); await writer.drain()
             response=""
+            cr_sent=False
             loop=asyncio.get_running_loop()
-            deadline=loop.time()+35
+            deadline=loop.time()+45
             while loop.time()<deadline:
                 try:
                     chunk=await asyncio.wait_for(reader.read(2048),timeout=5)
                 except asyncio.TimeoutError:
+                    if cr_sent:
+                        continue
                     if response:
                         break
                     continue
                 if not chunk:
                     break
                 response+=chunk
-                if "{ <cr>" in response and "Command:" not in response:
-                    writer.write("\n"); await writer.drain(); await asyncio.sleep(0.1)
+                if "{ <cr>" in response and "Command:" not in response and not cr_sent:
+                    writer.write("\n"); await writer.drain(); await asyncio.sleep(0.2)
+                    cr_sent=True
+                    continue
                 if "Press 'Q' to break" in chunk or "More" in chunk:
                     writer.write(" "); await writer.drain(); await asyncio.sleep(0.1)
                 if "#" in response and (
