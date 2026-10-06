@@ -80,6 +80,38 @@ def parse_autofind(text):
 
 
 
+def parse_inventory_status(text):
+    """Parsea la tabla masiva de 'display ont info 0 all'."""
+    rows=[]
+    rx=re.compile(
+        r"(\d+/\s*\d+/\d+)\s+(\d+)\s+([0-9A-Fa-f]{16})\s+"
+        r"(\S+)\s+(online|offline)\s+(\S+)\s+(\S+)\s+(\S+)",
+        re.IGNORECASE
+    )
+    seen=set()
+    for line in str(text or "").splitlines():
+        m=rx.search(line)
+        if not m:
+            continue
+        fsp=re.sub(r"\s+","",m.group(1))
+        ont_id=int(m.group(2))
+        key=(fsp,ont_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append({
+            "fsp":fsp,
+            "ont_id":ont_id,
+            "sn":m.group(3).upper(),
+            "control_flag":m.group(4).lower(),
+            "run_state":m.group(5).lower(),
+            "config_state":m.group(6).lower(),
+            "match_state":m.group(7).lower(),
+            "protect_side":m.group(8).lower(),
+        })
+    return rows
+
+
 def parse_ont_info_by_sn(text, requested_sn):
     low = text.lower()
     not_found = (
@@ -513,6 +545,46 @@ async def configured_autofind(cfg):
                 pass
 
 
+
+
+async def configured_inventory(cfg):
+    """Inventario autorizado completo. Solo lectura."""
+    reader=writer=None
+    try:
+        reader,writer=await open_configured_olt(cfg)
+        writer.write("display ont info 0 all\n"); await writer.drain()
+        response=""
+        prompt=str(cfg.get("prompt") or "").strip()
+        while True:
+            try:
+                chunk=await asyncio.wait_for(reader.read(4096),timeout=20)
+            except asyncio.TimeoutError:
+                if response:
+                    break
+                raise
+            if not chunk:
+                break
+            response+=chunk
+            if "{ <cr>||<K> }:" in response and "Command:" not in response:
+                writer.write("\n"); await writer.drain(); await asyncio.sleep(0.1)
+            if "Press 'Q' to break" in chunk or "More" in chunk:
+                writer.write(" "); await writer.drain(); await asyncio.sleep(0.05)
+            if prompt and prompt in response:
+                break
+            if not prompt and response.rstrip().endswith("#"):
+                break
+        rows=parse_inventory_status(response)
+        if not rows:
+            raise RuntimeError("Huawei no devolvió ONTs autorizadas en el inventario.")
+        return rows
+    finally:
+        if writer is not None:
+            try:
+                writer.close()
+            except Exception:
+                pass
+
+
 async def test_configured_olt(cfg):
     reader=writer=None
     try:
@@ -555,7 +627,26 @@ async def poll_configured_olt(cfg):
             "onts":onts,
             "credentials_ready":bool(user and password)
         })
-        return {"ok":True,"read_only":True,"codigo":cfg.get("codigo"),"olt":cfg.get("nombre"),"pending_count":len(onts),"backend":saved}
+        inventory_saved=None
+        inventory=[]
+        if str(cfg.get("codigo") or "").upper()=="SALCEDO":
+            inventory=await configured_inventory(cfg)
+            inventory_saved=olt_config_call("scanner-inventory-snapshot",{
+                "olt_id":cfg.get("id"),
+                "olt_codigo":cfg.get("codigo"),
+                "olt_nombre":cfg.get("nombre"),
+                "onts":inventory
+            })
+        return {
+            "ok":True,"read_only":True,
+            "codigo":cfg.get("codigo"),"olt":cfg.get("nombre"),
+            "pending_count":len(onts),
+            "inventory_total":len(inventory) if inventory else None,
+            "inventory_online":sum(1 for x in inventory if x.get("run_state")=="online") if inventory else None,
+            "inventory_offline":sum(1 for x in inventory if x.get("run_state")=="offline") if inventory else None,
+            "backend":saved,
+            "inventory_backend":inventory_saved
+        }
     except Exception as exc:
         try:
             olt_config_call("scanner-heartbeat",{"olt_id":cfg.get("id"),"ok":False,"error":str(exc),"credentials_ready":bool(user and password)})
