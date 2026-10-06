@@ -112,6 +112,162 @@ def parse_inventory_status(text):
     return rows
 
 
+def _num_or_none(value, as_int=False):
+    text=str(value or "").strip()
+    if not text or text=="-":
+        return None
+    try:
+        return int(float(text)) if as_int else float(text)
+    except Exception:
+        return None
+
+
+def parse_optical_all(text, frame, slot, port):
+    rows=[]
+    rx=re.compile(
+        r"^\s*(\d+)\s+(-?\d+(?:\.\d+)?|-)\s+(-?\d+(?:\.\d+)?|-)\s+"
+        r"(-?\d+(?:\.\d+)?|-)\s+(-?\d+(?:\.\d+)?|-)\s+"
+        r"(-?\d+(?:\.\d+)?|-)\s+(-?\d+(?:\.\d+)?|-)\s+(\d+|-)\s*$"
+    )
+    read_at=datetime.now(timezone.utc).isoformat()
+    for line in str(text or "").splitlines():
+        m=rx.match(line)
+        if not m:
+            continue
+        rows.append({
+            "fsp":f"{frame}/{slot}/{port}",
+            "ont_id":int(m.group(1)),
+            "rx_optical_dbm":_num_or_none(m.group(2)),
+            "tx_optical_dbm":_num_or_none(m.group(3)),
+            "olt_rx_ont_dbm":_num_or_none(m.group(4)),
+            "temperatura_c":_num_or_none(m.group(5)),
+            "voltaje_v":_num_or_none(m.group(6)),
+            "corriente_ma":_num_or_none(m.group(7)),
+            "distancia_m":_num_or_none(m.group(8),as_int=True),
+            "optica_leida_at":read_at,
+        })
+    return rows
+
+
+def parse_alarm_state_all(text, frame, slot, port, known_ont_ids=None):
+    read_at=datetime.now(timezone.utc).isoformat()
+    rows={}
+    for ont_id in known_ont_ids or []:
+        rows[int(ont_id)]={
+            "fsp":f"{frame}/{slot}/{port}",
+            "ont_id":int(ont_id),
+            "alarmas":[],
+            "alarma_los":False,
+            "alarma_dying_gasp":False,
+            "alarma_config_recovery":False,
+            "alarmas_leidas_at":read_at,
+        }
+
+    blocks=re.split(r"(?=\s*ONT ID\s*:)",str(text or ""))
+    for block in blocks:
+        m=re.search(r"ONT ID\s*:\s*(\d+)",block)
+        if not m:
+            continue
+        ont_id=int(m.group(1))
+        alarm_part=block.split("Active Alarm List",1)[1] if "Active Alarm List" in block else ""
+        alarm_part=re.split(r"\n\s*-{5,}",alarm_part,1)[0]
+        lines=[]
+        current=""
+        for raw in alarm_part.splitlines():
+            line=raw.strip()
+            if not line or line==":":
+                continue
+            numbered=re.match(r"^\(\d+\)\s*(.*)$",line)
+            if numbered:
+                if current:
+                    lines.append(current.strip())
+                current=numbered.group(1).strip()
+            elif current:
+                current+=" "+line
+        if current:
+            lines.append(current.strip())
+        joined=" | ".join(lines).lower()
+        rows[ont_id]={
+            "fsp":f"{frame}/{slot}/{port}",
+            "ont_id":ont_id,
+            "alarmas":lines,
+            "alarma_los":("losi/lobi" in joined or "distribute fiber is broken" in joined or "cannot receive expected optical signals from the ont" in joined),
+            "alarma_dying_gasp":("dying-gasp" in joined or "dying gasp" in joined),
+            "alarma_config_recovery":("configuration recovery fails" in joined),
+            "alarmas_leidas_at":read_at,
+        }
+    return list(rows.values())
+
+
+async def _session_command(reader,writer,command,timeout=60):
+    writer.write(command+"\n"); await writer.drain()
+    response=""
+    cr_sent=False
+    loop=asyncio.get_running_loop()
+    deadline=loop.time()+timeout
+    while loop.time()<deadline:
+        try:
+            chunk=await asyncio.wait_for(reader.read(4096),timeout=8)
+        except asyncio.TimeoutError:
+            if response and cr_sent:
+                continue
+            if response:
+                break
+            continue
+        if not chunk:
+            break
+        response+=chunk
+        if "{ <cr>" in response and "Command:" not in response and not cr_sent:
+            writer.write("\n"); await writer.drain(); await asyncio.sleep(0.1)
+            cr_sent=True
+            continue
+        if "Press 'Q' to break" in chunk or "More" in chunk:
+            writer.write(" "); await writer.drain(); await asyncio.sleep(0.03)
+        # El prompt Huawei de cualquier modo termina en '#'.
+        tail=response.rstrip()
+        if tail.endswith("#"):
+            break
+    return response
+
+
+async def configured_telemetry(cfg, inventory):
+    """Potencias y alarmas masivas por PON. Solo SALCEDO por ahora."""
+    ports={}
+    for row in inventory:
+        parts=str(row.get("fsp") or "").split("/")
+        if len(parts)!=3:
+            continue
+        try:
+            frame,slot,port=map(int,parts)
+        except Exception:
+            continue
+        ports.setdefault((frame,slot,port),[]).append(int(row.get("ont_id")))
+
+    telemetry={}
+    slots=sorted(set((f,s) for f,s,p in ports))
+    for frame,slot in slots:
+        reader=writer=None
+        try:
+            reader,writer=await open_configured_olt(cfg)
+            await _session_command(reader,writer,"config",timeout=20)
+            iface=await _session_command(reader,writer,f"interface gpon {frame}/{slot}",timeout=20)
+            if "Unknown command" in iface or "Parameter error" in iface:
+                raise RuntimeError(f"No se pudo entrar a GPON {frame}/{slot}")
+            for f,s,port in sorted(k for k in ports if k[0]==frame and k[1]==slot):
+                optical=await _session_command(reader,writer,f"display ont optical-info {port} all",timeout=90)
+                for item in parse_optical_all(optical,f,s,port):
+                    telemetry.setdefault((item["fsp"],item["ont_id"]),{}).update(item)
+
+                alarms=await _session_command(reader,writer,f"display ont alarm-state {port} all",timeout=90)
+                for item in parse_alarm_state_all(alarms,f,s,port,ports[(f,s,port)]):
+                    telemetry.setdefault((item["fsp"],item["ont_id"]),{}).update(item)
+        finally:
+            if writer is not None:
+                try: writer.close()
+                except Exception: pass
+    return list(telemetry.values())
+
+
 def parse_ont_info_by_sn(text, requested_sn):
     low = text.lower()
     not_found = (
@@ -628,7 +784,9 @@ async def poll_configured_olt(cfg):
             "credentials_ready":bool(user and password)
         })
         inventory_saved=None
+        telemetry_saved=None
         inventory=[]
+        telemetry=[]
         if str(cfg.get("codigo") or "").upper()=="SALCEDO":
             inventory=await configured_inventory(cfg)
             inventory_saved=olt_config_call("scanner-inventory-snapshot",{
@@ -637,6 +795,16 @@ async def poll_configured_olt(cfg):
                 "olt_nombre":cfg.get("nombre"),
                 "onts":inventory
             })
+            telemetry=await configured_telemetry(cfg,inventory)
+            # Evita una petición HTTP enorme: enviar en bloques de 250.
+            saved_count=0
+            for i in range(0,len(telemetry),250):
+                part=olt_config_call("scanner-telemetry-snapshot",{
+                    "olt_codigo":cfg.get("codigo"),
+                    "rows":telemetry[i:i+250]
+                }) or {}
+                saved_count+=int(part.get("updated") or 0)
+            telemetry_saved={"ok":True,"updated":saved_count}
         return {
             "ok":True,"read_only":True,
             "codigo":cfg.get("codigo"),"olt":cfg.get("nombre"),
@@ -644,8 +812,12 @@ async def poll_configured_olt(cfg):
             "inventory_total":len(inventory) if inventory else None,
             "inventory_online":sum(1 for x in inventory if x.get("run_state")=="online") if inventory else None,
             "inventory_offline":sum(1 for x in inventory if x.get("run_state")=="offline") if inventory else None,
+            "telemetry_rows":len(telemetry) if telemetry else None,
+            "telemetry_los":sum(1 for x in telemetry if x.get("alarma_los") is True) if telemetry else None,
+            "telemetry_dying_gasp":sum(1 for x in telemetry if x.get("alarma_dying_gasp") is True) if telemetry else None,
             "backend":saved,
-            "inventory_backend":inventory_saved
+            "inventory_backend":inventory_saved,
+            "telemetry_backend":telemetry_saved
         }
     except Exception as exc:
         try:
