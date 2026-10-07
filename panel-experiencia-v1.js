@@ -96,7 +96,7 @@ function ensureMenuShell(){
     menuHome=shell.querySelector('.menuHome');
     menuFrame=shell.querySelector('.menuFrame');menuFrame?.setAttribute('allow','geolocation');
 
-    const cards=[...main.querySelectorAll('.module')].map((card,i)=>{
+    let cards=[...main.querySelectorAll('.module')].map((card,i)=>{
       const link=card.querySelector('a.btn');
       let title=card.querySelector('h3')?.textContent?.trim(),icon=card.querySelector('.ico')?.textContent?.trim()||'•',href=link?.getAttribute('href');
       if(!link||!title||getComputedStyle(card).display==='none'||getComputedStyle(link).display==='none')return null;
