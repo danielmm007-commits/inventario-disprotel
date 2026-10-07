@@ -126,10 +126,24 @@ function detect(text){
 
   if(servicePayment&&isOwn(beneficiario))beneficiario='';
   beneficiario=cleanText(beneficiario).replace(/^(beneficiario|destinatario|receptor|nombre(?: del beneficiario| del destinatario)?)\s*:?\s*/i,'');
-  return {concepto:cleanText(concepto),beneficiario};
+  return {concepto:normalizeAdministrativeConcept(cleanText(concepto)),beneficiario};
+}
+function normalizeAdministrativeConcept(v){
+  let s=cleanText(v);
+  if(!s)return s;
+
+  // Telefonía: conservar la referencia/ubicación escrita por Daniel.
+  s=s.replace(/^PAGO\s+(?:DE\s+)?(?:FONO|TELEFONO|TELÉFONO|TELEFONIA|TELEFONÍA)\b\s*/i,'PLANILLA TELEFÓNICA ');
+  s=s.replace(/^PAGO\s+(?:DE\s+)?(?:LINEA|LÍNEA)\s+TELEFONICA\b\s*/i,'PLANILLA TELEFÓNICA ');
+
+  // Energía eléctrica.
+  s=s.replace(/^PAGO\s+(?:DE\s+)?(?:ENERGIA|ENERGÍA|LUZ|ENERGIA ELECTRICA|ENERGÍA ELÉCTRICA)\b\s*/i,'PLANILLA DE ENERGÍA ');
+  s=s.replace(/^PAGO\s+(?:DE\s+)?ELECTRICIDAD\b\s*/i,'PLANILLA DE ENERGÍA ');
+
+  return cleanText(s);
 }
 function filename(it){
-  let c=safeName(it.concepto)||'COMPROBANTE';
+  let c=safeName(normalizeAdministrativeConcept(it.concepto))||'COMPROBANTE';
   let b=safeName(it.beneficiario);
   if(b && !norm(c).includes(norm(b))) c += ' - '+b;
   return c+'.pdf';
