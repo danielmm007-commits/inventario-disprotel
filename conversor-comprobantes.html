@@ -129,7 +129,7 @@ function detect(text){
 
   if(servicePayment&&isOwn(beneficiario))beneficiario='';
   beneficiario=cleanText(beneficiario).replace(/^(beneficiario|destinatario|receptor|nombre(?: del beneficiario| del destinatario)?)\s*:?\s*/i,'');
-  const conceptoFinal=upperText(normalizeAdministrativeConcept(cleanText(concepto)));const beneficiarioFinal=upperText(beneficiario);return {concepto:conceptoFinal,beneficiario:beneficiarioFinal,categoria:classifyPayment(conceptoFinal)};
+  const conceptoFinal=upperText(normalizeAdministrativeConcept(cleanText(concepto)));const beneficiarioFinal=upperText(beneficiario);return {concepto:conceptoFinal,beneficiario:beneficiarioFinal,categoria:(servicePayment&&classifyPayment(conceptoFinal)==='OTROS'?'SERVICIOS BÁSICOS':classifyPayment(conceptoFinal)),servicePayment};
 }
 function upperText(v){return cleanText(v).toLocaleUpperCase('es-EC')}
 function classifyPayment(concepto){
@@ -194,8 +194,8 @@ async function addFiles(files){
   const pdfs=[...files].filter(f=>/\.pdf$/i.test(f.name)||f.type==='application/pdf'); if(!pdfs.length)return;
   progress.style.display='block';let done=0;
   for(const file of pdfs){
-    const it={file,concepto:'',beneficiario:'',categoria:'OTROS',error:''};items.push(it);render();
-    try{const text=await extractPdf(file),d=detect(text);it.concepto=upperText(d.concepto);it.beneficiario=upperText(d.beneficiario);it.categoria=d.categoria||classifyPayment(it.concepto);if(!text.trim())it.error='PDF sin texto extraíble'}catch(e){it.error='No se pudo leer'}
+    const it={file,concepto:'',beneficiario:'',categoria:'OTROS',servicePayment:false,error:''};items.push(it);render();
+    try{const text=await extractPdf(file),d=detect(text);it.concepto=upperText(d.concepto);it.beneficiario=upperText(d.beneficiario);it.servicePayment=!!d.servicePayment;it.categoria=d.categoria||classifyPayment(it.concepto);if(!text.trim())it.error='PDF sin texto extraíble'}catch(e){it.error='No se pudo leer'}
     done++;progressBar.style.width=Math.round(done/pdfs.length*100)+'%';render();
   }
   setTimeout(()=>{progress.style.display='none';progressBar.style.width='0'},450);
