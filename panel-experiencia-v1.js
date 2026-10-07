@@ -109,6 +109,8 @@ function ensureMenuShell(){
     if(isRubi&&!cards.some(x=>String(x.href||'').includes('solicitudes-oficina-live.html')))cards.push({title:'Solicitudes técnicas',icon:'📝',href:'solicitudes-oficina-live.html?v='+Date.now(),i:cards.length});
     const consultaAllowed=me?.es_admin_principal===true||['TECNICO','SUPERVISOR TECNICO','ADMINISTRADOR','ADMINISTRADOR SUPREMO'].includes(role.trim());
     if(consultaAllowed&&!cards.some(x=>String(x.href||'').includes('consulta-clientes.html')))cards.push({title:'Consulta de clientes',icon:'🔎',href:'consulta-clientes.html?v='+Date.now(),i:cards.length});
+    const adminDocsAllowed=norm(me.usuario)==='DANIEL'||norm(me.nombre).includes('CARLOS DANIEL MOLINA');
+    if(adminDocsAllowed&&!cards.some(x=>String(x.href||'').includes('conversor-comprobantes.html')))cards.push({title:'Conversor de comprobantes',icon:'📄',href:'conversor-comprobantes.html?v='+Date.now(),i:cards.length});
     const oltAllowed=me?.es_admin_principal===true||['TECNICO','SUPERVISOR TECNICO','ADMINISTRADOR','ADMINISTRADOR SUPREMO'].includes(role.trim());
     // OLT es un único módulo. Monitoreo, ONU, hardware y configuración
     // viven dentro de monitoreo-olt.html; no duplicar accesos en el menú lateral.
