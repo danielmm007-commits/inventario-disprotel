@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DISPROTEL · Conversor de comprobantes</title>
+<style>
+:root{--navy:#083f50;--blue:#176fc4;--ink:#17313d;--muted:#687b85;--line:#d8e3e8;--bg:#eef3f5;--green:#188653;--amber:#a86b00;--red:#b84040}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--ink)}
+.wrap{max-width:1200px;margin:auto;padding:18px}
+.hero{display:flex;gap:14px;align-items:center;justify-content:space-between;background:linear-gradient(110deg,#083f50,#0d6f82);color:#fff;border-radius:14px;padding:18px 20px}
+.hero h1{margin:2px 0 4px;font-size:22px}.hero p{margin:0;color:#d9eef0;font-size:12px}.hero small{font-size:9px;letter-spacing:.08em;color:#b9dfe2;font-weight:800}
+.notice{margin-top:12px;padding:11px 13px;border:1px solid #b9ddc7;background:#eefaf2;border-radius:10px;color:#236844;font-size:11px}
+.drop{margin-top:12px;border:2px dashed #9fbac5;border-radius:14px;background:#fff;padding:28px;text-align:center;cursor:pointer;transition:.15s}
+.drop.drag{border-color:var(--blue);background:#eef7ff}.drop strong{display:block;font-size:15px}.drop span{display:block;margin-top:5px;font-size:11px;color:var(--muted)}
+input[type=file]{display:none}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.toolbar button{border:0;border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer;background:#fff;color:#244761;border:1px solid var(--line)}.toolbar .primary{background:var(--blue);color:#fff;border-color:var(--blue)}.toolbar button:disabled{opacity:.45;cursor:not-allowed}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tableWrap{overflow:auto}.tbl{width:100%;border-collapse:collapse;min-width:900px}.tbl th{background:#f6f9fa;text-align:left;font-size:9px;color:#60737c;padding:9px;border-bottom:1px solid var(--line);letter-spacing:.05em}.tbl td{padding:8px;border-bottom:1px solid #edf1f3;vertical-align:top;font-size:10px}.tbl tr:last-child td{border-bottom:0}
+.tbl input{width:100%;border:1px solid #cedce3;border-radius:7px;padding:7px 8px;font-size:10px;color:var(--ink)}.tbl input:focus{outline:2px solid #b8d9ef;border-color:#6ca9d1}
+.fileName{font-weight:700;word-break:break-word}.sub{margin-top:3px;color:var(--muted);font-size:9px}.status{display:inline-block;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:800;background:#eef5f9;color:#27617f}.status.ok{background:#eaf8ef;color:#237a52}.status.warn{background:#fff6df;color:#8a6100}.status.err{background:#fff0f0;color:#a33a3a}
+.namePreview{font-weight:700;color:#0c5b8e;word-break:break-word}.empty{padding:34px;text-align:center;color:#7c8c94;font-size:11px}
+.rowActions{display:flex;gap:5px}.rowActions button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 8px;cursor:pointer;font-size:9px}
+.privacy{margin-top:10px;font-size:9px;color:#72848d}.progress{height:5px;background:#dce7ec;border-radius:999px;overflow:hidden;margin-top:10px;display:none}.progress>i{display:block;height:100%;width:0;background:#176fc4;transition:.2s}
+@media(max-width:700px){.wrap{padding:10px}.hero{align-items:flex-start;flex-direction:column}.drop{padding:20px 12px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <div><small>ADMINISTRACIÓN · PRUEBA</small><h1>Conversor de comprobantes PDF</h1><p>Lee el comprobante en tu navegador y propone un nombre usando concepto + beneficiario.</p></div>
+  </section>
+  <div class="notice"><b>🔒 Privacidad de esta prueba:</b> los PDF no se cargan a DISPROTEL, Supabase ni GitHub. Se procesan únicamente en este navegador y desaparecen al cerrar o recargar la página.</div>
+  <label id="drop" class="drop" for="files">
+    <strong>📄 Arrastra aquí los comprobantes de Banco Pichincha</strong>
+    <span>o haz clic para seleccionar uno o varios archivos PDF.</span>
+  </label>
+  <input id="files" type="file" accept="application/pdf,.pdf" multiple>
+  <div class="progress" id="progress"><i id="progressBar"></i></div>
+  <div class="toolbar">
+    <button id="clearBtn" type="button">Limpiar lista</button>
+    <button id="downloadAllBtn" class="primary" type="button" disabled>⬇ Descargar todos renombrados (.zip)</button>
+  </div>
+  <section class="card">
+    <div class="tableWrap">
+      <table class="tbl">
+        <thead><tr><th style="width:18%">ARCHIVO ORIGINAL</th><th style="width:22%">CONCEPTO</th><th style="width:22%">BENEFICIARIO</th><th style="width:25%">NOMBRE RESULTANTE</th><th style="width:8%">ESTADO</th><th style="width:5%"></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="6"><div class="empty">Todavía no has cargado comprobantes.</div></td></tr></tbody>
+      </table>
+    </div>
+  </section>
+  <div class="privacy">El conversor no modifica el contenido del PDF; únicamente cambia el nombre del archivo al descargarlo.</div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script type="module">
+import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+
+const KEY='disprotel_login_general_v2';
+let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
+const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toUpperCase();
+if(!me?.session_token){location.replace('login-general-v2.html?return='+encodeURIComponent('conversor-comprobantes.html'))}
+if(norm(me.usuario)!=='DANIEL'&&!norm(me.nombre).includes('CARLOS DANIEL MOLINA')){document.body.innerHTML='<main class="wrap"><div class="notice" style="border-color:#efc5c5;background:#fff4f4;color:#9c3434"><b>Acceso restringido.</b> Este módulo de prueba está habilitado únicamente para Daniel.</div></main>';throw new Error('Acceso restringido')}
+
+const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), progress=$('progress'), progressBar=$('progressBar');
+let items=[];
+
+function cleanText(v){return String(v||'').replace(/\s+/g,' ').replace(/^[\s:;-]+|[\s:;-]+$/g,'').trim()}
+function safeName(v){return cleanText(v).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().slice(0,140)}
+function tokenize(text){return String(text||'').split(/\r?\n/).map(cleanText).filter(Boolean)}
+function valueAfter(lines,labels){
+  for(let i=0;i<lines.length;i++){
+    const n=norm(lines[i]);
+    for(const label of labels){
+      const L=norm(label);
+      if(n===L && lines[i+1]) return cleanText(lines[i+1]);
+      if(n.startsWith(L+':')) return cleanText(lines[i].slice(lines[i].indexOf(':')+1));
+      if(n.startsWith(L+' ')){
+        const rest=cleanText(lines[i].slice(label.length)); if(rest&&rest.length>2)return rest;
+      }
+    }
+  }
+  return '';
+}
+function likelyPerson(v){
+  const s=cleanText(v);
+  if(!s||s.length<3||s.length>90)return '';
+  if(/\b(BANCO|CUENTA|AHORROS|CORRIENTE|TRANSFERENCIA|COMPROBANTE|VALOR|FECHA|CEDULA|RUC|USD|DOLAR|PICHINCHA)\b/i.test(s))return '';
+  return s;
+}
+function detect(text){
+  const rawLines=tokenize(text), lines=rawLines.map(x=>x.replace(/\s{2,}/g,' '));
+  let concepto=valueAfter(lines,['Concepto','Detalle','Motivo','Descripción','Descripcion','Referencia','Concepto de pago','Detalle de pago']);
+  let beneficiario=valueAfter(lines,['Beneficiario','Nombre del beneficiario','Nombre beneficiario','Destinatario','Nombre del destinatario','A favor de','Nombre']);
+  beneficiario=likelyPerson(beneficiario);
+
+  if(!beneficiario){
+    for(let i=0;i<lines.length;i++){
+      if(/beneficiario|destinatario|a favor/i.test(lines[i])){
+        for(let j=i+1;j<Math.min(lines.length,i+4);j++){const p=likelyPerson(lines[j]);if(p){beneficiario=p;break}}
+      }
+      if(beneficiario)break;
+    }
+  }
+  if(!concepto){
+    for(const l of lines){
+      if(/sueldo|arriendo|alquiler|servicio|honorario|anticipo|pago|factura|liquidacion|liquidación/i.test(l) && l.length<110){concepto=l;break}
+    }
+  }
+  concepto=cleanText(concepto).replace(/^(concepto|detalle|motivo|descripci[oó]n|referencia)\s*:?\s*/i,'');
+  beneficiario=cleanText(beneficiario).replace(/^(beneficiario|destinatario|nombre(?: del beneficiario)?)\s*:?\s*/i,'');
+  return {concepto,beneficiario};
+}
+function filename(it){
+  let c=safeName(it.concepto)||'COMPROBANTE';
+  let b=safeName(it.beneficiario);
+  if(b && !norm(c).includes(norm(b))) c += ' - '+b;
+  return c+'.pdf';
+}
+async function extractPdf(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let text='';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p), content=await page.getTextContent();
+    let lastY=null,line='';
+    for(const x of content.items){
+      const y=x.transform?.[5];
+      if(lastY!==null && y!==undefined && Math.abs(y-lastY)>2){text+=line+'\n';line=''}
+      line+=(line?' ':'')+(x.str||'');lastY=y;
+    }
+    if(line)text+=line+'\n';
+  }
+  return text;
+}
+function render(){
+  if(!items.length){rows.innerHTML='<tr><td colspan="6"><div class="empty">Todavía no has cargado comprobantes.</div></td></tr>';downloadAllBtn.disabled=true;return}
+  rows.innerHTML=items.map((it,i)=>`<tr>
+    <td><div class="fileName">${escapeHtml(it.file.name)}</div><div class="sub">${(it.file.size/1024).toFixed(0)} KB</div></td>
+    <td><input data-i="${i}" data-k="concepto" value="${attr(it.concepto)}" placeholder="Ej. SUELDO OCTUBRE"></td>
+    <td><input data-i="${i}" data-k="beneficiario" value="${attr(it.beneficiario)}" placeholder="Ej. BRYAN GARCIA"></td>
+    <td><div class="namePreview" id="preview-${i}">${escapeHtml(filename(it))}</div></td>
+    <td><span class="status ${it.error?'err':(it.concepto||it.beneficiario?'ok':'warn')}">${it.error?'ERROR':(it.concepto||it.beneficiario?'LISTO':'REVISAR')}</span></td>
+    <td><div class="rowActions"><button type="button" data-download="${i}" title="Descargar">⬇</button><button type="button" data-remove="${i}" title="Quitar">✕</button></div></td>
+  </tr>`).join('');
+  downloadAllBtn.disabled=!items.some(x=>!x.error);
+}
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function attr(v){return escapeHtml(v).replace(/\n/g,' ')}
+async function addFiles(files){
+  const pdfs=[...files].filter(f=>/\.pdf$/i.test(f.name)||f.type==='application/pdf'); if(!pdfs.length)return;
+  progress.style.display='block';let done=0;
+  for(const file of pdfs){
+    const it={file,concepto:'',beneficiario:'',error:''};items.push(it);render();
+    try{const text=await extractPdf(file),d=detect(text);it.concepto=d.concepto;it.beneficiario=d.beneficiario;if(!text.trim())it.error='PDF sin texto extraíble'}catch(e){it.error='No se pudo leer'}
+    done++;progressBar.style.width=Math.round(done/pdfs.length*100)+'%';render();
+  }
+  setTimeout(()=>{progress.style.display='none';progressBar.style.width='0'},450);
+}
+function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+function downloadOne(i){const it=items[i];if(!it||it.error)return;downloadBlob(it.file,filename(it))}
+async function downloadAll(){
+  const ok=items.filter(x=>!x.error);if(!ok.length)return;
+  if(ok.length===1){downloadBlob(ok[0].file,filename(ok[0]));return}
+  const zip=new JSZip();const used=new Set();
+  for(const it of ok){let n=filename(it),base=n.replace(/\.pdf$/i,'');let k=2;while(used.has(norm(n)))n=base+' ('+(k++)+').pdf';used.add(norm(n));zip.file(n,it.file)}
+  const blob=await zip.generateAsync({type:'blob'});downloadBlob(blob,'COMPROBANTES_RENOMBRADOS.zip')
+}
+input.addEventListener('change',e=>{addFiles(e.target.files);input.value=''});
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
+drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
+rows.addEventListener('input',e=>{const el=e.target.closest('input[data-i]');if(!el)return;const i=Number(el.dataset.i);items[i][el.dataset.k]=el.value;const p=document.getElementById('preview-'+i);if(p)p.textContent=filename(items[i])});
+rows.addEventListener('click',e=>{const d=e.target.closest('[data-download]'),r=e.target.closest('[data-remove]');if(d)downloadOne(Number(d.dataset.download));if(r){items.splice(Number(r.dataset.remove),1);render()}});
+clearBtn.onclick=()=>{items=[];render()};downloadAllBtn.onclick=downloadAll;
+</script>
+</body>
+</html>
