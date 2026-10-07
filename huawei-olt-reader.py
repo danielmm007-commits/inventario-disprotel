@@ -247,6 +247,49 @@ def parse_optical_all(text, frame, slot, port):
     return rows
 
 
+
+def parse_optical_individual(text, frame, slot, port, ont_id):
+    """Parsea display ont optical-info <port> <ont-id> de MA5600/MA5608 y compatibles."""
+    raw=str(text or "")
+    def field(label):
+        m=re.search(r"^\s*"+re.escape(label)+r"\s*:\s*(.+?)\s*$",raw,re.MULTILINE|re.IGNORECASE)
+        return m.group(1).strip() if m else None
+    def n(label,as_int=False):
+        v=field(label)
+        if not v or v=="-":
+            return None
+        m=re.search(r"-?\d+(?:\.\d+)?",v)
+        if not m:
+            return None
+        try:
+            x=float(m.group(0))
+            return int(round(x)) if as_int else x
+        except Exception:
+            return None
+    rx=n("Rx optical power(dBm)")
+    tx=n("Tx optical power(dBm)")
+    olt_rx=n("OLT Rx ONT optical power(dBm)")
+    temp=n("Temperature(C)")
+    voltage=n("Voltage(V)")
+    current=n("Laser bias current(mA)")
+    # Algunas versiones no muestran distancia en optical-info individual.
+    distance=n("ONT distance(m)",as_int=True)
+    if rx is None and tx is None and olt_rx is None and temp is None and voltage is None:
+        return None
+    return {
+        "fsp":f"{frame}/{slot}/{port}",
+        "ont_id":int(ont_id),
+        "rx_optical_dbm":rx,
+        "tx_optical_dbm":tx,
+        "olt_rx_ont_dbm":olt_rx,
+        "temperatura_c":temp,
+        "voltaje_v":voltage,
+        "corriente_ma":current,
+        "distancia_m":distance,
+        "optica_leida_at":datetime.now(timezone.utc).isoformat(),
+    }
+
+
 def parse_alarm_state_all(text, frame, slot, port, known_ont_ids=None):
     read_at=datetime.now(timezone.utc).isoformat()
     rows={}
@@ -444,8 +487,20 @@ async def configured_telemetry(cfg, inventory):
                 raise RuntimeError(f"No se pudo entrar a GPON {frame}/{slot}")
             for f,s,port in sorted(k for k in ports if k[0]==frame and k[1]==slot):
                 optical=await _session_command(reader,writer,f"display ont optical-info {port} all",timeout=90)
-                for item in parse_optical_all(optical,f,s,port):
+                bulk_items=parse_optical_all(optical,f,s,port)
+                for item in bulk_items:
                     telemetry.setdefault((item["fsp"],item["ont_id"]),{}).update(item)
+
+                # MA5608T/GPFD y otras generaciones pueden no entregar una tabla
+                # compatible con "... optical-info <port> all". Si el parser masivo
+                # no obtiene filas, consultamos cada ONT del PON con el comando
+                # individual documentado por la propia CLI.
+                if not bulk_items:
+                    for ont_id in sorted(set(ports[(f,s,port)])):
+                        individual=await _session_command(reader,writer,f"display ont optical-info {port} {ont_id}",timeout=30)
+                        item=parse_optical_individual(individual,f,s,port,ont_id)
+                        if item:
+                            telemetry.setdefault((item["fsp"],item["ont_id"]),{}).update(item)
 
                 alarms=await _session_command(reader,writer,f"display ont alarm-state {port} all",timeout=90)
                 for item in parse_alarm_state_all(alarms,f,s,port,ports[(f,s,port)]):
@@ -1007,6 +1062,9 @@ async def handle_olt_test_queue():
     return results
 
 
+_TELEMETRY_LAST_MONO={}
+
+
 async def poll_configured_olt(cfg):
     user,password=local_credentials(cfg)
     try:
@@ -1033,16 +1091,25 @@ async def poll_configured_olt(cfg):
             "olt_nombre":cfg.get("nombre"),
             "onts":inventory
         })
-        telemetry=await configured_telemetry(cfg,inventory)
-        # Evita una petición HTTP enorme: enviar en bloques de 250.
-        saved_count=0
-        for i in range(0,len(telemetry),250):
-            part=olt_config_call("scanner-telemetry-snapshot",{
-                "olt_codigo":cfg.get("codigo"),
-                "rows":telemetry[i:i+250]
-            }) or {}
-            saved_count+=int(part.get("updated") or 0)
-        telemetry_saved={"ok":True,"updated":saved_count}
+        telemetry_interval=max(300,int(os.environ.get("OLT_TELEMETRY_INTERVAL_SECONDS","900")))
+        telemetry_key=str(cfg.get("id") or cfg.get("codigo") or "")
+        telemetry_now=asyncio.get_running_loop().time()
+        telemetry_last=_TELEMETRY_LAST_MONO.get(telemetry_key)
+        telemetry_due=(telemetry_last is None) or ((telemetry_now-telemetry_last)>=telemetry_interval)
+        if telemetry_due:
+            telemetry=await configured_telemetry(cfg,inventory)
+            # Evita una petición HTTP enorme: enviar en bloques de 250.
+            saved_count=0
+            for i in range(0,len(telemetry),250):
+                part=olt_config_call("scanner-telemetry-snapshot",{
+                    "olt_codigo":cfg.get("codigo"),
+                    "rows":telemetry[i:i+250]
+                }) or {}
+                saved_count+=int(part.get("updated") or 0)
+            telemetry_saved={"ok":True,"updated":saved_count,"interval_seconds":telemetry_interval}
+            _TELEMETRY_LAST_MONO[telemetry_key]=asyncio.get_running_loop().time()
+        else:
+            telemetry_saved={"ok":True,"skipped":True,"reason":"INTERVALO_TELEMETRIA","interval_seconds":telemetry_interval}
 
         hardware_interval=max(3600,int(os.environ.get("OLT_HARDWARE_INTERVAL_SECONDS","86400")))
         hardware_age=cfg.get("hardware_age_seconds")
@@ -1063,9 +1130,10 @@ async def poll_configured_olt(cfg):
             "inventory_total":len(inventory) if inventory else None,
             "inventory_online":sum(1 for x in inventory if x.get("run_state")=="online") if inventory else None,
             "inventory_offline":sum(1 for x in inventory if x.get("run_state")=="offline") if inventory else None,
-            "telemetry_rows":len(telemetry) if telemetry else None,
-            "telemetry_los":sum(1 for x in telemetry if x.get("alarma_los") is True) if telemetry else None,
-            "telemetry_dying_gasp":sum(1 for x in telemetry if x.get("alarma_dying_gasp") is True) if telemetry else None,
+            "telemetry_refreshed":telemetry_due,
+            "telemetry_rows":len(telemetry) if telemetry_due else None,
+            "telemetry_los":sum(1 for x in telemetry if x.get("alarma_los") is True) if telemetry_due else None,
+            "telemetry_dying_gasp":sum(1 for x in telemetry if x.get("alarma_dying_gasp") is True) if telemetry_due else None,
             "hardware_refreshed":hardware_due,
             "hardware_age_seconds":hardware_age,
             "hardware_boards":len(hardware.get("boards") or []) if hardware_due else None,
