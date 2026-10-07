@@ -298,6 +298,10 @@ function reconcileSmart(){
     }else{
       const nameCands=[];
       smartRows.forEach((s,i)=>{
+        // Cada servicio debe conciliarse de forma independiente.
+        // Si una ONU/registro SmartOLT ya fue consumido por otro servicio,
+        // no se puede reutilizar solo porque el titular tenga el mismo nombre.
+        if(used.has(i))return;
         const sim=nameSimilarity(ename,s.nombre);
         if(sim>=0.6)nameCands.push({s,i,sim});
       });
