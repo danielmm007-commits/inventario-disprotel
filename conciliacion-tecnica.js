@@ -472,8 +472,9 @@ function reconcileSmart(){
 }
 function smartIsOk(r){return /^OK_/.test(String(r||''))}
 function renderSmart(){
-  const c={};smartResult.forEach(x=>c[x.resultado]=(c[x.resultado]||0)+1);
-  const ok=smartResult.filter(x=>smartIsOk(x.resultado)).length,issues=smartResult.length-ok;
+  const reportRows=smartResult.filter(x=>x.resultado!=='OK_RADIO_SIN_SMARTOLT');
+  const c={};reportRows.forEach(x=>c[x.resultado]=(c[x.resultado]||0)+1);
+  const ok=reportRows.filter(x=>smartIsOk(x.resultado)).length,issues=reportRows.length-ok;
   document.getElementById('sOk').textContent=ok;document.getElementById('sIssue').textContent=issues;
   const entries=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,12);
   document.getElementById('smartCards').innerHTML=entries.map(([k,v])=>'<button type="button" class="card smartFilterCard'+(smartFilter===k?' active':'')+'" data-result="'+e(k)+'" title="Filtrar por '+e(k.replaceAll('_',' '))+'"><strong>'+v+'</strong><span>'+e(k.replaceAll('_',' '))+'</span></button>').join('');
@@ -482,17 +483,19 @@ function renderSmart(){
     smartFilter=smartFilter===val?'':val;
     renderSmart();
   });
-  const visible=smartFilter?smartResult.filter(x=>x.resultado===smartFilter):smartResult;
+  const visible=smartFilter?reportRows.filter(x=>x.resultado===smartFilter):reportRows;
   document.getElementById('smartResults').innerHTML=visible.length?visible.map(x=>'<tr><td><span class="badge '+(smartIsOk(x.resultado)?'ok':'warn')+'">'+e(x.resultado)+'</span></td><td>'+e(x.codigo_servicio)+'</td><td>'+e(x.erp_nombre)+'</td><td>'+e(x.erp_tipo||'')+'</td><td>'+e(x.erp_ip)+'</td><td>'+e(x.smart_nombre)+'</td><td>'+e(x.smart_ip||x.smart_ip_raw)+'</td><td>'+e(x.detalle)+'</td></tr>').join(''):'<tr><td colspan="8">Sin resultados para este filtro.</td></tr>';
-  document.getElementById('smartExcel').disabled=!smartResult.length;
+  document.getElementById('smartExcel').disabled=!reportRows.length;
   document.getElementById('smartIssuesExcel').disabled=!issues;
   document.getElementById('smartPdf').disabled=!issues;
   const scope=document.getElementById('smartSucursal').value;
-  document.getElementById('smartSub').textContent=scope+' · '+visible.length+' de '+smartResult.length+' filas'+(smartFilter?' · FILTRO: '+smartFilter.replaceAll('_',' '):'');
-  smartMsgSet(smartFilter?'Filtro activo: '+smartFilter.replaceAll('_',' ')+'. Haz clic otra vez en la tarjeta para ver todos.':'Conciliación ERP ↔ SmartOLT terminada. No se almacenó ningún archivo.','ok');
+  const omitted=smartResult.length-reportRows.length;
+  document.getElementById('smartSub').textContent=scope+' · '+visible.length+' de '+reportRows.length+' filas de reporte'+(omitted?' · '+omitted+' RADIO correctos omitidos':'')+(smartFilter?' · FILTRO: '+smartFilter.replaceAll('_',' '):'');
+  smartMsgSet(smartFilter?'Filtro activo: '+smartFilter.replaceAll('_',' ')+'. Haz clic otra vez en la tarjeta para ver todos.':'Conciliación ERP ↔ SmartOLT terminada. Los RADIO correctos sin SmartOLT se omiten del reporte.','ok');
 }
 function smartExport(kind,issuesOnly=false){
-  const data=issuesOnly?smartResult.filter(x=>!smartIsOk(x.resultado)):smartResult;
+  const base=smartResult.filter(x=>x.resultado!=='OK_RADIO_SIN_SMARTOLT');
+  const data=issuesOnly?base.filter(x=>!smartIsOk(x.resultado)):base;
   const out=data.map(x=>({Resultado:x.resultado,Codigo_Servicio:x.codigo_servicio,Cliente_ERP:x.erp_nombre,Tipo_ERP:x.erp_tipo||'',IP_ERP:x.erp_ip,Nombre_SmartOLT:x.smart_nombre,IP_SmartOLT:x.smart_ip||x.smart_ip_raw,SN_SmartOLT:x.smart_sn,Detalle:x.detalle,Confianza:x.confianza}));
   const ws=XLSX.utils.json_to_sheet(out),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,issuesOnly?'Inconsistencias':'Resultado');
   XLSX.writeFile(wb,kind+'_'+document.getElementById('smartSucursal').value+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
