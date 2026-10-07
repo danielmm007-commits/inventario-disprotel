@@ -141,7 +141,7 @@ async function call(body){
   const d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw new Error(d.error||'No se pudo consultar');return d;
 }
 function esc(v){return String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))}
-function fmtDate(v){if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('es-EC',{dateStyle:'short',timeStyle:'short'})}
+function fmtDate(v){if(!v)return '—';const s=String(v).trim();const m=s.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);if(m)return m[3]+'/'+m[2]+'/'+m[1];const d=new Date(s);return Number.isNaN(d.getTime())?s:d.toLocaleString('es-EC',{dateStyle:'short',timeStyle:'short'})}
 function statusBadge(v){const on=/^(online|up)$/i.test(String(v||''));return '<span class="badge '+(on?'online':'offline')+'">'+esc(v||'Sin dato')+'</span>'}
 function signalBadge(cls,val){const c=String(cls||'SIN_DATO').toLowerCase();return '<span class="badge sig-'+c+'">'+(val==null?'Sin dato':esc(Number(val).toFixed(2)+' dBm'))+'</span>'}
 async function loadSummary(){
