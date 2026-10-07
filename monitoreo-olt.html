@@ -304,7 +304,10 @@ async function refreshAll(){
     const info=$('autoInfo');
     if(info)info.textContent='ACTUALIZACIÓN AUTOMÁTICA · HUAWEI CADA 5 MIN · VISTA '+now.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     const live=$('autoLive');
-    if(live)live.innerHTML='<span class="autoDot"></span>ACTIVO';
+    if(live){
+      live.innerHTML='<span class="autoDot"></span>ACTIVO';
+      live.style.background='';
+    }
   }catch(e){
     const live=$('autoLive');
     if(live){live.textContent='⚠ REVISAR';live.style.background='#c83e3e'}
