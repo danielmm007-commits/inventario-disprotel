@@ -268,7 +268,7 @@ def parse_alarm_state_all(text, frame, slot, port, known_ont_ids=None):
             continue
         ont_id=int(m.group(1))
         alarm_part=block.split("Active Alarm List",1)[1] if "Active Alarm List" in block else ""
-        alarm_part=re.split(r"\n\s*-{5,}",alarm_part,1)[0]
+        alarm_part=re.split(r"\n\s*-{5,}",alarm_part,maxsplit=1)[0]
         lines=[]
         current=""
         for raw in alarm_part.splitlines():
@@ -295,6 +295,97 @@ def parse_alarm_state_all(text, frame, slot, port, known_ont_ids=None):
             "alarmas_leidas_at":read_at,
         }
     return list(rows.values())
+
+
+
+def _board_kind(board_name):
+    name=str(board_name or "").upper()
+    if not name:
+        return ("DESCONOCIDA", None)
+    if any(x in name for x in ("GPH","GPF","GPS","GPBD","GPFD","GPBH","GPHF","EPHF")):
+        return ("PON", "GPON")
+    if any(x in name for x in ("XGH","XGHD","TWED","XGSP","XG-PON","XGS")):
+        return ("PON", "XG/XGS-PON")
+    if any(x in name for x in ("MPLA","MPLB","MPU","SCUN","SCUH","SCUK")):
+        return ("CONTROL/UPLINK", None)
+    if any(x in name for x in ("PILA","PILD","POWER")):
+        return ("ENERGIA", None)
+    if any(x in name for x in ("ETH","OXH","NXE","XEHD","CIUA","EDSH")):
+        return ("UPLINK/SERVICIO", None)
+    return ("OTRA", None)
+
+
+def parse_board_overview(text):
+    """Parsea 'display board 0' sin asumir un modelo concreto de MA5800."""
+    rows=[]
+    seen=set()
+    for raw in str(text or "").splitlines():
+        line=re.sub(r"\x1b\[[0-9;?]*[A-Za-z]","",raw).strip()
+        if not line or line.startswith("-") or "SlotID" in line or line.lower().startswith("command:"):
+            continue
+        m=re.match(r"^(\d+)\s+([A-Za-z][A-Za-z0-9_-]+)\s+([^\s]+)",line)
+        if not m:
+            continue
+        slot=int(m.group(1)); board=m.group(2).strip(); status=m.group(3).strip()
+        if slot in seen:
+            continue
+        seen.add(slot)
+        role,tech=_board_kind(board)
+        rows.append({
+            "frame_id":0,
+            "slot_id":slot,
+            "board_name":board,
+            "board_status":status,
+            "board_role":role,
+            "tecnologia":tech,
+        })
+    return rows
+
+
+def parse_port_state_all(text, board_name=None, tecnologia=None):
+    """Parsea bloques de 'display port state all' dentro de interface gpon."""
+    raw=str(text or "")
+    blocks=re.split(r"(?=\s*F/S/P\s+\d+/\d+/\d+)",raw)
+    rows=[]
+    def val(block,label):
+        m=re.search(r"^\s*"+re.escape(label)+r"\s+(.+?)\s*$",block,re.MULTILINE|re.IGNORECASE)
+        return m.group(1).strip() if m else None
+    def numval(block,label):
+        v=val(block,label)
+        if v is None or v in ("-",""):
+            return None
+        m=re.search(r"-?\d+(?:\.\d+)?",v)
+        if not m:
+            return None
+        try:return float(m.group(0))
+        except Exception:return None
+    for block in blocks:
+        m=re.search(r"F/S/P\s+(\d+)\s*/\s*(\d+)\s*/\s*(\d+)",block,re.IGNORECASE)
+        if not m:
+            continue
+        frame,slot,port=map(int,m.groups())
+        tx=numval(block,"TX power(dBm)")
+        # Algunos módulos reportan 21474836.47 como valor inválido.
+        if tx is not None and abs(tx)>100:
+            tx=None
+        rows.append({
+            "frame_id":frame,
+            "slot_id":slot,
+            "port_id":port,
+            "board_name":board_name,
+            "tecnologia":tecnologia,
+            "optical_module_status":val(block,"Optical Module status"),
+            "port_state":val(block,"Port state"),
+            "laser_state":val(block,"Laser state"),
+            "temperatura_c":numval(block,"Temperature(C)"),
+            "tx_bias_ma":numval(block,"TX Bias current(mA)"),
+            "voltaje_v":numval(block,"Supply Voltage(V)"),
+            "tx_power_dbm":tx,
+            "wavelength_nm":numval(block,"Wave length(nm)") or numval(block,"Wavelength(nm)"),
+            "max_distance_km":numval(block,"Max Distance(Km)"),
+            "raw_excerpt":"\n".join(block.strip().splitlines()[:35])[:4000],
+        })
+    return rows
 
 
 async def _session_command(reader,writer,command,timeout=60):
@@ -839,6 +930,52 @@ async def configured_inventory(cfg):
                 pass
 
 
+
+async def configured_hardware(cfg, inventory):
+    """Inventario físico de tarjetas y estado/óptica de puertos PON. Solo lectura."""
+    reader=writer=None
+    boards=[]
+    ports=[]
+    try:
+        reader,writer=await open_configured_olt(cfg)
+        await _session_command(reader,writer,"config",timeout=20)
+        board_text=await _session_command(reader,writer,"display board 0",timeout=40)
+        boards=parse_board_overview(board_text)
+
+        inventory_slots=set()
+        for row in inventory or []:
+            parts=str(row.get("fsp") or "").split("/")
+            if len(parts)==3:
+                try: inventory_slots.add(int(parts[1]))
+                except Exception: pass
+
+        for board in boards:
+            slot=int(board.get("slot_id"))
+            role=str(board.get("board_role") or "")
+            # Consultamos boards PON reconocidas y también slots observados en ONT,
+            # para soportar nombres de tarjeta Huawei que todavía no conozcamos.
+            if role!="PON" and slot not in inventory_slots:
+                continue
+            iface=await _session_command(reader,writer,f"interface gpon 0/{slot}",timeout=20)
+            low=iface.lower()
+            if "unknown command" in low or "parameter error" in low or "failure:" in low:
+                continue
+            state=await _session_command(reader,writer,"display port state all",timeout=90)
+            parsed=parse_port_state_all(state,board.get("board_name"),board.get("tecnologia") or "GPON")
+            if parsed:
+                ports.extend(parsed)
+                if board.get("board_role")!="PON":
+                    board["board_role"]="PON"
+                    board["tecnologia"]=board.get("tecnologia") or "GPON"
+            # Volvemos a config para entrar limpiamente al siguiente slot.
+            await _session_command(reader,writer,"quit",timeout=10)
+        return {"boards":boards,"ports":ports}
+    finally:
+        if writer is not None:
+            try: writer.close()
+            except Exception: pass
+
+
 async def test_configured_olt(cfg):
     reader=writer=None
     try:
@@ -906,6 +1043,13 @@ async def poll_configured_olt(cfg):
             }) or {}
             saved_count+=int(part.get("updated") or 0)
         telemetry_saved={"ok":True,"updated":saved_count}
+
+        hardware=await configured_hardware(cfg,inventory)
+        hardware_saved=olt_config_call("scanner-hardware-snapshot",{
+            "olt_codigo":cfg.get("codigo"),
+            "boards":hardware.get("boards") or [],
+            "ports":hardware.get("ports") or []
+        })
         return {
             "ok":True,"read_only":True,
             "codigo":cfg.get("codigo"),"olt":cfg.get("nombre"),
@@ -916,9 +1060,12 @@ async def poll_configured_olt(cfg):
             "telemetry_rows":len(telemetry) if telemetry else None,
             "telemetry_los":sum(1 for x in telemetry if x.get("alarma_los") is True) if telemetry else None,
             "telemetry_dying_gasp":sum(1 for x in telemetry if x.get("alarma_dying_gasp") is True) if telemetry else None,
+            "hardware_boards":len(hardware.get("boards") or []),
+            "hardware_pon_ports":len(hardware.get("ports") or []),
             "backend":saved,
             "inventory_backend":inventory_saved,
-            "telemetry_backend":telemetry_saved
+            "telemetry_backend":telemetry_saved,
+            "hardware_backend":hardware_saved
         }
     except Exception as exc:
         try:
