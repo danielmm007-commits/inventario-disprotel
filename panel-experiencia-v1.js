@@ -3,7 +3,7 @@
   const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-permisos-granulares';
   const KEY='disprotel_login_general_v2';
   let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
-  if(!me?.usuario)return;
+  if(!me?.usuario&&!me?.session_token&&!me?.pin)return;
   const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
   function nombrePerfil(v){
     const raw=String(v||'').trim(),n=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
