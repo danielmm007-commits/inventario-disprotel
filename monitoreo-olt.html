@@ -106,7 +106,7 @@ button,input,select{font:inherit}.wrap{padding:12px;max-width:1600px;margin:auto
     <select id="olt"><option value="">Todas las OLT</option></select>
     <select id="tarjeta"><option value="">Todas las tarjetas</option></select>
     <select id="puerto"><option value="">Todos los puertos</option></select>
-    <select id="estado"><option value="">Todos los estados</option><option value="online">Online</option><option value="offline">Offline</option><option value="los">LOS</option><option value="power fail">Power Fail</option></select>
+    <select id="estado"><option value="">Todos los estados</option><option value="online">Online</option><option value="offline">Offline</option><option value="los">LOS</option><option value="power fail">Power Fail</option><option value="signal-low">Señal baja</option><option value="warning">Señal advertencia</option><option value="critical">Señal crítica</option></select>
     <button id="searchBtn">Buscar</button>
   </section>
 
@@ -165,14 +165,14 @@ async function loadSummary(){
   $('pendingBox').innerHTML=(d.pending||[]).length?(d.pending||[]).map(x=>'<div class="pendingItem"><b>'+esc(x.olt_nombre||x.olt_codigo||'OLT')+'</b><div>SN: '+esc(x.onu_sn||'—')+'</div><div>PON: '+esc(x.pon||'—')+' · '+esc(x.modelo||'Modelo sin dato')+'</div></div>').join(''):'<div class="pendingEmpty">No hay ONU nuevas en autofind.</div>';
 }
 function readFilters(){
-  const quick=state.quickFilter;
+  const classification=$('estado').value;
   return{
     q:$('q').value.trim(),
     olt:$('olt').value,
-    tarjeta:$('tarjeta').value,
-    puerto:$('puerto').value,
-    estado:(quick==='online'||quick==='offline')?quick:$('estado').value,
-    signal:quick==='warning'?'ADVERTENCIA':quick==='critical'?'CRITICA':quick==='low'?'LOW':''
+    tarjeta:$('tarjeta').disabled?'':$('tarjeta').value,
+    puerto:$('puerto').disabled?'':$('puerto').value,
+    estado:['online','offline','los','power fail'].includes(classification)?classification:'',
+    signal:classification==='warning'?'ADVERTENCIA':classification==='critical'?'CRITICA':classification==='signal-low'?'LOW':''
   };
 }
 async function loadFilterOptions({resetCard=false,resetPort=false}={}){
@@ -295,6 +295,8 @@ function setMetricFilter(filter){
     $('pendingBox').scrollIntoView({behavior:'smooth',block:'center'});
     return;
   }
+  const map={all:'',online:'online',offline:'offline',low:'signal-low',warning:'warning',critical:'critical'};
+  $('estado').value=map[state.quickFilter]??'';
   state.offset=0;
   loadList(true).then(()=>$('tbody').closest('.tablePanel')?.scrollIntoView({behavior:'smooth',block:'start'})).catch(e=>alert(e.message));
 }
@@ -314,7 +316,12 @@ $('tarjeta').onchange=async()=>{try{
 }catch(e){alert(e.message)}};
 
 $('puerto').onchange=()=>loadList(true).catch(e=>alert(e.message));
-$('estado').onchange=()=>{state.quickFilter='all';document.querySelectorAll('.metric[data-filter]').forEach(el=>el.classList.toggle('active',el.dataset.filter==='all'));loadList(true).catch(e=>alert(e.message));};
+$('estado').onchange=()=>{
+  const reverse={online:'online',offline:'offline','signal-low':'low',warning:'warning',critical:'critical'};
+  state.quickFilter=reverse[$('estado').value]||'all';
+  document.querySelectorAll('.metric[data-filter]').forEach(el=>el.classList.toggle('active',el.dataset.filter===state.quickFilter));
+  loadList(true).catch(e=>alert(e.message));
+};
 $('prev').onclick=()=>{state.offset=Math.max(0,state.offset-state.limit);loadList(false).catch(e=>alert(e.message))};$('next').onclick=()=>{if(state.offset+state.limit<state.total){state.offset+=state.limit;loadList(false).catch(e=>alert(e.message))}};
 $('closeModal').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};document.addEventListener('keydown',e=>{if(e.key==='Escape')$('modal').classList.remove('show')});
 refreshAll();
