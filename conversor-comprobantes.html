@@ -44,6 +44,7 @@ input[type=file]{display:none}
     <button id="filterSalariesBtn" type="button">SUELDOS</button>
     <button id="filterRentsBtn" type="button">ARRIENDOS</button>
     <button id="filterServicesBtn" type="button">SERVICIOS BÁSICOS</button>
+    <button id="emailBtn" type="button" disabled>✉ PREPARAR CORREO</button>
   </div>
   <section class="card">
     <div class="tableWrap">
@@ -67,7 +68,7 @@ const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim
 if(!me?.session_token){location.replace('login-general-v2.html?return='+encodeURIComponent('conversor-comprobantes.html'))}
 if(norm(me.usuario)!=='DANIEL'&&!norm(me.nombre).includes('CARLOS DANIEL MOLINA')){document.body.innerHTML='<main class="wrap"><div class="notice" style="border-color:#efc5c5;background:#fff4f4;color:#9c3434"><b>Acceso restringido.</b> Este módulo de prueba está habilitado únicamente para Daniel.</div></main>';throw new Error('Acceso restringido')}
 
-const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), progress=$('progress'), progressBar=$('progressBar');
+const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), emailBtn=$('emailBtn'), progress=$('progress'), progressBar=$('progressBar');
 let items=[];let activeCategory='TODOS';
 
 function cleanText(v){return String(v||'').replace(/\s+/g,' ').replace(/^[\s:;-]+|[\s:;-]+$/g,'').trim()}
@@ -205,7 +206,7 @@ function render(){
     <td><span class="status ${it.error?'err':(it.concepto||it.beneficiario?'ok':'warn')}">${it.error?'ERROR':(it.concepto||it.beneficiario?'LISTO':'REVISAR')}</span></td>
     <td><div class="rowActions"><button type="button" data-download="${i}" title="Descargar">⬇</button><button type="button" data-remove="${i}" title="Quitar">✕</button></div></td>
   </tr>`}).join('')||'<tr><td colspan="7"><div class="empty">No hay archivos en esta clasificación.</div></td></tr>';
-  const valid=items.filter(x=>!x.error);downloadAllBtn.disabled=!valid.length;[filterAllBtn,filterSalariesBtn,filterRentsBtn,filterServicesBtn].forEach(b=>b.classList.remove('filterOn'));({TODOS:filterAllBtn,SUELDOS:filterSalariesBtn,ARRIENDOS:filterRentsBtn,'SERVICIOS BÁSICOS':filterServicesBtn}[activeCategory]||filterAllBtn).classList.add('filterOn');
+  const valid=items.filter(x=>!x.error);downloadAllBtn.disabled=!valid.length;emailBtn.disabled=activeCategory==='TODOS'||!valid.some(x=>x.categoria===activeCategory);[filterAllBtn,filterSalariesBtn,filterRentsBtn,filterServicesBtn].forEach(b=>b.classList.remove('filterOn'));({TODOS:filterAllBtn,SUELDOS:filterSalariesBtn,ARRIENDOS:filterRentsBtn,'SERVICIOS BÁSICOS':filterServicesBtn}[activeCategory]||filterAllBtn).classList.add('filterOn');
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function attr(v){return escapeHtml(v).replace(/\n/g,' ')}
@@ -236,13 +237,52 @@ async function downloadCategory(category){
   for(const it of selected){let n=filename(it),base=n.replace(/\.pdf$/i,'');let k=2;while(used.has(norm(n)))n=base+' ('+(k++)+').pdf';used.add(norm(n));zip.file(n,it.file)}
   const blob=await zip.generateAsync({type:'blob'});downloadBlob(blob,category+'.zip')
 }
+function emailTemplate(category){
+  if(category==='SUELDOS')return{
+    subject:'PAGO DE SALARIOS',
+    body:'Estimados,\n\nAdjunto el respaldo de los comprobantes de pago correspondientes a los salarios.\n\nSaludos,\nDaniel Molina'
+  };
+  if(category==='ARRIENDOS')return{
+    subject:'PAGO DE ARRIENDOS',
+    body:'Estimados,\n\nAdjunto el respaldo de los comprobantes de pago correspondientes a los arriendos.\n\nSaludos,\nDaniel Molina'
+  };
+  return{
+    subject:'PAGO DE SERVICIOS BÁSICOS',
+    body:'Estimados,\n\nAdjunto el respaldo de los comprobantes de pago correspondientes a los servicios básicos.\n\nSaludos,\nDaniel Molina'
+  };
+}
+
+async function buildCategoryZip(category){
+  const selected=items.filter(x=>!x.error&&x.categoria===category);
+  if(!selected.length)return null;
+  const zip=new JSZip();const used=new Set();
+  for(const it of selected){
+    let n=filename(it),base=n.replace(/\.pdf$/i,'');let k=2;
+    while(used.has(norm(n)))n=base+' ('+(k++)+').pdf';
+    used.add(norm(n));zip.file(n,it.file);
+  }
+  const blob=await zip.generateAsync({type:'blob'});
+  return {blob,name:category.replace(/\s+/g,'_')+'.zip',count:selected.length};
+}
+
+async function prepareEmail(){
+  if(activeCategory==='TODOS')return;
+  const pack=await buildCategoryZip(activeCategory);if(!pack)return;
+  downloadBlob(pack.blob,pack.name);
+  const tpl=emailTemplate(activeCategory);
+  const to='mayra.molina@disprotel.com;diego.mancero@disprotel.com';
+  const url='https://outlook.office.com/mail/deeplink/compose?to='+encodeURIComponent(to)+'&subject='+encodeURIComponent(tpl.subject)+'&body='+encodeURIComponent(tpl.body);
+  window.open(url,'_blank','noopener');
+  alert('Se descargó '+pack.name+' con '+pack.count+' comprobante(s). Outlook se abrirá con el correo preparado. Adjunta ese ZIP antes de enviar.');
+}
+
 input.addEventListener('change',e=>{addFiles(e.target.files);input.value=''});
 ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
 drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
 rows.addEventListener('input',e=>{const el=e.target.closest('[data-i][data-k]');if(!el)return;const i=Number(el.dataset.i);let v=el.value;if(el.tagName==='INPUT')v=upperText(v);items[i][el.dataset.k]=v;if(el.dataset.k==='concepto'&&el.tagName==='INPUT')items[i].categoria=classifyPayment(v);const p=document.getElementById('preview-'+i);if(p)p.textContent=filename(items[i]);render()});
 rows.addEventListener('click',e=>{const d=e.target.closest('[data-download]'),r=e.target.closest('[data-remove]');if(d)downloadOne(Number(d.dataset.download));if(r){items.splice(Number(r.dataset.remove),1);render()}});
-clearBtn.onclick=()=>{items=[];activeCategory='TODOS';render()};downloadAllBtn.onclick=downloadAll;filterAllBtn.onclick=()=>{activeCategory='TODOS';render()};filterSalariesBtn.onclick=()=>{activeCategory='SUELDOS';render()};filterRentsBtn.onclick=()=>{activeCategory='ARRIENDOS';render()};filterServicesBtn.onclick=()=>{activeCategory='SERVICIOS BÁSICOS';render()};
+clearBtn.onclick=()=>{items=[];activeCategory='TODOS';render()};downloadAllBtn.onclick=downloadAll;filterAllBtn.onclick=()=>{activeCategory='TODOS';render()};filterSalariesBtn.onclick=()=>{activeCategory='SUELDOS';render()};filterRentsBtn.onclick=()=>{activeCategory='ARRIENDOS';render()};filterServicesBtn.onclick=()=>{activeCategory='SERVICIOS BÁSICOS';render()};emailBtn.onclick=prepareEmail;
 </script>
 </body>
 </html>
