@@ -8,7 +8,7 @@
 :root{--navy:#082b5c;--blue:#1676c8;--ink:#183142;--muted:#6d818e;--line:#d5e1e8;--bg:#eef4f7;--green:#17985a;--orange:#e08a12;--red:#c83e3e;--shadow:0 8px 24px rgba(7,42,70,.08)}
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
 button,input,select{font:inherit}.wrap{padding:12px;max-width:1600px;margin:auto}.hero{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(105deg,#073f52,#0a6f75);color:#fff;border-radius:10px;padding:12px 14px;box-shadow:var(--shadow)}
-.hero small{font-size:9px;font-weight:800;letter-spacing:.08em;color:#bfe8ea}.hero h1{margin:2px 0;font-size:22px}.hero p{margin:0;color:#d8eff0;font-size:11px}.heroActions{display:flex;gap:7px;align-items:center}.pill{padding:7px 9px;border-radius:999px;background:#ffffff18;border:1px solid #ffffff45;font-size:9px;font-weight:900}.refresh{border:1px solid #d4e3ea;background:#fff;color:#173646;border-radius:7px;padding:8px 11px;font-weight:900;cursor:pointer}
+.hero small{font-size:9px;font-weight:800;letter-spacing:.08em;color:#bfe8ea}.hero h1{margin:2px 0;font-size:22px}.hero p{margin:0;color:#d8eff0;font-size:11px}.heroActions{display:flex;gap:8px;align-items:center}.autoLine{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:#ffffff12;border:1px solid #ffffff3d;white-space:nowrap}.autoText{font-size:8px;font-weight:900;color:#d9f0f1;letter-spacing:.02em}.autoLive{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:#0fa05a;color:#fff;font-size:8px;font-weight:900;box-shadow:0 0 0 0 rgba(30,205,112,.65),0 0 16px rgba(30,205,112,.28);animation:autoPulse 1.7s infinite}.autoDot{width:7px;height:7px;border-radius:50%;background:#d8ffe9;box-shadow:0 0 10px rgba(216,255,233,.95)}@keyframes autoPulse{0%{box-shadow:0 0 0 0 rgba(30,205,112,.55),0 0 10px rgba(30,205,112,.18)}60%{box-shadow:0 0 0 7px rgba(30,205,112,0),0 0 18px rgba(30,205,112,.35)}100%{box-shadow:0 0 0 0 rgba(30,205,112,0),0 0 10px rgba(30,205,112,.18)}}
 .metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:9px}
 .metric{position:relative;overflow:hidden;background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 12px 10px 44px;box-shadow:var(--shadow);min-height:72px;transition:.18s ease;cursor:pointer;user-select:none}
 .metric.active{transform:translateY(-2px);box-shadow:0 0 0 2px rgba(18,103,157,.18),0 12px 30px rgba(7,42,70,.16)}
@@ -51,7 +51,7 @@ button,input,select{font:inherit}.wrap{padding:12px;max-width:1600px;margin:auto
 <div class="wrap">
   <section class="hero">
     <div><small>RED GPON · SOLO LECTURA</small><h1>Monitoreo OLT / ONU</h1><p>Resumen óptico, inventario ONU, filtros y detalle sin comandos de escritura hacia las OLT.</p></div>
-    <div class="heroActions"><span class="pill" id="syncStatus">● CONSULTANDO</span><button class="refresh" id="refreshBtn">↻ Actualizar</button></div>
+    <div class="heroActions"><div class="autoLine"><span class="autoText" id="autoInfo">ACTUALIZACIÓN AUTOMÁTICA · HUAWEI CADA 5 MIN</span><span class="autoLive" id="autoLive"><span class="autoDot"></span>ACTIVO</span></div></div>
   </section>
 
   <section class="metrics">
@@ -108,7 +108,7 @@ async function loadSummary(){
   const d=await call({action:'summary'});
   const s=d.summary||{};
   $('mTotal').textContent=s.total??0;$('mOnline').textContent=s.online??0;$('mOffline').textContent=s.offline??0;$('mWarn').textContent=s.warning??0;$('mCritical').textContent=s.critical??0;$('mPending').textContent=s.pending_autofind??0;
-  const sync=d.sync||{};$('syncStatus').textContent=sync.ultimo_error?'⚠ CACHE CON ERROR':'● SOLO LECTURA · CACHE LOCAL';
+  const sync=d.sync||{};
   const olts=d.olts||[];
   $('oltGrid').innerHTML=olts.length?olts.map(x=>'<div class="oltCard"><div class="oltHead"><b>'+esc(x.olt)+'</b><span class="oltLive" title="Datos disponibles en la caché local"><span class="statusDot"></span>ACTIVA</span></div><div class="oltNums"><div class="nTotal"><strong>'+x.total+'</strong><span>◉ TOTAL</span></div><div class="nOnline"><strong>'+x.online+'</strong><span>● ONLINE</span></div><div class="nOffline"><strong>'+x.offline+'</strong><span>↯ OFFLINE</span></div><div class="nWarn"><strong>'+x.warning+'</strong><span>! ADVERT.</span></div><div class="nCrit"><strong>'+x.critical+'</strong><span>⚠ CRÍTICA</span></div><div class="nNoRx"><strong>'+x.no_signal+'</strong><span>○ SIN RX</span></div></div></div>').join(''):'<div class="pendingEmpty">No hay OLT en el cache actual.</div>';
   $('pendingBox').innerHTML=(d.pending||[]).length?(d.pending||[]).map(x=>'<div class="pendingItem"><b>'+esc(x.olt_nombre||x.olt_codigo||'OLT')+'</b><div>SN: '+esc(x.onu_sn||'—')+'</div><div>PON: '+esc(x.pon||'—')+' · '+esc(x.modelo||'Modelo sin dato')+'</div></div>').join(''):'<div class="pendingEmpty">No hay ONU nuevas en autofind.</div>';
@@ -159,14 +159,19 @@ async function openDetail(id){
     $('detailBody').innerHTML='<div class="detailGrid">'+items.map(x=>'<div class="detail"><b>'+esc(x[0])+'</b><span>'+esc(x[1]??'—')+'</span></div>').join('')+'</div>'+(o.direccion_comentario?'<div class="serviceBox"><h3>Description Huawei</h3><p>'+esc(o.direccion_comentario)+'</p></div>':'')+(s.id?'<div class="serviceBox"><h3>Servicio DISPROTEL vinculado</h3><p><b>Cliente:</b> '+esc(s.cliente?.nombre_completo||o.nombre||'—')+'</p><p><b>Servicio:</b> '+esc(s.codigo_servicio_legacy||'—')+' · <b>Plan:</b> '+esc(s.plan_codigo||'—')+'</p><p><b>IP:</b> '+esc(s.ip_cliente||'—')+' · <b>Dirección:</b> '+esc(s.direccion||'—')+'</p><p><b>Coincidencia:</b> '+esc(v.metodo_coincidencia||'—')+' · <b>Confianza:</b> '+esc(v.confianza??'—')+'</p></div>':'<div class="serviceBox"><h3>Sin servicio vinculado</h3><p>La ONU existe en el cache, pero todavía no tiene una relación confirmada con un servicio DISPROTEL.</p></div>');
   }catch(e){$('detailBody').innerHTML='<div class="loading">No se pudo cargar: '+esc(e.message)+'</div>'}
 }
-async function refreshAll(btn){
-  btn?.classList.add('loading');
-  const original=btn?.textContent;
+async function refreshAll(){
   try{
-    if(btn)btn.textContent='⟳ Actualizando vista…';
     await Promise.all([loadSummary(),loadList(false)]);
-  }catch(e){alert(e.message)}
-  finally{if(btn){btn.classList.remove('loading');btn.textContent=original||'↻ Actualizar'}}
+    const now=new Date();
+    const info=$('autoInfo');
+    if(info)info.textContent='ACTUALIZACIÓN AUTOMÁTICA · HUAWEI CADA 5 MIN · VISTA '+now.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const live=$('autoLive');
+    if(live)live.innerHTML='<span class="autoDot"></span>ACTIVO';
+  }catch(e){
+    const live=$('autoLive');
+    if(live){live.textContent='⚠ REVISAR';live.style.background='#c83e3e'}
+    console.error(e);
+  }
 }
 function setMetricFilter(filter){
   state.quickFilter=filter||'all';
@@ -182,12 +187,13 @@ document.querySelectorAll('.metric[data-filter]').forEach(el=>{
   el.addEventListener('click',()=>setMetricFilter(el.dataset.filter));
   el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setMetricFilter(el.dataset.filter)}});
 });
-$('refreshBtn').onclick=e=>refreshAll(e.currentTarget);$('searchBtn').onclick=()=>loadList(true).catch(e=>alert(e.message));$('q').addEventListener('keydown',e=>{if(e.key==='Enter')loadList(true).catch(x=>alert(x.message))});
+$('searchBtn').onclick=()=>loadList(true).catch(e=>alert(e.message));$('q').addEventListener('keydown',e=>{if(e.key==='Enter')loadList(true).catch(x=>alert(x.message))});
 ['olt','tarjeta','puerto'].forEach(id=>$(id).onchange=()=>loadList(true).catch(e=>alert(e.message)));
 $('estado').onchange=()=>{state.quickFilter='all';document.querySelectorAll('.metric[data-filter]').forEach(el=>el.classList.toggle('active',el.dataset.filter==='all'));loadList(true).catch(e=>alert(e.message));};
 $('prev').onclick=()=>{state.offset=Math.max(0,state.offset-state.limit);loadList(false).catch(e=>alert(e.message))};$('next').onclick=()=>{if(state.offset+state.limit<state.total){state.offset+=state.limit;loadList(false).catch(e=>alert(e.message))}};
 $('closeModal').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};document.addEventListener('keydown',e=>{if(e.key==='Escape')$('modal').classList.remove('show')});
 refreshAll();
+setInterval(()=>refreshAll(),30000);
 </script>
 </body>
 </html>
