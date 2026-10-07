@@ -142,3 +142,169 @@ document.getElementById('exportIssuesPdf').onclick=()=>{try{exportPdf(lastResult
 
 function show(v){previewView.style.display=v==='preview'?'block':'none';resultView.style.display=v==='result'?'block':'none';document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.view===v))}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>show(b.dataset.view));history().catch(x=>history.innerHTML='<div class="status err">'+e(x.message)+'</div>');
+
+/* ===== Conciliación manual ERP ↔ SmartOLT (solo FIBRA) ===== */
+let smartErpRows=[],smartRows=[],smartResult=[];
+
+function smartMsgSet(t,k=''){const x=document.getElementById('smartMsg');x.textContent=t;x.className='status '+k}
+function compact(v){return n(v).replace(/[^A-Z0-9]/g,'')}
+function normIp(v){
+  const raw=String(v??'').replace(/\s+/g,'');
+  const m=raw.match(/(?:\d{1,3}\.){3}\d{1,3}/);
+  if(!m)return '';
+  const p=m[0].split('.').map(Number);
+  return p.length===4&&p.every(x=>x>=0&&x<=255)?p.join('.'):'';
+}
+function nameTokens(v){
+  const stop=new Set(['DE','DEL','LA','LAS','LOS','Y']);
+  return n(v).replace(/[^A-Z0-9Ñ ]/g,' ').split(/\s+/).filter(x=>x&&x.length>1&&!stop.has(x));
+}
+function nameSimilarity(a,b){
+  const A=nameTokens(a),B=nameTokens(b);if(!A.length||!B.length)return 0;
+  const bs=new Set(B),common=A.filter(x=>bs.has(x)).length;
+  return common/Math.max(A.length,B.length);
+}
+function branchOfRouter(v){
+  const z=n(v);
+  if(z.includes('SALCEDO')||z.includes('SANTANA'))return'SALCEDO';
+  if(z.includes('LATACUNGA'))return'LATACUNGA';
+  if(z.includes('SAQUISILI')||z.includes('CUICUNO'))return'SAQUISILI';
+  return '';
+}
+function smartHeaderScore(arr){
+  const ks=(arr||[]).map(x=>compact(x));
+  const patterns=['NAME','NOMBRE','CLIENT','DESCRIPTION','DESCRIPCION','IP','ADDRESS','SN','SERIAL','OLT','ZONE','ZONA'];
+  return patterns.filter(p=>ks.some(k=>k.includes(p))).length;
+}
+function smartOne(o,i){
+  const m=map(o);
+  const get=ks=>pick(o,m,ks);
+  const name=get(['NAME','NOMBRE','CLIENTE','CLIENT','ONUNAME','ONTNAME','DESCRIPTION','DESCRIPCION','DESCR']);
+  const ipRaw=get(['IP','IPADDRESS','ADDRESS','IPCLIENTE','IPADDRESSDESCRIPTION','DESCRIPTIONIP']);
+  return {
+    fila:i,
+    nombre:String(name||'').trim(),
+    ip_raw:String(ipRaw||'').trim(),
+    ip:normIp(ipRaw),
+    sn:get(['SN','SERIAL','SERIALNUMBER','ONUSN','ONTSN']),
+    olt:get(['OLT','OLTNAME','NODO']),
+    zona:get(['ZONE','ZONA','NAP','AREA']),
+    raw:o
+  };
+}
+function smartRowsFromWorkbook(wb){
+  let best=null;
+  for(const sheetName of wb.SheetNames){
+    const grid=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:'',raw:false});
+    let headerIndex=-1,bestScore=0;
+    for(let i=0;i<Math.min(grid.length,50);i++){const s=smartHeaderScore(grid[i]);if(s>bestScore){bestScore=s;headerIndex=i}}
+    if(headerIndex<0||bestScore<2)continue;
+    const headers=grid[headerIndex].map(x=>String(x||'').trim()),objects=[];
+    for(let r=headerIndex+1;r<grid.length;r++){
+      const vals=grid[r]||[],obj={};headers.forEach((h,i)=>{if(h)obj[h]=vals[i]??''});
+      const p=smartOne(obj,r+1);
+      if(p.nombre||p.ip||p.sn)objects.push(p);
+    }
+    if(!best||objects.length>best.rows.length)best={rows:objects,sheetName,headerRow:headerIndex+1};
+  }
+  return best;
+}
+async function loadSmartErp(f){
+  const b=await f.arrayBuffer(),wb=XLSX.read(b,{type:'array'}),det=rowsFromWorkbook(wb);
+  if(!det)throw Error('No pude reconocer el archivo ERP.');
+  const suc=document.getElementById('smartSucursal').value;
+  smartErpRows=det.rows.filter(x=>/FIBRA|GPON|FTTH/i.test(x.tipo_conexion)&&branchOfRouter(x.router)===suc);
+  document.getElementById('sErp').textContent=smartErpRows.length;
+  smartMsgSet('ERP listo: '+smartErpRows.length+' servicios FIBRA de '+suc+'.','ok');
+  smartReady();
+}
+async function loadSmartOlt(f){
+  const b=await f.arrayBuffer(),wb=XLSX.read(b,{type:'array'}),det=smartRowsFromWorkbook(wb);
+  if(!det)throw Error('No pude reconocer las columnas del archivo SmartOLT.');
+  smartRows=det.rows;
+  document.getElementById('sSmart').textContent=smartRows.length;
+  smartMsgSet('SmartOLT listo: '+smartRows.length+' registros.','ok');
+  smartReady();
+}
+function smartReady(){document.getElementById('smartRun').disabled=!(smartErpRows.length&&smartRows.length)}
+function reconcileSmart(){
+  const used=new Set(),out=[];
+  const byIp=new Map();
+  smartRows.forEach((s,i)=>{if(s.ip){if(!byIp.has(s.ip))byIp.set(s.ip,[]);byIp.get(s.ip).push({s,i})}});
+  for(const erp of smartErpRows){
+    const eip=normIp(erp.ip_cliente),ename=erp.cliente;
+    let candidates=eip?(byIp.get(eip)||[]):[],chosen=null,result='',detail='',score=0;
+    if(candidates.length===1){
+      chosen=candidates[0];
+      const sim=nameSimilarity(ename,chosen.s.nombre);
+      if(sim>=0.75){result='OK_IP_NOMBRE';detail='IP exacta y nombre consistente.';score=100}
+      else if(sim>=0.4){result='OK_IP_NOMBRE_PARCIAL';detail='IP exacta; nombre SmartOLT parcial/incompleto.';score=95}
+      else if(chosen.s.nombre){result='IP_COINCIDE_NOMBRE_DIFERENTE';detail='La IP coincide, pero el nombre de SmartOLT no parece corresponder.';score=80}
+      else{result='OK_IP_SMARTOLT_SIN_NOMBRE';detail='IP exacta; SmartOLT no tiene nombre útil.';score=90}
+    }else if(candidates.length>1){
+      result='IP_DUPLICADA_SMARTOLT';detail='La misma IP aparece varias veces en SmartOLT.';score=50;
+    }else{
+      const nameCands=[];
+      smartRows.forEach((s,i)=>{
+        const sim=nameSimilarity(ename,s.nombre);
+        if(sim>=0.6)nameCands.push({s,i,sim});
+      });
+      nameCands.sort((a,b)=>b.sim-a.sim);
+      if(nameCands.length===1 || (nameCands.length>1 && nameCands[0].sim-nameCands[1].sim>=0.2)){
+        chosen=nameCands[0];
+        if(chosen.s.ip && eip && chosen.s.ip!==eip){
+          result='IP_DIFERENTE';detail='Nombre coincide, pero la IP es diferente en SmartOLT.';score=85;
+        }else if(!chosen.s.ip && /\d/.test(chosen.s.ip_raw||'')){
+          result='IP_SMARTOLT_INCOMPLETA';detail='Nombre coincide; la IP de SmartOLT está incompleta o mal formateada.';score=85;
+        }else{
+          result='OK_NOMBRE_SMARTOLT_SIN_IP';detail='Nombre coincide; SmartOLT no contiene una IP utilizable.';score=80;
+        }
+      }else if(nameCands.length>1){
+        chosen=nameCands[0];result='POSIBLE_COINCIDENCIA_REVISAR';detail='Hay varias coincidencias parciales por nombre en SmartOLT.';score=55;
+      }else{
+        result='CLIENTE_NO_ENCONTRADO_SMARTOLT';detail='No se encontró coincidencia confiable por IP ni por nombre.';score=20;
+      }
+    }
+    if(chosen)used.add(chosen.i);
+    out.push({resultado:result,codigo_servicio:erp.codigo_servicio,erp_nombre:ename,erp_ip:eip,smart_nombre:chosen?.s.nombre||'',smart_ip:chosen?.s.ip||'',smart_ip_raw:chosen?.s.ip_raw||'',smart_sn:chosen?.s.sn||'',detalle:detail,confianza:score});
+  }
+  smartRows.forEach((s,i)=>{if(!used.has(i))out.push({resultado:'ONU_SMARTOLT_SIN_CLIENTE_ERP',codigo_servicio:'',erp_nombre:'',erp_ip:'',smart_nombre:s.nombre,smart_ip:s.ip,smart_ip_raw:s.ip_raw,smart_sn:s.sn,detalle:'Registro SmartOLT sin correspondencia en los servicios FIBRA ERP de la sucursal seleccionada.',confianza:70})});
+  smartResult=out;renderSmart();
+}
+function smartIsOk(r){return /^OK_/.test(String(r||''))}
+function renderSmart(){
+  const c={};smartResult.forEach(x=>c[x.resultado]=(c[x.resultado]||0)+1);
+  const ok=smartResult.filter(x=>smartIsOk(x.resultado)).length,issues=smartResult.length-ok;
+  document.getElementById('sOk').textContent=ok;document.getElementById('sIssue').textContent=issues;
+  document.getElementById('smartCards').innerHTML=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([k,v])=>'<div class="card"><strong>'+v+'</strong><span>'+e(k.replaceAll('_',' '))+'</span></div>').join('');
+  document.getElementById('smartResults').innerHTML=smartResult.length?smartResult.map(x=>'<tr><td><span class="badge '+(smartIsOk(x.resultado)?'ok':'warn')+'">'+e(x.resultado)+'</span></td><td>'+e(x.codigo_servicio)+'</td><td>'+e(x.erp_nombre)+'</td><td>'+e(x.erp_ip)+'</td><td>'+e(x.smart_nombre)+'</td><td>'+e(x.smart_ip||x.smart_ip_raw)+'</td><td>'+e(x.detalle)+'</td></tr>').join(''):'<tr><td colspan="7">Sin resultados.</td></tr>';
+  document.getElementById('smartExcel').disabled=!smartResult.length;
+  document.getElementById('smartIssuesExcel').disabled=!issues;
+  document.getElementById('smartPdf').disabled=!issues;
+  document.getElementById('smartSub').textContent=document.getElementById('smartSucursal').value+' · '+smartResult.length+' filas de resultado';
+  smartMsgSet('Conciliación ERP ↔ SmartOLT terminada. No se almacenó ningún archivo.','ok');
+}
+function smartExport(kind,issuesOnly=false){
+  const data=issuesOnly?smartResult.filter(x=>!smartIsOk(x.resultado)):smartResult;
+  const out=data.map(x=>({Resultado:x.resultado,Codigo_Servicio:x.codigo_servicio,Cliente_ERP:x.erp_nombre,IP_ERP:x.erp_ip,Nombre_SmartOLT:x.smart_nombre,IP_SmartOLT:x.smart_ip||x.smart_ip_raw,SN_SmartOLT:x.smart_sn,Detalle:x.detalle,Confianza:x.confianza}));
+  const ws=XLSX.utils.json_to_sheet(out),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,issuesOnly?'Inconsistencias':'Resultado');
+  XLSX.writeFile(wb,kind+'_'+document.getElementById('smartSucursal').value+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+function smartExportPdf(){
+  const data=smartResult.filter(x=>!smartIsOk(x.resultado)),Ctor=window.jspdf?.jsPDF;if(!Ctor)throw Error('No se pudo cargar PDF');
+  const doc=new Ctor({orientation:'landscape',unit:'mm',format:'a4'}),suc=document.getElementById('smartSucursal').value,date=new Date().toISOString().slice(0,10);
+  doc.setFontSize(14);doc.text('DISPROTEL · Conciliación ERP ↔ SmartOLT',10,10);doc.setFontSize(9);doc.text('Sucursal '+suc+' · Solo inconsistencias · '+date,10,16);
+  doc.autoTable({startY:20,head:[['Resultado','Código','ERP','IP ERP','SmartOLT','IP SmartOLT','Detalle']],body:data.map(x=>[x.resultado,x.codigo_servicio,x.erp_nombre,x.erp_ip,x.smart_nombre,x.smart_ip||x.smart_ip_raw,x.detalle]),styles:{fontSize:6,cellPadding:1.2},columnStyles:{2:{cellWidth:42},4:{cellWidth:42},6:{cellWidth:65}}});
+  doc.save('INCONSISTENCIAS_ERP_SMARTOLT_'+suc+'_'+date+'.pdf');
+}
+document.getElementById('erpSmartFile').onchange=()=>erpSmartFile.files[0]&&loadSmartErp(erpSmartFile.files[0]).catch(x=>smartMsgSet(x.message,'err'));
+document.getElementById('smartOltFile').onchange=()=>smartOltFile.files[0]&&loadSmartOlt(smartOltFile.files[0]).catch(x=>smartMsgSet(x.message,'err'));
+document.getElementById('smartRun').onclick=()=>{try{reconcileSmart()}catch(x){smartMsgSet(x.message,'err')}};
+document.getElementById('smartExcel').onclick=()=>smartExport('RESULTADO_ERP_SMARTOLT',false);
+document.getElementById('smartIssuesExcel').onclick=()=>smartExport('INCONSISTENCIAS_ERP_SMARTOLT',true);
+document.getElementById('smartPdf').onclick=()=>{try{smartExportPdf()}catch(x){smartMsgSet(x.message,'err')}};
+document.getElementById('smartClear').onclick=()=>{smartErpRows=[];smartRows=[];smartResult=[];erpSmartFile.value='';smartOltFile.value='';sErp.textContent='0';sSmart.textContent='0';sOk.textContent='0';sIssue.textContent='0';smartRun.disabled=true;smartExcel.disabled=true;smartIssuesExcel.disabled=true;smartPdf.disabled=true;smartCards.innerHTML='';smartResults.innerHTML='<tr><td colspan="7">Sin resultados.</td></tr>';smartMsgSet('Carga los dos archivos para comenzar.')};
+document.getElementById('smartSucursal').onchange=()=>{if(erpSmartFile.files[0])loadSmartErp(erpSmartFile.files[0]).catch(x=>smartMsgSet(x.message,'err'))};
+
+document.getElementById('modeRed').onclick=()=>{redMode.style.display='block';smartMode.style.display='none';modeRed.classList.add('on');modeSmart.classList.remove('on')};
+document.getElementById('modeSmart').onclick=()=>{redMode.style.display='none';smartMode.style.display='block';modeSmart.classList.add('on');modeRed.classList.remove('on')};
