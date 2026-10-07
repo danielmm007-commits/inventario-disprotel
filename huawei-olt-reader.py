@@ -1031,6 +1031,100 @@ async def configured_hardware(cfg, inventory):
             except Exception: pass
 
 
+
+async def configured_read_ont_by_sn(cfg, sn):
+    """Lectura puntual LIVE de una ONU en la OLT configurada. Solo display/read-only."""
+    requested=str(sn or "").strip().upper()
+    if not requested:
+        raise RuntimeError("SN vacío para consulta OLT.")
+    reader=writer=None
+    try:
+        reader,writer=await open_configured_olt(cfg)
+        info_text=await _session_command(reader,writer,f"display ont info by-sn {requested}",timeout=35)
+        info=parse_ont_info_by_sn(info_text,requested)
+        info["olt"]=cfg.get("nombre")
+        info["olt_codigo"]=cfg.get("codigo")
+        info["read_at"]=datetime.now(timezone.utc).isoformat()
+        if not info.get("found"):
+            return info
+
+        fsp=str(info.get("pon") or "").strip()
+        parts=fsp.split("/")
+        try:
+            ont_id=int(info.get("ont_id"))
+        except Exception:
+            ont_id=None
+        if len(parts)==3 and ont_id is not None:
+            frame,slot,port=(int(parts[0]),int(parts[1]),int(parts[2]))
+            await _session_command(reader,writer,"config",timeout=15)
+            iface=await _session_command(reader,writer,f"interface gpon {frame}/{slot}",timeout=15)
+            low=iface.lower()
+            if not any(x in low for x in ("unknown command","parameter error","failure:")):
+                optical=await _session_command(reader,writer,f"display ont optical-info {port} {ont_id}",timeout=30)
+                op=parse_optical_individual(optical,frame,slot,port,ont_id)
+                if op:
+                    info.update({
+                        "rx_optical_dbm":op.get("rx_optical_dbm"),
+                        "tx_optical_dbm":op.get("tx_optical_dbm"),
+                        "olt_rx_ont_dbm":op.get("olt_rx_ont_dbm"),
+                        "temperatura_c":op.get("temperatura_c"),
+                        "voltaje_v":op.get("voltaje_v"),
+                        "corriente_ma":op.get("corriente_ma"),
+                        "distancia_m":op.get("distancia_m"),
+                        "optica_leida_at":op.get("optica_leida_at"),
+                    })
+        return info
+    finally:
+        if writer is not None:
+            try: writer.close()
+            except Exception: pass
+
+
+def detector_call_for_olt(action, olt_codigo, payload=None):
+    import urllib.request
+    base=os.environ.get("SUPABASE_URL","https://ajnbswrwnjpjypjiorye.supabase.co").rstrip("/")
+    token=os.environ.get("DETECTOR_TOKEN","")
+    if not token:
+        raise RuntimeError("Falta DETECTOR_TOKEN.")
+    data={"action":action,"olt_codigo":str(olt_codigo or "").strip().upper()}
+    if payload:
+        data.update(payload)
+    req=urllib.request.Request(
+        base+"/functions/v1/inventario-onu-detector",
+        data=json.dumps(data).encode(),
+        headers={"Authorization":"Bearer "+token,"Content-Type":"application/json","Accept":"application/json"},
+        method="POST"
+    )
+    with urllib.request.urlopen(req,timeout=20) as resp:
+        raw=resp.read().decode("utf-8")
+        return json.loads(raw) if raw else {"ok":True}
+
+
+async def process_configured_live_requests(cfg):
+    codigo=str(cfg.get("codigo") or "").strip().upper()
+    pending=detector_call_for_olt("scanner-live-pending",codigo) or {}
+    rows=pending.get("solicitudes") or []
+    results=[]
+    for row in rows:
+        req_id=str(row.get("id") or "")
+        sn=str(row.get("onu_sn") or "").strip().upper()
+        if not req_id or not sn:
+            continue
+        try:
+            info=await configured_read_ont_by_sn(cfg,sn)
+            sent=detector_call_for_olt("scanner-live-result",codigo,{
+                "id":req_id,"ok":True,"resultado":info
+            }) or {}
+            results.append({"id":req_id,"sn":sn,"ok":True,"backend":sent})
+        except Exception as exc:
+            try:
+                detector_call_for_olt("scanner-live-result",codigo,{"id":req_id,"ok":False,"error":str(exc)})
+            except Exception:
+                pass
+            results.append({"id":req_id,"sn":sn,"ok":False,"error":str(exc)})
+    return {"pending_count":len(rows),"results":results}
+
+
 async def test_configured_olt(cfg):
     reader=writer=None
     try:
@@ -1177,6 +1271,11 @@ async def multi_olt_service_loop():
                 oid=str(cfg.get("id") or "")
                 if not oid:
                     continue
+
+                live=await process_configured_live_requests(cfg)
+                if int(live.get("pending_count",0) or 0)>0:
+                    print(json.dumps({"ok":True,"read_only":True,"codigo":cfg.get("codigo"),"trigger":"CONSULTA_CLIENTE_LIVE","consultas_live":live},ensure_ascii=False))
+
                 due=next_due.get(oid,now)
                 if now<due:
                     continue
