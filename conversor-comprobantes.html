@@ -374,7 +374,56 @@ input.addEventListener('change',e=>{addFiles(e.target.files);input.value=''});
 ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
 drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
-rows.addEventListener('input',e=>{const el=e.target.closest('[data-i][data-k]');if(!el)return;const i=Number(el.dataset.i);let v=el.value;if(el.tagName==='INPUT')v=upperText(v);items[i][el.dataset.k]=v;if(el.dataset.k==='concepto'&&el.tagName==='INPUT')items[i].categoria=classifyPayment(v);if(el.dataset.k==='beneficiario'){const s=staffMatch(v);if(s){items[i].beneficiario=s.short;items[i].concepto='SUELDO';items[i].categoria='SUELDOS'}}refreshSalaryPaymentNumbers();render()});
+rows.addEventListener('input',e=>{
+  const el=e.target.closest('[data-i][data-k]');
+  if(!el)return;
+  const i=Number(el.dataset.i);
+  let v=el.value;
+  if(el.tagName==='INPUT'){
+    v=upperText(v);
+    items[i][el.dataset.k]=v;
+  }else{
+    items[i][el.dataset.k]=v;
+  }
+
+  if(el.dataset.k==='concepto'&&el.tagName==='INPUT'){
+    items[i].categoria=classifyPayment(v);
+    const sel=rows.querySelector('select[data-i="'+i+'"][data-k="categoria"]');
+    if(sel)sel.value=items[i].categoria;
+  }
+
+  if(el.dataset.k==='beneficiario'){
+    const s=staffMatch(v);
+    if(s){
+      items[i].beneficiario=s.short;
+      items[i].concepto='SUELDO';
+      items[i].categoria='SUELDOS';
+    }
+  }
+
+  refreshSalaryPaymentNumbers();
+
+  const preview=document.getElementById('preview-'+i);
+  if(preview)preview.textContent=filename(items[i]);
+
+  const sel=rows.querySelector('select[data-i="'+i+'"][data-k="categoria"]');
+  if(sel)sel.value=items[i].categoria;
+
+  const valid=items.filter(x=>!x.error);
+  downloadAllBtn.disabled=!valid.length;
+  emailBtn.disabled=activeCategory==='TODOS'||!valid.some(x=>x.categoria===activeCategory);
+});
+
+rows.addEventListener('change',e=>{
+  const el=e.target.closest('select[data-i][data-k="categoria"]');
+  if(!el)return;
+  const i=Number(el.dataset.i);
+  items[i].categoria=el.value;
+  refreshSalaryPaymentNumbers();
+  const preview=document.getElementById('preview-'+i);
+  if(preview)preview.textContent=filename(items[i]);
+});
+
 rows.addEventListener('click',e=>{const d=e.target.closest('[data-download]'),r=e.target.closest('[data-remove]');if(d)downloadOne(Number(d.dataset.download));if(r){items.splice(Number(r.dataset.remove),1);render()}});
 clearBtn.onclick=()=>{items=[];activeCategory='TODOS';render()};downloadAllBtn.onclick=downloadAll;filterAllBtn.onclick=()=>{activeCategory='TODOS';render()};filterSalariesBtn.onclick=()=>{activeCategory='SUELDOS';render()};filterRentsBtn.onclick=()=>{activeCategory='ARRIENDOS';render()};filterServicesBtn.onclick=()=>{activeCategory='SERVICIOS BÁSICOS';render()};emailBtn.onclick=prepareEmail;
 </script>
