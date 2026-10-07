@@ -2,7 +2,7 @@ const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-conc
 let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
 const H=()=>({'Content-Type':'application/json','x-user':me.usuario||'','x-pin':me.pin||'','x-session':me.session_token||''});
 const n=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase(),e=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-let rows=[],lote=null,meta=null,currentGroup={codigo:'AUTO',nombre:'Por detectar'},sourceSheet='',lastResultRows=[];
+let rows=[],lote=null,meta=null,currentGroup={codigo:'AUTO',nombre:'Por detectar'},sourceSheet='',lastResultRows=[],lastLote=null;
 async function call(b){const r=await fetch(API,{method:'POST',headers:H(),body:JSON.stringify(b)}),d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw Error(d.error||'Error');return d}
 function msg(t,k=''){const x=document.getElementById('msg');x.textContent=t;x.className='status '+k}
 function map(o){const m={};for(const k of Object.keys(o||{}))m[n(k).replace(/[^A-Z0-9]/g,'')]=k;return m}
@@ -56,9 +56,9 @@ file.onchange=()=>file.files[0]&&readFile(file.files[0]).catch(x=>msg(x.message,
 ['dragenter','dragover'].forEach(v=>drop.addEventListener(v,x=>{x.preventDefault();drop.classList.add('drag')}));['dragleave','drop'].forEach(v=>drop.addEventListener(v,x=>{x.preventDefault();drop.classList.remove('drag')}));drop.ondrop=x=>{const f=x.dataTransfer.files[0];if(f)readFile(f).catch(y=>msg(y.message,'err'))};
 save.onclick=async()=>{try{save.disabled=true;save.textContent='Guardando…';const d=await call({action:'upload',archivo_nombre:meta?.name||'archivo.xlsx',archivo_tipo:meta?.type||'',grupo_codigo:currentGroup.codigo,grupo_nombre:currentGroup.nombre,rows});lote=d.lote_id;reconcile.disabled=false;msg('Lote guardado. Ya puedes conciliar.','ok');await history()}catch(x){msg(x.message,'err')}finally{save.disabled=false;save.textContent='Guardar lote'}};
 reconcile.onclick=async()=>{try{if(!lote)throw Error('Primero guarda el lote');reconcile.disabled=true;reconcile.textContent='Conciliando…';await call({action:'reconcile',lote_id:lote});await openLote(lote);show('result');msg('Conciliación terminada.','ok');await history()}catch(x){msg(x.message,'err')}finally{reconcile.disabled=false;reconcile.textContent='Ejecutar conciliación'}};
-clear.onclick=()=>{rows=[];lote=null;lastResultRows=[];file.value='';currentGroup={codigo:'AUTO',nombre:'Por detectar'};sourceSheet='';stats();preview();save.disabled=true;reconcile.disabled=true;exportIssues.disabled=true;document.getElementById('groupDetected').innerHTML='';msg('Sin archivo cargado.')};
+clear.onclick=()=>{rows=[];lote=null;lastResultRows=[];lastLote=null;file.value='';currentGroup={codigo:'AUTO',nombre:'Por detectar'};sourceSheet='';stats();preview();save.disabled=true;reconcile.disabled=true;exportIssues.disabled=true;exportIssuesPdf.disabled=true;exportResultExcel.disabled=true;exportResultPdf.disabled=true;document.getElementById('groupDetected').innerHTML='';msg('Sin archivo cargado.')};
 function cls(r){return /^OK_/.test(r)?'ok':/SIN_|DUPLICADA|OTRA|REVISAR/.test(r)?'warn':''}
-function render(a,l){lastResultRows=a||[];document.getElementById('exportIssues').disabled=!lastResultRows.some(x=>!/^OK_/.test(String(x.resultado||'')));const c={};a.forEach(x=>c[x.resultado||'SIN_RESULTADO']=(c[x.resultado||'SIN_RESULTADO']||0)+1);resultCards.innerHTML=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([k,v])=>'<div class="card"><strong>'+v+'</strong><span>'+e(k.replaceAll('_',' '))+'</span></div>').join('');resultSub.textContent=l?(l.archivo_nombre+' · '+(l.grupo_nombre||'')+' · '+a.length+' servicios'):'';results.innerHTML=a.length?a.map(x=>'<tr><td><span class="badge '+cls(x.resultado||'')+'">'+e(x.resultado||'—')+'</span></td><td>'+e(x.codigo_servicio)+'</td><td>'+e(x.cliente)+'</td><td>'+e(x.tipo_conexion)+'</td><td>'+e(x.ip_cliente)+'</td><td>'+e(x.rb_encontrado?((x.rb_comentario||'Encontrado')+' · '+(x.rb_lista||'')):'NO')+'</td><td>'+e(x.huawei_encontrado?((x.huawei_olt_codigo||'')+' · '+(x.huawei_fsp||'')+' · '+(x.huawei_onu_sn||'')):'NO')+'</td><td>'+e(x.detalle||'')+'</td></tr>').join(''):'<tr><td colspan="8">Sin resultados.</td></tr>'}
+function render(a,l){lastResultRows=a||[];lastLote=l||null;const has=lastResultRows.length>0,hasIssues=lastResultRows.some(x=>!/^OK_/.test(String(x.resultado||'')));document.getElementById('exportIssues').disabled=!hasIssues;document.getElementById('exportIssuesPdf').disabled=!hasIssues;document.getElementById('exportResultExcel').disabled=!has;document.getElementById('exportResultPdf').disabled=!has;const c={};a.forEach(x=>c[x.resultado||'SIN_RESULTADO']=(c[x.resultado||'SIN_RESULTADO']||0)+1);resultCards.innerHTML=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([k,v])=>'<div class="card"><strong>'+v+'</strong><span>'+e(k.replaceAll('_',' '))+'</span></div>').join('');resultSub.textContent=l?(l.archivo_nombre+' · '+(l.grupo_nombre||'')+' · '+a.length+' servicios'):'';results.innerHTML=a.length?a.map(x=>'<tr><td><span class="badge '+cls(x.resultado||'')+'">'+e(x.resultado||'—')+'</span></td><td>'+e(x.codigo_servicio)+'</td><td>'+e(x.cliente)+'</td><td>'+e(x.tipo_conexion)+'</td><td>'+e(x.ip_cliente)+'</td><td>'+e(x.rb_encontrado?((x.rb_comentario||'Encontrado')+' · '+(x.rb_lista||'')):'NO')+'</td><td>'+e(x.huawei_encontrado?((x.huawei_olt_codigo||'')+' · '+(x.huawei_fsp||'')+' · '+(x.huawei_onu_sn||'')):'NO')+'</td><td>'+e(x.detalle||'')+'</td></tr>').join(''):'<tr><td colspan="8">Sin resultados.</td></tr>'}
 async function openLote(id){const d=await call({action:'detail',lote_id:id});lote=id;render(d.rows,d.lote);reconcile.disabled=false}
 async function history(){const d=await call({action:'list-lotes'});document.getElementById('history').innerHTML=(d.lotes||[]).length?d.lotes.map(x=>'<div class="histItem"><div><b>'+e(x.archivo_nombre)+'</b><small>'+e(x.grupo_nombre||'Sin grupo')+' · '+e(x.cargado_por_nombre||'')+' · '+new Date(x.created_at).toLocaleString('es-EC')+' · '+x.filas_total+' servicios · '+e(x.estado)+'</small></div><button class="btn alt" onclick="openLote(\''+x.id+'\').then(()=>show(\'result\')).catch(x=>msg(x.message,\'err\'))">Abrir</button></div>').join(''):'<div class="status">Aún no hay cargas.</div>'}
 function exportInconsistencias(){
@@ -90,5 +90,55 @@ function exportInconsistencias(){
  msg('Archivo de inconsistencias generado localmente. No se guarda en el servidor.','ok');
 }
 document.getElementById('exportIssues').onclick=exportInconsistencias;
+function exportRows(rowsToExport,kind){
+ const out=(rowsToExport||[]).map(x=>({
+   Resultado:x.resultado||'',
+   Detalle:x.detalle||'',
+   Codigo_Servicio:x.codigo_servicio||'',
+   Cliente:x.cliente||'',
+   Identificacion:x.identificacion||'',
+   Tipo_Conexion:x.tipo_conexion||'',
+   IP:x.ip_cliente||'',
+   Router_Archivo:x.router||'',
+   RB_Encontrado:x.rb_encontrado?'SI':'NO',
+   Comentario_RB:x.rb_comentario||'',
+   Lista_RB:x.rb_lista||'',
+   OLT_Esperada:x.olt_esperada||'',
+   Huawei_Encontrado:x.huawei_encontrado?'SI':'NO',
+   OLT_Huawei:x.huawei_olt_codigo||'',
+   FSP:x.huawei_fsp||'',
+   ONT_ID:x.huawei_ont_id??'',
+   SN_Huawei:x.huawei_onu_sn||'',
+   Confianza:x.confianza??''
+ }));
+ const ws=XLSX.utils.json_to_sheet(out),wb=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb,ws,kind==='INCONSISTENCIAS'?'Inconsistencias':'Resultado');
+ const group=(lastLote?.grupo_codigo||currentGroup?.codigo||'CONCILIACION').replace(/[^A-Z0-9_-]/gi,'_');
+ const date=new Date().toISOString().slice(0,10);
+ XLSX.writeFile(wb,kind+'_'+group+'_'+date+'.xlsx');
+ msg('Excel generado localmente. No se guarda en el servidor.','ok');
+}
+function exportPdf(rowsToExport,kind){
+ const jsPDFCtor=window.jspdf?.jsPDF;
+ if(!jsPDFCtor)throw Error('No se pudo cargar el generador PDF');
+ const doc=new jsPDFCtor({orientation:'landscape',unit:'mm',format:'a4'});
+ const group=lastLote?.grupo_nombre||currentGroup?.nombre||'Conciliación';
+ const fileGroup=(lastLote?.grupo_codigo||currentGroup?.codigo||'CONCILIACION').replace(/[^A-Z0-9_-]/gi,'_');
+ const date=new Date().toISOString().slice(0,10);
+ doc.setFontSize(14);doc.text('DISPROTEL · Conciliación técnica',10,10);
+ doc.setFontSize(9);doc.text((kind==='INCONSISTENCIAS'?'Inconsistencias':'Resultado completo')+' · '+group+' · '+date,10,16);
+ const body=(rowsToExport||[]).map(x=>[
+   x.resultado||'',x.codigo_servicio||'',x.cliente||'',x.tipo_conexion||'',x.ip_cliente||'',
+   x.rb_encontrado?'SI':'NO',x.huawei_encontrado?((x.huawei_olt_codigo||'')+' '+(x.huawei_fsp||'')):'NO',
+   x.detalle||''
+ ]);
+ doc.autoTable({startY:20,head:[['Resultado','Código','Cliente','Tipo','IP','RB','Huawei','Detalle']],body,styles:{fontSize:6,cellPadding:1.3},headStyles:{fontSize:6},columnStyles:{2:{cellWidth:42},7:{cellWidth:68}}});
+ doc.save(kind+'_'+fileGroup+'_'+date+'.pdf');
+ msg('PDF generado localmente. No se guarda en el servidor.','ok');
+}
+document.getElementById('exportResultExcel').onclick=()=>exportRows(lastResultRows,'RESULTADO_CONCILIACION');
+document.getElementById('exportResultPdf').onclick=()=>{try{exportPdf(lastResultRows,'RESULTADO_CONCILIACION')}catch(x){msg(x.message,'err')}};
+document.getElementById('exportIssuesPdf').onclick=()=>{try{exportPdf(lastResultRows.filter(x=>!/^OK_/.test(String(x.resultado||''))),'INCONSISTENCIAS')}catch(x){msg(x.message,'err')}};
+
 function show(v){previewView.style.display=v==='preview'?'block':'none';resultView.style.display=v==='result'?'block':'none';document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.view===v))}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>show(b.dataset.view));history().catch(x=>history.innerHTML='<div class="status err">'+e(x.message)+'</div>');
