@@ -112,7 +112,6 @@ async function loadSummary(){
   const olts=d.olts||[];
   $('oltGrid').innerHTML=olts.length?olts.map(x=>'<div class="oltCard"><div class="oltHead"><b>'+esc(x.olt)+'</b><span class="oltLive" title="Datos disponibles en la caché local"><span class="statusDot"></span>ACTIVA</span></div><div class="oltNums"><div class="nTotal"><strong>'+x.total+'</strong><span>◉ TOTAL</span></div><div class="nOnline"><strong>'+x.online+'</strong><span>● ONLINE</span></div><div class="nOffline"><strong>'+x.offline+'</strong><span>↯ OFFLINE</span></div><div class="nWarn"><strong>'+x.warning+'</strong><span>! ADVERT.</span></div><div class="nCrit"><strong>'+x.critical+'</strong><span>⚠ CRÍTICA</span></div><div class="nNoRx"><strong>'+x.no_signal+'</strong><span>○ SIN RX</span></div></div></div>').join(''):'<div class="pendingEmpty">No hay OLT en el cache actual.</div>';
   $('pendingBox').innerHTML=(d.pending||[]).length?(d.pending||[]).map(x=>'<div class="pendingItem"><b>'+esc(x.olt_nombre||x.olt_codigo||'OLT')+'</b><div>SN: '+esc(x.onu_sn||'—')+'</div><div>PON: '+esc(x.pon||'—')+' · '+esc(x.modelo||'Modelo sin dato')+'</div></div>').join(''):'<div class="pendingEmpty">No hay ONU nuevas en autofind.</div>';
-  const current=$('olt').value;$('olt').innerHTML='<option value="">Todas las OLT</option>'+olts.map(x=>'<option value="'+esc(x.olt)+'">'+esc(x.olt)+'</option>').join('');$('olt').value=current;
 }
 function readFilters(){
   const quick=state.quickFilter;
@@ -129,9 +128,12 @@ async function loadFilterOptions({resetCard=false,resetPort=false}={}){
   if(resetCard)$('tarjeta').value='';
   if(resetPort)$('puerto').value='';
   const currentCard=$('tarjeta').value,currentPort=$('puerto').value;
-  const d=await call({action:'filter-options',olt:$('olt').value,tarjeta:currentCard});
-  const cards=d.tarjetas||[],ports=d.puertos||[];
-  $('tarjeta').innerHTML='<option value="">Todas las tarjetas</option>'+cards.map(x=>'<option value="'+esc(x.value)+'">'+esc(x.label)+' · '+esc(x.puertos_detectados)+' PON con datos</option>').join('');
+  const currentOlt=$('olt').value;
+  const d=await call({action:'filter-options',olt:currentOlt,tarjeta:currentCard});
+  const olts=d.olts||[],cards=d.tarjetas||[],ports=d.puertos||[];
+  $('olt').innerHTML='<option value="">Todas las OLT</option>'+olts.map(x=>'<option value="'+esc(x.nombre||x.codigo)+'">'+esc(x.nombre||x.codigo)+(x.modelo?' · '+esc(x.modelo):'')+'</option>').join('');
+  if(olts.some(x=>String(x.nombre||x.codigo)===String(currentOlt)))$('olt').value=currentOlt;
+  $('tarjeta').innerHTML='<option value="">Todas las tarjetas</option>'+cards.map(x=>'<option value="'+esc(x.value)+'">'+esc(x.label)+(x.puertos_detectados!=null?' · '+esc(x.puertos_detectados)+' PON':'')+'</option>').join('');
   if(cards.some(x=>String(x.value)===String(currentCard)))$('tarjeta').value=currentCard;
   $('puerto').innerHTML='<option value="">Todos los puertos</option>'+ports.map(x=>'<option value="'+esc(x)+'">PON '+esc(x)+'</option>').join('');
   if(ports.some(x=>String(x)===String(currentPort)))$('puerto').value=currentPort;
