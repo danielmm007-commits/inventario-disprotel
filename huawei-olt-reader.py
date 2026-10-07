@@ -1044,12 +1044,18 @@ async def poll_configured_olt(cfg):
             saved_count+=int(part.get("updated") or 0)
         telemetry_saved={"ok":True,"updated":saved_count}
 
-        hardware=await configured_hardware(cfg,inventory)
-        hardware_saved=olt_config_call("scanner-hardware-snapshot",{
-            "olt_codigo":cfg.get("codigo"),
-            "boards":hardware.get("boards") or [],
-            "ports":hardware.get("ports") or []
-        })
+        hardware_interval=max(3600,int(os.environ.get("OLT_HARDWARE_INTERVAL_SECONDS","86400")))
+        hardware_age=cfg.get("hardware_age_seconds")
+        hardware_due=(hardware_age is None) or (int(hardware_age)>=hardware_interval)
+        hardware={"boards":[],"ports":[]}
+        hardware_saved={"ok":True,"skipped":True,"reason":"CACHE_VIGENTE","age_seconds":hardware_age,"interval_seconds":hardware_interval}
+        if hardware_due:
+            hardware=await configured_hardware(cfg,inventory)
+            hardware_saved=olt_config_call("scanner-hardware-snapshot",{
+                "olt_codigo":cfg.get("codigo"),
+                "boards":hardware.get("boards") or [],
+                "ports":hardware.get("ports") or []
+            })
         return {
             "ok":True,"read_only":True,
             "codigo":cfg.get("codigo"),"olt":cfg.get("nombre"),
@@ -1060,8 +1066,10 @@ async def poll_configured_olt(cfg):
             "telemetry_rows":len(telemetry) if telemetry else None,
             "telemetry_los":sum(1 for x in telemetry if x.get("alarma_los") is True) if telemetry else None,
             "telemetry_dying_gasp":sum(1 for x in telemetry if x.get("alarma_dying_gasp") is True) if telemetry else None,
-            "hardware_boards":len(hardware.get("boards") or []),
-            "hardware_pon_ports":len(hardware.get("ports") or []),
+            "hardware_refreshed":hardware_due,
+            "hardware_age_seconds":hardware_age,
+            "hardware_boards":len(hardware.get("boards") or []) if hardware_due else None,
+            "hardware_pon_ports":len(hardware.get("ports") or []) if hardware_due else None,
             "backend":saved,
             "inventory_backend":inventory_saved,
             "telemetry_backend":telemetry_saved,
