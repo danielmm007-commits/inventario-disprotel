@@ -9,7 +9,21 @@
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
 button,input,select{font:inherit}.wrap{padding:12px;max-width:1600px;margin:auto}.hero{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(105deg,#073f52,#0a6f75);color:#fff;border-radius:10px;padding:12px 14px;box-shadow:var(--shadow)}
 .hero small{font-size:9px;font-weight:800;letter-spacing:.08em;color:#bfe8ea}.hero h1{margin:2px 0;font-size:22px}.hero p{margin:0;color:#d8eff0;font-size:11px}.heroActions{display:flex;gap:8px;align-items:center}.autoLine{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:#ffffff12;border:1px solid #ffffff3d;white-space:nowrap}.autoText{font-size:8px;font-weight:900;color:#d9f0f1;letter-spacing:.02em}.autoLive{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:#0fa05a;color:#fff;font-size:8px;font-weight:900;box-shadow:0 0 0 0 rgba(30,205,112,.65),0 0 16px rgba(30,205,112,.28);animation:autoPulse 1.7s infinite}.autoDot{width:7px;height:7px;border-radius:50%;background:#d8ffe9;box-shadow:0 0 10px rgba(216,255,233,.95)}@keyframes autoPulse{0%{box-shadow:0 0 0 0 rgba(30,205,112,.55),0 0 10px rgba(30,205,112,.18)}60%{box-shadow:0 0 0 7px rgba(30,205,112,0),0 0 18px rgba(30,205,112,.35)}100%{box-shadow:0 0 0 0 rgba(30,205,112,0),0 0 10px rgba(30,205,112,.18)}}
-.metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:9px}
+.moduleTabs{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:9px}.moduleTabs button{border:1px solid #cbdde6;background:#fff;color:#315767;border-radius:8px;padding:8px 11px;font-size:9px;font-weight:900;cursor:pointer}.moduleTabs button.on{background:#0c5d8b;color:#fff;border-color:#0c5d8b}.moduleTabs .push{margin-left:auto}.moduleTabs .addOlt{background:#12865a;color:#fff;border-color:#12865a}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:9px}
+.metric{padding:14px 14px 12px 50px;min-height:104px}
+.metric .metricIcon{left:13px;top:17px;width:30px;height:30px;font-size:18px}
+.metric strong{font-size:34px}
+.metric .metricMainLabel{font-size:10px!important;color:#526b77!important;margin-top:7px!important}
+.metric .metricFoot{display:flex!important;gap:12px!important;flex-wrap:wrap!important;margin-top:12px!important;font-size:9px!important;font-weight:800!important;color:#607783!important}
+.metric .metricFoot b{color:#284a5a}
+.metric.pendingM{background:linear-gradient(180deg,#f5f1ff,#fff)}
+.metric.ok{background:linear-gradient(180deg,#f1fbf5,#fff)}
+.metric.bad{background:linear-gradient(180deg,#fff4f4,#fff)}
+.metric.warn{background:linear-gradient(180deg,#fff8eb,#fff)}
+.configArea{display:none;margin-top:9px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);min-height:72vh}.configArea.show{display:block}.configFrame{display:block;width:100%;height:78vh;border:0;background:#eef4f7}
+.dashboardArea.hidden{display:none}
+
 .metric{position:relative;overflow:hidden;background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 12px 10px 44px;box-shadow:var(--shadow);min-height:72px;transition:.18s ease;cursor:pointer;user-select:none}
 .metric.active{transform:translateY(-2px);box-shadow:0 0 0 2px rgba(18,103,157,.18),0 12px 30px rgba(7,42,70,.16)}
 .metric:focus-visible{outline:3px solid rgba(18,118,200,.25);outline-offset:2px}
@@ -54,13 +68,32 @@ button,input,select{font:inherit}.wrap{padding:12px;max-width:1600px;margin:auto
     <div class="heroActions"><div class="autoLine"><span class="autoText" id="autoInfo">ACTUALIZACIÓN AUTOMÁTICA · HUAWEI CADA 5 MIN</span><span class="autoLive" id="autoLive"><span class="autoDot"></span>ACTIVO</span></div></div>
   </section>
 
+  <nav class="moduleTabs" aria-label="Módulo OLT">
+    <button class="on" data-view="resumen">Resumen</button>
+    <button data-view="onu">ONU / ONT</button>
+    <button data-view="olts">OLT</button>
+    <button data-view="config">Configuración</button>
+    <button class="push addOlt" id="addOltBtn">＋ Agregar OLT</button>
+  </nav>
+
+  <div class="dashboardArea" id="dashboardArea">
   <section class="metrics">
-    <div class="metric total active" data-filter="all" tabindex="0" role="button"><div class="metricIcon">◉</div><strong id="mTotal">—</strong><span>ONU AUTORIZADAS / CACHE</span></div>
-    <div class="metric ok" data-filter="online" tabindex="0" role="button"><div class="metricIcon">●</div><strong id="mOnline">—</strong><span>EN LÍNEA</span></div>
-    <div class="metric bad" data-filter="offline" tabindex="0" role="button"><div class="metricIcon">↯</div><strong id="mOffline">—</strong><span>DESCONECTADAS</span></div>
-    <div class="metric warn" data-filter="warning" tabindex="0" role="button"><div class="metricIcon">!</div><strong id="mWarn">—</strong><span>SEÑAL ADVERTENCIA</span></div>
-    <div class="metric bad" data-filter="critical" tabindex="0" role="button"><div class="metricIcon">⚠</div><strong id="mCritical">—</strong><span>SEÑAL CRÍTICA</span></div>
-    <div class="metric pendingM" data-filter="pending" tabindex="0" role="button"><div class="metricIcon">⌁</div><strong id="mPending">—</strong><span>ESPERANDO AUTORIZACIÓN</span></div>
+    <div class="metric pendingM" data-filter="pending" tabindex="0" role="button">
+      <div class="metricIcon">⌁</div><strong id="mPending">—</strong><span class="metricMainLabel">ESPERANDO AUTORIZACIÓN</span>
+      <span class="metricFoot"><span>Nuevas ONU detectadas</span></span>
+    </div>
+    <div class="metric ok active" data-filter="online" tabindex="0" role="button">
+      <div class="metricIcon">●</div><strong id="mOnline">—</strong><span class="metricMainLabel">EN LÍNEA</span>
+      <span class="metricFoot"><span>Total autorizado: <b id="mTotal">—</b></span></span>
+    </div>
+    <div class="metric bad" data-filter="offline" tabindex="0" role="button">
+      <div class="metricIcon">✕</div><strong id="mOffline">—</strong><span class="metricMainLabel">DESCONECTADAS</span>
+      <span class="metricFoot"><span>PowerFail: <b id="mPowerFail">—</b></span><span>LOS: <b id="mLos">—</b></span><span>Otros: <b id="mOtherOff">—</b></span></span>
+    </div>
+    <div class="metric warn" data-filter="low" tabindex="0" role="button">
+      <div class="metricIcon">!</div><strong id="mLow">—</strong><span class="metricMainLabel">SEÑALES BAJAS</span>
+      <span class="metricFoot"><span>Advertencia: <b id="mWarn">—</b></span><span>Crítico: <b id="mCritical">—</b></span></span>
+    </div>
   </section>
 
   <section class="layout">
@@ -85,6 +118,8 @@ button,input,select{font:inherit}.wrap{padding:12px;max-width:1600px;margin:auto
     <div class="pager"><button id="prev">← Anterior</button><span id="pageLabel" style="font-size:9px;color:#667985">Página 1</span><button id="next">Siguiente →</button></div>
   </section>
 </div>
+  </div>
+  <section class="configArea" id="configArea"><iframe class="configFrame" id="configFrame" title="Configuración OLT"></iframe></section>
 
 <div class="modal" id="modal"><section class="dialog"><div class="dialogHead"><h2>Detalle ONU</h2><button class="close" id="closeModal">✕</button></div><div class="dialogBody" id="detailBody"><div class="loading">Consultando detalle…</div></div></section></div>
 
@@ -114,7 +149,16 @@ async function loadSummary(){
     olt:$('olt').value
   });
   const s=d.summary||{};
-  $('mTotal').textContent=s.total??0;$('mOnline').textContent=s.online??0;$('mOffline').textContent=s.offline??0;$('mWarn').textContent=s.warning??0;$('mCritical').textContent=s.critical??0;$('mPending').textContent=s.pending_autofind??0;
+  $('mTotal').textContent=s.total??0;
+  $('mOnline').textContent=s.online??0;
+  $('mOffline').textContent=s.offline??0;
+  $('mWarn').textContent=s.warning??0;
+  $('mCritical').textContent=s.critical??0;
+  $('mPending').textContent=s.pending_autofind??0;
+  $('mLow').textContent=(Number(s.warning||0)+Number(s.critical||0));
+  $('mPowerFail').textContent=s.power_fail??0;
+  $('mLos').textContent=s.los??0;
+  $('mOtherOff').textContent=Math.max(0,Number(s.offline||0)-Number(s.power_fail||0)-Number(s.los||0));
   const sync=d.sync||{};
   const olts=d.olts||[];
   $('oltGrid').innerHTML=olts.length?olts.map(x=>'<div class="oltCard"><div class="oltHead"><b>'+esc(x.olt)+'</b><span class="oltLive" title="Datos disponibles en la caché local"><span class="statusDot"></span>ACTIVA</span></div><div class="oltNums"><div class="nTotal"><strong>'+x.total+'</strong><span>◉ TOTAL</span></div><div class="nOnline"><strong>'+x.online+'</strong><span>● ONLINE</span></div><div class="nOffline"><strong>'+x.offline+'</strong><span>↯ OFFLINE</span></div><div class="nWarn"><strong>'+x.warning+'</strong><span>! ADVERT.</span></div><div class="nCrit"><strong>'+x.critical+'</strong><span>⚠ CRÍTICA</span></div><div class="nNoRx"><strong>'+x.no_signal+'</strong><span>○ SIN RX</span></div></div></div>').join(''):'<div class="pendingEmpty">No hay OLT en el cache actual.</div>';
@@ -128,7 +172,7 @@ function readFilters(){
     tarjeta:$('tarjeta').value,
     puerto:$('puerto').value,
     estado:(quick==='online'||quick==='offline')?quick:$('estado').value,
-    signal:quick==='warning'?'ADVERTENCIA':quick==='critical'?'CRITICA':''
+    signal:quick==='warning'?'ADVERTENCIA':quick==='critical'?'CRITICA':quick==='low'?'LOW':''
   };
 }
 async function loadFilterOptions({resetCard=false,resetPort=false}={}){
@@ -208,6 +252,26 @@ async function openDetail(id){
     $('detailBody').innerHTML='<div class="detailGrid">'+items.map(x=>'<div class="detail"><b>'+esc(x[0])+'</b><span>'+esc(x[1]??'—')+'</span></div>').join('')+'</div>'+(o.direccion_comentario?'<div class="serviceBox"><h3>Description Huawei</h3><p>'+esc(o.direccion_comentario)+'</p></div>':'')+(s.id?'<div class="serviceBox"><h3>Servicio DISPROTEL vinculado</h3><p><b>Cliente:</b> '+esc(s.cliente?.nombre_completo||o.nombre||'—')+'</p><p><b>Servicio:</b> '+esc(s.codigo_servicio_legacy||'—')+' · <b>Plan:</b> '+esc(s.plan_codigo||'—')+'</p><p><b>IP:</b> '+esc(s.ip_cliente||'—')+' · <b>Dirección:</b> '+esc(s.direccion||'—')+'</p><p><b>Coincidencia:</b> '+esc(v.metodo_coincidencia||'—')+' · <b>Confianza:</b> '+esc(v.confianza??'—')+'</p></div>':'<div class="serviceBox"><h3>Sin servicio vinculado</h3><p>La ONU existe en el cache, pero todavía no tiene una relación confirmada con un servicio DISPROTEL.</p></div>');
   }catch(e){$('detailBody').innerHTML='<div class="loading">No se pudo cargar: '+esc(e.message)+'</div>'}
 }
+function showModuleView(view,openNew=false){
+  document.querySelectorAll('.moduleTabs button[data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===view));
+  const dash=$('dashboardArea'),cfg=$('configArea'),frame=$('configFrame');
+  if(view==='config'){
+    dash.classList.add('hidden');cfg.classList.add('show');
+    if(!frame.src)frame.src='configuracion-olts.html';
+    if(openNew){
+      const tryOpen=()=>{try{frame.contentDocument?.getElementById('newBtn')?.click()}catch{}};
+      if(frame.contentDocument?.readyState==='complete')setTimeout(tryOpen,120);else frame.addEventListener('load',()=>setTimeout(tryOpen,120),{once:true});
+    }
+    return;
+  }
+  cfg.classList.remove('show');dash.classList.remove('hidden');
+  if(view==='onu')document.querySelector('.tablePanel')?.scrollIntoView({behavior:'smooth',block:'start'});
+  else if(view==='olts')$('oltGrid')?.closest('.panel')?.scrollIntoView({behavior:'smooth',block:'start'});
+  else window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.moduleTabs button[data-view]').forEach(b=>b.onclick=()=>showModuleView(b.dataset.view));
+$('addOltBtn').onclick=()=>showModuleView('config',true);
+
 async function refreshAll(){
   try{
     await loadSummary();
@@ -232,7 +296,7 @@ function setMetricFilter(filter){
     return;
   }
   state.offset=0;
-  loadList(true).catch(e=>alert(e.message));
+  loadList(true).then(()=>$('tbody').closest('.tablePanel')?.scrollIntoView({behavior:'smooth',block:'start'})).catch(e=>alert(e.message));
 }
 document.querySelectorAll('.metric[data-filter]').forEach(el=>{
   el.addEventListener('click',()=>setMetricFilter(el.dataset.filter));
