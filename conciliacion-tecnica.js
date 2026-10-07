@@ -179,23 +179,44 @@ function smartHeaderScore(arr){
 function smartOne(o,i){
   const m=map(o);
   const get=ks=>pick(o,m,ks);
-  const name=get(['NAME','NOMBRE','CLIENTE','CLIENT','ONUNAME','ONTNAME','DESCRIPTION','DESCRIPCION','DESCR']);
-  const ipRaw=get(['IP','IPADDRESS','ADDRESS','IPCLIENTE','IPADDRESSDESCRIPTION','DESCRIPTIONIP']);
+  const name=get(['NAME','NOMBRE','CLIENTE','CLIENT','ONUNAME','ONTNAME','ONUNOMBRE','ONUCLIENTNAME','DESCRIPTION','DESCRIPCION','DESCR','COMMENT','COMENTARIO']);
+  const ipRaw=get(['IP','IPADDRESS','ADDRESS','IPCLIENTE','IPADDRESSDESCRIPTION','DESCRIPTIONIP','ADDRESSORCOMMENT','DIRECCIONOCOMENTARIO','ONUADDRESS']);
   return {
     fila:i,
     nombre:String(name||'').trim(),
     ip_raw:String(ipRaw||'').trim(),
     ip:normIp(ipRaw),
-    sn:get(['SN','SERIAL','SERIALNUMBER','ONUSN','ONTSN']),
-    olt:get(['OLT','OLTNAME','NODO']),
-    zona:get(['ZONE','ZONA','NAP','AREA']),
+    sn:get(['SN','SN16','SERIAL','SERIALNUMBER','ONUSN','ONTSN','ONUEXTERNALID']),
+    olt:get(['OLT','OLTNAME','NODO','OLTID']),
+    zona:get(['ZONE','ZONA','NAP','AREA','SECTOR']),
     raw:o
   };
+}
+function parseCsvLineSmart(line){
+  const s=String(line??''),out=[];let cur='',q=false;
+  for(let i=0;i<s.length;i++){
+    const ch=s[i];
+    if(ch==='"'){
+      if(q&&s[i+1]==='"'){cur+='"';i++}else q=!q;
+    }else if(ch===','&&!q){out.push(cur.trim());cur=''}
+    else cur+=ch;
+  }
+  out.push(cur.trim());
+  return out;
+}
+function expandSmartGrid(grid){
+  const rows=grid||[];
+  const csvLike=rows.filter(r=>r&&r.length===1&&String(r[0]??'').includes(',')).length;
+  if(csvLike>=Math.min(3,Math.max(1,Math.floor(rows.length*0.4)))){
+    return rows.map(r=>r&&r.length===1?parseCsvLineSmart(r[0]):r);
+  }
+  return rows;
 }
 function smartRowsFromWorkbook(wb){
   let best=null;
   for(const sheetName of wb.SheetNames){
-    const grid=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:'',raw:false});
+    let grid=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:'',raw:false});
+    grid=expandSmartGrid(grid);
     let headerIndex=-1,bestScore=0;
     for(let i=0;i<Math.min(grid.length,50);i++){const s=smartHeaderScore(grid[i]);if(s>bestScore){bestScore=s;headerIndex=i}}
     if(headerIndex<0||bestScore<2)continue;
