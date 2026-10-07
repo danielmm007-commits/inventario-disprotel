@@ -261,7 +261,8 @@ function smartOltCity(v){
   if(z.includes('MULALILLO'))return'MULALILLO';
   if(z.includes('CHAMBAPONGO'))return'CHAMBAPONGO';
   if(z.includes('LATACUNGA'))return'LATACUNGA';
-  if(z.includes('SAQUISILI'))return'SAQUISILI';
+  // En SmartOLT la OLT de Saquisilí/Cuicuno figura como SAKYOLTX7.
+  if(z.includes('SAQUISILI')||z.includes('SAKYOLT')||z.includes('SAKYO'))return'SAQUISILI';
   if(z.includes('CUICUNO'))return'CUICUNO';
   if(z.includes('QUITO'))return'QUITO';
   return '';
