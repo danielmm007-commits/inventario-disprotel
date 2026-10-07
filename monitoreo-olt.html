@@ -105,7 +105,12 @@ function fmtDate(v){if(!v)return '—';const d=new Date(v);return Number.isNaN(d
 function statusBadge(v){const on=/^(online|up)$/i.test(String(v||''));return '<span class="badge '+(on?'online':'offline')+'">'+esc(v||'Sin dato')+'</span>'}
 function signalBadge(cls,val){const c=String(cls||'SIN_DATO').toLowerCase();return '<span class="badge sig-'+c+'">'+(val==null?'Sin dato':esc(Number(val).toFixed(2)+' dBm'))+'</span>'}
 async function loadSummary(){
-  const d=await call({action:'summary'});
+  const d=await call({
+    action:'summary',
+    olt:$('olt').value,
+    tarjeta:$('tarjeta').disabled?'':$('tarjeta').value,
+    puerto:$('puerto').disabled?'':$('puerto').value
+  });
   const s=d.summary||{};
   $('mTotal').textContent=s.total??0;$('mOnline').textContent=s.online??0;$('mOffline').textContent=s.offline??0;$('mWarn').textContent=s.warning??0;$('mCritical').textContent=s.critical??0;$('mPending').textContent=s.pending_autofind??0;
   const sync=d.sync||{};
@@ -234,15 +239,15 @@ document.querySelectorAll('.metric[data-filter]').forEach(el=>{
 $('searchBtn').onclick=()=>loadList(true).catch(e=>alert(e.message));$('q').addEventListener('keydown',e=>{if(e.key==='Enter')loadList(true).catch(x=>alert(x.message))});
 $('olt').onchange=async()=>{try{
   await loadFilterOptions({resetCard:true,resetPort:true});
-  await loadList(true);
+  await Promise.all([loadSummary(),loadList(true)]);
 }catch(e){alert(e.message)}};
 
 $('tarjeta').onchange=async()=>{try{
   await loadFilterOptions({resetPort:true});
-  await loadList(true);
+  await Promise.all([loadSummary(),loadList(true)]);
 }catch(e){alert(e.message)}};
 
-$('puerto').onchange=()=>loadList(true).catch(e=>alert(e.message));
+$('puerto').onchange=()=>Promise.all([loadSummary(),loadList(true)]).catch(e=>alert(e.message));
 $('estado').onchange=()=>{state.quickFilter='all';document.querySelectorAll('.metric[data-filter]').forEach(el=>el.classList.toggle('active',el.dataset.filter==='all'));loadList(true).catch(e=>alert(e.message));};
 $('prev').onclick=()=>{state.offset=Math.max(0,state.offset-state.limit);loadList(false).catch(e=>alert(e.message))};$('next').onclick=()=>{if(state.offset+state.limit<state.total){state.offset+=state.limit;loadList(false).catch(e=>alert(e.message))}};
 $('closeModal').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};document.addEventListener('keydown',e=>{if(e.key==='Escape')$('modal').classList.remove('show')});
