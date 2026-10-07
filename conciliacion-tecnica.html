@@ -26,13 +26,20 @@
 <section class="panel">
   <h2>📄 DATOS FIBRA · ERP ↔ SmartOLT</h2>
   <div class="sub">Carga manualmente los dos archivos. SmartOLT se usa solo como fuente informativa; no se consulta ninguna API ni se guarda el archivo.</div>
-  <label style="font-size:9px;font-weight:700">Sucursal</label>
+  <label style="font-size:9px;font-weight:700">Ciudad / ámbito a conciliar</label>
   <select id="smartSucursal" style="width:100%;padding:8px;border:1px solid #cbd9df;border-radius:5px;margin:5px 0 10px">
-    <option value="SALCEDO">Salcedo</option><option value="LATACUNGA">Latacunga</option><option value="SAQUISILI">Saquisilí</option>
+    <option value="SALCEDO">Salcedo</option>
+    <option value="MULALILLO">Mulalillo</option>
+    <option value="CHAMBAPONGO">Chambapongo</option>
+    <option value="LATACUNGA">Latacunga</option>
+    <option value="SAQUISILI">Saquisilí</option>
+    <option value="CUICUNO">Cuicuno</option>
+    <option value="GRUPO_SALCEDO">Grupo Salcedo · Mulalillo · Chambapongo</option>
+    <option value="GRUPO_LATACUNGA">Grupo Latacunga · Saquisilí · Cuicuno</option>
   </select>
   <div class="groupHints">
-    <div class="groupHint"><b>1. Archivo ERP</b><span>Se toman únicamente los servicios FIBRA de la sucursal seleccionada.</span><label class="btn" for="erpSmartFile" style="display:inline-block;margin-top:7px">Seleccionar ERP</label><input id="erpSmartFile" type="file" accept=".xlsx,.xls,.csv"></div>
-    <div class="groupHint"><b>2. Archivo SmartOLT</b><span>Exportación manual de SmartOLT de la misma sucursal.</span><label class="btn" for="smartOltFile" style="display:inline-block;margin-top:7px">Seleccionar SmartOLT</label><input id="smartOltFile" type="file" accept=".xlsx,.xls,.csv"></div>
+    <div class="groupHint"><b>1. Archivo ERP</b><span>Puedes cargar el reporte grupal. El sistema filtra automáticamente los servicios FIBRA de la ciudad/ámbito seleccionado.</span><label class="btn" for="erpSmartFile" style="display:inline-block;margin-top:7px">Seleccionar ERP</label><input id="erpSmartFile" type="file" accept=".xlsx,.xls,.csv"></div>
+    <div class="groupHint"><b>2. Archivo SmartOLT</b><span>Puedes cargar la exportación completa con todas las OLT, incluso Quito. El sistema filtra internamente solo las OLT relacionadas con la ciudad/ámbito seleccionado.</span><label class="btn" for="smartOltFile" style="display:inline-block;margin-top:7px">Seleccionar SmartOLT</label><input id="smartOltFile" type="file" accept=".xlsx,.xls,.csv"></div>
   </div>
   <div class="cards"><div class="card"><strong id="sErp">0</strong><span>ERP FIBRA</span></div><div class="card"><strong id="sSmart">0</strong><span>SMARTOLT</span></div><div class="card"><strong id="sOk">0</strong><span>COINCIDEN</span></div><div class="card"><strong id="sIssue">0</strong><span>REVISAR</span></div></div>
   <div class="status" id="smartMsg">Carga los dos archivos para comenzar.</div>
@@ -47,4 +54,4 @@
 </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script><script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script><script src="conciliacion-tecnica.js?v=6"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script><script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script><script src="conciliacion-tecnica.js?v=7"></script></body></html>
