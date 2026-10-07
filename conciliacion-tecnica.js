@@ -327,9 +327,9 @@ async function loadSmartErp(f){
   const b=await f.arrayBuffer(),wb=XLSX.read(b,{type:'array'}),det=rowsFromWorkbook(wb);
   if(!det)throw Error('No pude reconocer el archivo ERP.');
   const scope=document.getElementById('smartSucursal').value,cities=scopeCities(scope);
-  smartErpRows=det.rows.filter(x=>/FIBRA|GPON|FTTH/i.test(x.tipo_conexion)&&cities.has(branchOfRouter(x.router)));
+  smartErpRows=det.rows.filter(x=>cities.has(branchOfRouter(x.router)));
   document.getElementById('sErp').textContent=smartErpRows.length;
-  smartMsgSet('ERP listo: '+smartErpRows.length+' servicios FIBRA del ámbito '+scope.replaceAll('_',' ')+'.','ok');
+  smartMsgSet('ERP listo: '+smartErpRows.length+' servicios del ámbito '+scope.replaceAll('_',' ')+'. Se validan también servicios marcados RADIO por si realmente existen en SmartOLT.','ok');
   smartReady();
 }
 async function loadSmartOlt(f){
@@ -365,7 +365,12 @@ function reconcileSmart(){
       chosen=candidates[0];
       const sim=nameSimilarity(ename,chosen.s.nombre);
       const diag=smartNameDiagnosis(ename,chosen.s.nombre);
-      if(diag.kind==='EXACTO'){
+      if(isRadio(erp.tipo_conexion)){
+        result='TIPO_CONEXION_INCONSISTENTE';
+        detail='IP exacta y cliente coincidente en SmartOLT, pero ERP indica RADIO. Revisar/corregir tipo de conexión en ERP.';
+        score=100;
+      }
+      else if(diag.kind==='EXACTO'){
         result='OK_IP_NOMBRE';detail='IP exacta y nombre consistente.';score=100;
       }
       else if(diag.kind==='ORTOGRAFIA'){
@@ -432,12 +437,12 @@ function reconcileSmart(){
       }
     }
     if(chosen)used.add(chosen.i);
-    out.push({resultado:result,codigo_servicio:erp.codigo_servicio,erp_nombre:ename,erp_ip:eip,smart_nombre:chosen?.s.nombre||'',smart_ip:chosen?.s.ip||'',smart_ip_raw:chosen?.s.ip_raw||'',smart_sn:chosen?.s.sn||'',detalle:detail,confianza:score});
+    out.push({resultado:result,codigo_servicio:erp.codigo_servicio,erp_nombre:ename,erp_tipo:erp.tipo_conexion||'',erp_ip:eip,smart_nombre:chosen?.s.nombre||'',smart_ip:chosen?.s.ip||'',smart_ip_raw:chosen?.s.ip_raw||'',smart_sn:chosen?.s.sn||'',detalle:detail,confianza:score});
   }
   const scope=document.getElementById('smartSucursal').value;
   const sharedOltScope=scope==='CUICUNO';
   if(!sharedOltScope){
-    smartRows.forEach((s,i)=>{if(!used.has(i))out.push({resultado:'ONU_SMARTOLT_SIN_CLIENTE_ERP',codigo_servicio:'',erp_nombre:'',erp_ip:'',smart_nombre:s.nombre,smart_ip:s.ip,smart_ip_raw:s.ip_raw,smart_sn:s.sn,detalle:'Registro SmartOLT sin correspondencia en los servicios FIBRA ERP del ámbito seleccionado.',confianza:70})});
+    smartRows.forEach((s,i)=>{if(!used.has(i))out.push({resultado:'ONU_SMARTOLT_SIN_CLIENTE_ERP',codigo_servicio:'',erp_nombre:'',erp_tipo:'',erp_ip:'',smart_nombre:s.nombre,smart_ip:s.ip,smart_ip_raw:s.ip_raw,smart_sn:s.sn,detalle:'Registro SmartOLT sin correspondencia en los servicios FIBRA ERP del ámbito seleccionado.',confianza:70})});
   }
   smartResult=out;renderSmart();
 }
@@ -454,7 +459,7 @@ function renderSmart(){
     renderSmart();
   });
   const visible=smartFilter?smartResult.filter(x=>x.resultado===smartFilter):smartResult;
-  document.getElementById('smartResults').innerHTML=visible.length?visible.map(x=>'<tr><td><span class="badge '+(smartIsOk(x.resultado)?'ok':'warn')+'">'+e(x.resultado)+'</span></td><td>'+e(x.codigo_servicio)+'</td><td>'+e(x.erp_nombre)+'</td><td>'+e(x.erp_ip)+'</td><td>'+e(x.smart_nombre)+'</td><td>'+e(x.smart_ip||x.smart_ip_raw)+'</td><td>'+e(x.detalle)+'</td></tr>').join(''):'<tr><td colspan="7">Sin resultados para este filtro.</td></tr>';
+  document.getElementById('smartResults').innerHTML=visible.length?visible.map(x=>'<tr><td><span class="badge '+(smartIsOk(x.resultado)?'ok':'warn')+'">'+e(x.resultado)+'</span></td><td>'+e(x.codigo_servicio)+'</td><td>'+e(x.erp_nombre)+'</td><td>'+e(x.erp_tipo||'')+'</td><td>'+e(x.erp_ip)+'</td><td>'+e(x.smart_nombre)+'</td><td>'+e(x.smart_ip||x.smart_ip_raw)+'</td><td>'+e(x.detalle)+'</td></tr>').join(''):'<tr><td colspan="8">Sin resultados para este filtro.</td></tr>';
   document.getElementById('smartExcel').disabled=!smartResult.length;
   document.getElementById('smartIssuesExcel').disabled=!issues;
   document.getElementById('smartPdf').disabled=!issues;
@@ -464,7 +469,7 @@ function renderSmart(){
 }
 function smartExport(kind,issuesOnly=false){
   const data=issuesOnly?smartResult.filter(x=>!smartIsOk(x.resultado)):smartResult;
-  const out=data.map(x=>({Resultado:x.resultado,Codigo_Servicio:x.codigo_servicio,Cliente_ERP:x.erp_nombre,IP_ERP:x.erp_ip,Nombre_SmartOLT:x.smart_nombre,IP_SmartOLT:x.smart_ip||x.smart_ip_raw,SN_SmartOLT:x.smart_sn,Detalle:x.detalle,Confianza:x.confianza}));
+  const out=data.map(x=>({Resultado:x.resultado,Codigo_Servicio:x.codigo_servicio,Cliente_ERP:x.erp_nombre,Tipo_ERP:x.erp_tipo||'',IP_ERP:x.erp_ip,Nombre_SmartOLT:x.smart_nombre,IP_SmartOLT:x.smart_ip||x.smart_ip_raw,SN_SmartOLT:x.smart_sn,Detalle:x.detalle,Confianza:x.confianza}));
   const ws=XLSX.utils.json_to_sheet(out),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,issuesOnly?'Inconsistencias':'Resultado');
   XLSX.writeFile(wb,kind+'_'+document.getElementById('smartSucursal').value+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
