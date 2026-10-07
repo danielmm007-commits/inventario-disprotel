@@ -14,7 +14,7 @@
 .drop{margin-top:12px;border:2px dashed #9fbac5;border-radius:14px;background:#fff;padding:28px;text-align:center;cursor:pointer;transition:.15s}
 .drop.drag{border-color:var(--blue);background:#eef7ff}.drop strong{display:block;font-size:15px}.drop span{display:block;margin-top:5px;font-size:11px;color:var(--muted)}
 input[type=file]{display:none}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.toolbar button{border:0;border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer;background:#fff;color:#244761;border:1px solid var(--line)}.toolbar .primary{background:var(--blue);color:#fff;border-color:var(--blue)}.toolbar button:disabled{opacity:.45;cursor:not-allowed}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.toolbar button{border:0;border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer;background:#fff;color:#244761;border:1px solid var(--line)}.toolbar .primary{background:var(--blue);color:#fff;border-color:var(--blue)}.toolbar .filterOn{background:#e8f3ff;border-color:#74aeda;color:#0d5c97}.toolbar button:disabled{opacity:.45;cursor:not-allowed}
 .card{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .tableWrap{overflow:auto}.tbl{width:100%;border-collapse:collapse;min-width:900px}.tbl th{background:#f6f9fa;text-align:left;font-size:9px;color:#60737c;padding:9px;border-bottom:1px solid var(--line);letter-spacing:.05em}.tbl td{padding:8px;border-bottom:1px solid #edf1f3;vertical-align:top;font-size:10px}.tbl tr:last-child td{border-bottom:0}
 .tbl input,.tbl select{width:100%;border:1px solid #cedce3;border-radius:7px;padding:7px 8px;font-size:10px;color:var(--ink);background:#fff}.tbl input{text-transform:uppercase}.tbl input:focus{outline:2px solid #b8d9ef;border-color:#6ca9d1}
@@ -40,9 +40,10 @@ input[type=file]{display:none}
   <div class="toolbar">
     <button id="clearBtn" type="button">LIMPIAR LISTA</button>
     <button id="downloadAllBtn" class="primary" type="button" disabled>⬇ DESCARGAR TODO</button>
-    <button id="downloadSalariesBtn" type="button" disabled>SUELDOS</button>
-    <button id="downloadRentsBtn" type="button" disabled>ARRIENDOS</button>
-    <button id="downloadServicesBtn" type="button" disabled>SERVICIOS BÁSICOS</button>
+    <button id="filterAllBtn" type="button" class="filterOn">TODOS</button>
+    <button id="filterSalariesBtn" type="button">SUELDOS</button>
+    <button id="filterRentsBtn" type="button">ARRIENDOS</button>
+    <button id="filterServicesBtn" type="button">SERVICIOS BÁSICOS</button>
   </div>
   <section class="card">
     <div class="tableWrap">
@@ -66,8 +67,8 @@ const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim
 if(!me?.session_token){location.replace('login-general-v2.html?return='+encodeURIComponent('conversor-comprobantes.html'))}
 if(norm(me.usuario)!=='DANIEL'&&!norm(me.nombre).includes('CARLOS DANIEL MOLINA')){document.body.innerHTML='<main class="wrap"><div class="notice" style="border-color:#efc5c5;background:#fff4f4;color:#9c3434"><b>Acceso restringido.</b> Este módulo de prueba está habilitado únicamente para Daniel.</div></main>';throw new Error('Acceso restringido')}
 
-const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), downloadSalariesBtn=$('downloadSalariesBtn'), downloadRentsBtn=$('downloadRentsBtn'), downloadServicesBtn=$('downloadServicesBtn'), progress=$('progress'), progressBar=$('progressBar');
-let items=[];
+const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), progress=$('progress'), progressBar=$('progressBar');
+let items=[];let activeCategory='TODOS';
 
 function cleanText(v){return String(v||'').replace(/\s+/g,' ').replace(/^[\s:;-]+|[\s:;-]+$/g,'').trim()}
 function safeName(v){return cleanText(v).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().slice(0,140)}
@@ -194,7 +195,8 @@ async function extractPdf(file){
 }
 function render(){
   if(!items.length){rows.innerHTML='<tr><td colspan="6"><div class="empty">Todavía no has cargado comprobantes.</div></td></tr>';downloadAllBtn.disabled=true;return}
-  rows.innerHTML=items.map((it,i)=>`<tr>
+  const visible=activeCategory==='TODOS'?items:items.filter(x=>x.categoria===activeCategory);
+  rows.innerHTML=visible.map(it=>{const i=items.indexOf(it);return `<tr>
     <td><div class="fileName">${escapeHtml(it.file.name)}</div><div class="sub">${(it.file.size/1024).toFixed(0)} KB</div></td>
     <td><input data-i="${i}" data-k="concepto" value="${attr(upperText(it.concepto))}" placeholder="EJ. SUELDO OCTUBRE"></td>
     <td><input data-i="${i}" data-k="beneficiario" value="${attr(upperText(it.beneficiario))}" placeholder="EJ. BRYAN GARCIA"></td>
@@ -202,8 +204,8 @@ function render(){
     <td><div class="namePreview" id="preview-${i}">${escapeHtml(filename(it))}</div></td>
     <td><span class="status ${it.error?'err':(it.concepto||it.beneficiario?'ok':'warn')}">${it.error?'ERROR':(it.concepto||it.beneficiario?'LISTO':'REVISAR')}</span></td>
     <td><div class="rowActions"><button type="button" data-download="${i}" title="Descargar">⬇</button><button type="button" data-remove="${i}" title="Quitar">✕</button></div></td>
-  </tr>`).join('');
-  const valid=items.filter(x=>!x.error);downloadAllBtn.disabled=!valid.length;downloadSalariesBtn.disabled=!valid.some(x=>x.categoria==='SUELDOS');downloadRentsBtn.disabled=!valid.some(x=>x.categoria==='ARRIENDOS');downloadServicesBtn.disabled=!valid.some(x=>x.categoria==='SERVICIOS BÁSICOS');
+  </tr>`}).join('')||'<tr><td colspan="7"><div class="empty">No hay archivos en esta clasificación.</div></td></tr>';
+  const valid=items.filter(x=>!x.error);downloadAllBtn.disabled=!valid.length;[filterAllBtn,filterSalariesBtn,filterRentsBtn,filterServicesBtn].forEach(b=>b.classList.remove('filterOn'));({TODOS:filterAllBtn,SUELDOS:filterSalariesBtn,ARRIENDOS:filterRentsBtn,'SERVICIOS BÁSICOS':filterServicesBtn}[activeCategory]||filterAllBtn).classList.add('filterOn');
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function attr(v){return escapeHtml(v).replace(/\n/g,' ')}
@@ -240,7 +242,7 @@ input.addEventListener('change',e=>{addFiles(e.target.files);input.value=''});
 drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
 rows.addEventListener('input',e=>{const el=e.target.closest('[data-i][data-k]');if(!el)return;const i=Number(el.dataset.i);let v=el.value;if(el.tagName==='INPUT')v=upperText(v);items[i][el.dataset.k]=v;if(el.dataset.k==='concepto'&&el.tagName==='INPUT')items[i].categoria=classifyPayment(v);const p=document.getElementById('preview-'+i);if(p)p.textContent=filename(items[i]);render()});
 rows.addEventListener('click',e=>{const d=e.target.closest('[data-download]'),r=e.target.closest('[data-remove]');if(d)downloadOne(Number(d.dataset.download));if(r){items.splice(Number(r.dataset.remove),1);render()}});
-clearBtn.onclick=()=>{items=[];render()};downloadAllBtn.onclick=downloadAll;downloadSalariesBtn.onclick=()=>downloadCategory('SUELDOS');downloadRentsBtn.onclick=()=>downloadCategory('ARRIENDOS');downloadServicesBtn.onclick=()=>downloadCategory('SERVICIOS BÁSICOS');
+clearBtn.onclick=()=>{items=[];activeCategory='TODOS';render()};downloadAllBtn.onclick=downloadAll;filterAllBtn.onclick=()=>{activeCategory='TODOS';render()};filterSalariesBtn.onclick=()=>{activeCategory='SUELDOS';render()};filterRentsBtn.onclick=()=>{activeCategory='ARRIENDOS';render()};filterServicesBtn.onclick=()=>{activeCategory='SERVICIOS BÁSICOS';render()};
 </script>
 </body>
 </html>
