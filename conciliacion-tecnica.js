@@ -325,6 +325,13 @@ function reconcileSmart(){
   const used=new Set(),out=[];
   const byIp=new Map();
   smartRows.forEach((s,i)=>{if(s.ip){if(!byIp.has(s.ip))byIp.set(s.ip,[]);byIp.get(s.ip).push({s,i})}});
+  const erpByName=new Map();
+  smartErpRows.forEach((r,idx)=>{
+    const nk=compact(r.cliente||'');
+    if(!nk)return;
+    if(!erpByName.has(nk))erpByName.set(nk,[]);
+    erpByName.get(nk).push({r,idx,ip:normIp(r.ip_cliente)});
+  });
   for(const erp of smartErpRows){
     const eip=normIp(erp.ip_cliente),ename=erp.cliente;
     let candidates=eip?(byIp.get(eip)||[]):[],chosen=null,result='',detail='',score=0;
@@ -366,6 +373,11 @@ function reconcileSmart(){
         // Si una ONU/registro SmartOLT ya fue consumido por otro servicio,
         // no se puede reutilizar solo porque el titular tenga el mismo nombre.
         if(used.has(i))return;
+        // No permitir que una coincidencia por nombre "robe" una ONU que
+        // corresponde por IP exacta a otro servicio del mismo titular.
+        const sameNameServices=erpByName.get(compact(ename))||[];
+        const reservedForOther=s.ip && sameNameServices.some(x=>x.r!==erp && x.ip===s.ip);
+        if(reservedForOther)return;
         const sim=nameSimilarity(ename,s.nombre);
         if(sim>=0.6)nameCands.push({s,i,sim});
       });
@@ -382,7 +394,15 @@ function reconcileSmart(){
       }else if(nameCands.length>1){
         chosen=nameCands[0];result='POSIBLE_COINCIDENCIA_REVISAR';detail='Hay varias coincidencias parciales por nombre en SmartOLT.';score=55;
       }else{
-        result='CLIENTE_NO_ENCONTRADO_SMARTOLT';detail='No se encontró coincidencia confiable por IP ni por nombre.';score=20;
+        const sameNameServices=erpByName.get(compact(ename))||[];
+        const hasOtherExactIp=sameNameServices.some(x=>x.r!==erp && x.ip && byIp.has(x.ip));
+        if(hasOtherExactIp){
+          result='SERVICIO_SIN_COINCIDENCIA_SMARTOLT';
+          detail='El cliente tiene varios servicios. La ONU encontrada por nombre corresponde por IP exacta a otro servicio del mismo titular; este servicio no tiene coincidencia propia en SmartOLT.';
+          score=90;
+        }else{
+          result='CLIENTE_NO_ENCONTRADO_SMARTOLT';detail='No se encontró coincidencia confiable por IP ni por nombre.';score=20;
+        }
       }
     }
     if(chosen)used.add(chosen.i);
