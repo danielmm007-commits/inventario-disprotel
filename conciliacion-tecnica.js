@@ -170,6 +170,42 @@ function smartNameSubsetOfErp(erpName,smartName){
   const as=new Set(A);
   return B.every(t=>as.has(t));
 }
+function editDistance(a,b){
+  a=String(a||'');b=String(b||'');
+  const m=a.length,n=b.length,d=Array.from({length:m+1},()=>Array(n+1).fill(0));
+  for(let i=0;i<=m;i++)d[i][0]=i;
+  for(let j=0;j<=n;j++)d[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(
+    d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1)
+  );
+  return d[m][n];
+}
+function smartNameDiagnosis(erpName,smartName){
+  const A=nameTokens(erpName),B=nameTokens(smartName);
+  if(!A.length||!B.length)return {kind:'OTRO',missing:[],typos:[]};
+  if(A.length===B.length && A.every((t,i)=>t===B[i]))return {kind:'EXACTO',missing:[],typos:[]};
+
+  const used=new Set(),typos=[];
+  for(const bt of B){
+    if(A.includes(bt))continue;
+    let best=-1,bestD=99;
+    A.forEach((at,i)=>{
+      if(used.has(i)||at===bt)return;
+      const d=editDistance(at,bt);
+      if(d<bestD){bestD=d;best=i}
+    });
+    if(best>=0 && bestD<=1){
+      used.add(best);
+      typos.push(A[best]+' ↔ '+bt);
+    }
+  }
+  const bExact=new Set(B);
+  const missing=A.filter(at=>!bExact.has(at) && !typos.some(p=>p.startsWith(at+' ↔ ')));
+  if(missing.length&&typos.length)return {kind:'FALTA_Y_ORTOGRAFIA',missing,typos};
+  if(missing.length)return {kind:'FALTA',missing,typos};
+  if(typos.length)return {kind:'ORTOGRAFIA',missing,typos};
+  return {kind:'OTRO',missing,typos};
+}
 function branchOfRouter(v){
   const z=n(v);
   if(z.includes('SALCEDO')||z.includes('SANTANA'))return'SALCEDO';
@@ -295,18 +331,29 @@ function reconcileSmart(){
     if(candidates.length===1){
       chosen=candidates[0];
       const sim=nameSimilarity(ename,chosen.s.nombre);
-      const subset=smartNameSubsetOfErp(ename,chosen.s.nombre);
-      if(subset){
-        result='OK_IP_NOMBRE';
-        detail=compact(ename)===compact(chosen.s.nombre)
-          ?'IP exacta y nombre consistente.'
-          :'IP exacta; el nombre de SmartOLT es abreviado pero todos sus nombres/apellidos coinciden con ERP.';
-        score=100;
+      const diag=smartNameDiagnosis(ename,chosen.s.nombre);
+      if(diag.kind==='EXACTO'){
+        result='OK_IP_NOMBRE';detail='IP exacta y nombre consistente.';score=100;
+      }
+      else if(diag.kind==='ORTOGRAFIA'){
+        result='REVISAR_ORTOGRAFIA_SMARTOLT';
+        detail='IP exacta; posible diferencia ortográfica en SmartOLT: '+diag.typos.join(', ')+'. ERP es mandatorio.';
+        score=95;
+      }
+      else if(diag.kind==='FALTA'){
+        result='NOMBRE_INCOMPLETO_SMARTOLT';
+        detail='IP exacta; en SmartOLT faltan nombres/apellidos que sí constan en ERP: '+diag.missing.join(', ')+'.';
+        score=95;
+      }
+      else if(diag.kind==='FALTA_Y_ORTOGRAFIA'){
+        result='NOMBRE_INCOMPLETO_Y_ORTOGRAFIA';
+        detail='IP exacta; SmartOLT tiene datos faltantes ('+diag.missing.join(', ')+') y posible diferencia ortográfica ('+diag.typos.join(', ')+'). ERP es mandatorio.';
+        score=90;
       }
       else if(sim>=0.4){
         result='OK_IP_NOMBRE_PARCIAL';
-        detail='IP exacta, pero el nombre SmartOLT está incompleto o contiene alguna diferencia respecto al ERP.';
-        score=95;
+        detail='IP exacta, pero el nombre SmartOLT contiene diferencias que requieren revisión contra ERP.';
+        score=85;
       }
       else if(chosen.s.nombre){result='IP_COINCIDE_NOMBRE_DIFERENTE';detail='La IP coincide, pero el nombre de SmartOLT no parece corresponder.';score=80}
       else{result='OK_IP_SMARTOLT_SIN_NOMBRE';detail='IP exacta; SmartOLT no tiene nombre útil.';score=90}
