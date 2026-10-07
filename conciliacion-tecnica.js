@@ -246,6 +246,9 @@ function isRadio(v){
   const z=n(v);
   return z.includes('RADIO')||z.includes('ANTENA')||z.includes('WIRELESS');
 }
+function isRadioIp(v){
+  return /^172\.20\./.test(normIp(v));
+}
 function isFibraSmart(v){
   const z=n(v);
   return z.includes('FIBRA')||z.includes('GPON')||z.includes('FTTH');
@@ -407,6 +410,17 @@ function reconcileSmart(){
     }else if(candidates.length>1){
       result='IP_DUPLICADA_SMARTOLT';detail='La misma IP aparece varias veces en SmartOLT.';score=50;
     }else{
+      const radioByErp=isRadio(erp.tipo_conexion);
+      const radioByIp=isRadioIp(eip);
+      if(radioByErp||radioByIp){
+        result='OK_RADIO_SIN_SMARTOLT';
+        detail=radioByErp&&radioByIp
+          ?'Servicio RADIO confirmado por ERP y rango IP 172.20.x.x; no se espera registro en SmartOLT.'
+          :radioByErp
+            ?'ERP indica RADIO y no existe coincidencia por IP en SmartOLT; no se considera inconsistencia.'
+            :'La IP pertenece al rango 172.20.x.x usado para RADIO; no existe coincidencia por IP en SmartOLT.';
+        score=100;
+      }else{
       const nameCands=[];
       smartRows.forEach((s,i)=>{
         // Cada servicio debe conciliarse de forma independiente.
@@ -443,6 +457,7 @@ function reconcileSmart(){
         }else{
           result='CLIENTE_NO_ENCONTRADO_SMARTOLT';detail='No se encontró coincidencia confiable por IP ni por nombre.';score=20;
         }
+      }
       }
     }
     if(chosen)used.add(chosen.i);
