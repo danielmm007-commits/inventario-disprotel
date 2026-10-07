@@ -90,27 +90,43 @@ function likelyPerson(v){
   return s;
 }
 function detect(text){
-  const rawLines=tokenize(text), lines=rawLines.map(x=>x.replace(/\s{2,}/g,' '));
-  let concepto=valueAfter(lines,['Concepto','Detalle','Motivo','Descripción','Descripcion','Referencia','Concepto de pago','Detalle de pago']);
-  let beneficiario=valueAfter(lines,['Beneficiario','Nombre del beneficiario','Nombre beneficiario','Destinatario','Nombre del destinatario','A favor de','Nombre']);
+  const lines=tokenize(text).map(x=>x.replace(/\s{2,}/g,' '));
+  const ownNames=['CARLOS DANIEL MOLINA MUÑOZ','CARLOS MOLINA MUÑOZ','MOLINA MUÑOZ CARLOS DANIEL'];
+  const isOwn=v=>ownNames.some(n=>norm(v).includes(norm(n)));
+  const generic=/^(TU PAGO SE REALIZ[ÓO] CON [ÉE]XITO|PAGO REALIZADO CON [ÉE]XITO|TRANSFERENCIA REALIZADA|COMPROBANTE DE PAGO|COMPROBANTE)$/i;
+
+  let concepto=valueAfter(lines,['Concepto de pago','Concepto','Detalle de pago','Detalle','Motivo','Descripción','Descripcion','Referencia']);
+  concepto=cleanText(concepto).replace(/^(concepto(?: de pago)?|detalle(?: de pago)?|motivo|descripci[oó]n|referencia)\s*:?\s*/i,'');
+  if(generic.test(concepto))concepto='';
+
+  const servicePayment=lines.some(x=>/EMPRESA O SERVICIO|DATOS ADICIONALES DEL PAGO|NO\.\s*TEL[ÉE]FONO/i.test(x));
+  const candidates=lines.filter(x=>{
+    const s=cleanText(x);
+    if(!s||s.length<4||s.length>110||generic.test(s))return false;
+    return /^(PAGO|SUELDO|ARRIENDO|ALQUILER|SERVICIO|HONORARIO|ANTICIPO|FACTURA|LIQUIDACI[ÓO]N|N[ÓO]MINA)\b/i.test(s);
+  });
+  if(servicePayment&&candidates.length)concepto=candidates[candidates.length-1];
+  else if(!concepto&&candidates.length)concepto=candidates[candidates.length-1];
+
+  let beneficiario=valueAfter(lines,['Nombre del beneficiario','Nombre beneficiario','Beneficiario','Nombre del destinatario','Destinatario','A favor de','Receptor']);
   beneficiario=likelyPerson(beneficiario);
+  if(isOwn(beneficiario))beneficiario='';
 
   if(!beneficiario){
     for(let i=0;i<lines.length;i++){
-      if(/beneficiario|destinatario|a favor/i.test(lines[i])){
-        for(let j=i+1;j<Math.min(lines.length,i+4);j++){const p=likelyPerson(lines[j]);if(p){beneficiario=p;break}}
+      if(/BENEFICIARIO|DESTINATARIO|RECEPTOR|A FAVOR|CUENTA DESTINO|DATOS DE DESTINO|DATOS DEL BENEFICIARIO/i.test(lines[i])){
+        for(let j=i+1;j<Math.min(lines.length,i+7);j++){
+          const p=likelyPerson(lines[j]);
+          if(p&&!isOwn(p)){beneficiario=p;break}
+        }
       }
       if(beneficiario)break;
     }
   }
-  if(!concepto){
-    for(const l of lines){
-      if(/sueldo|arriendo|alquiler|servicio|honorario|anticipo|pago|factura|liquidacion|liquidación/i.test(l) && l.length<110){concepto=l;break}
-    }
-  }
-  concepto=cleanText(concepto).replace(/^(concepto|detalle|motivo|descripci[oó]n|referencia)\s*:?\s*/i,'');
-  beneficiario=cleanText(beneficiario).replace(/^(beneficiario|destinatario|nombre(?: del beneficiario)?)\s*:?\s*/i,'');
-  return {concepto,beneficiario};
+
+  if(servicePayment&&isOwn(beneficiario))beneficiario='';
+  beneficiario=cleanText(beneficiario).replace(/^(beneficiario|destinatario|receptor|nombre(?: del beneficiario| del destinatario)?)\s*:?\s*/i,'');
+  return {concepto:cleanText(concepto),beneficiario};
 }
 function filename(it){
   let c=safeName(it.concepto)||'COMPROBANTE';
