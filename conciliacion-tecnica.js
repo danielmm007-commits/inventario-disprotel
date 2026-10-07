@@ -242,6 +242,14 @@ function branchOfRouter(v){
   if(z.includes('CUICUNO'))return'CUICUNO';
   return '';
 }
+function isRadio(v){
+  const z=n(v);
+  return z.includes('RADIO')||z.includes('ANTENA')||z.includes('WIRELESS');
+}
+function isFibraSmart(v){
+  const z=n(v);
+  return z.includes('FIBRA')||z.includes('GPON')||z.includes('FTTH');
+}
 function scopeCities(scope){
   if(scope==='GRUPO_SALCEDO')return new Set(['SALCEDO','MULALILLO','CHAMBAPONGO']);
   if(scope==='GRUPO_LATACUNGA')return new Set(['LATACUNGA','SAQUISILI','CUICUNO']);
