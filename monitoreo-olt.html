@@ -125,6 +125,17 @@ function readFilters(){
     signal:quick==='warning'?'ADVERTENCIA':quick==='critical'?'CRITICA':''
   };
 }
+async function loadFilterOptions({resetCard=false,resetPort=false}={}){
+  if(resetCard)$('tarjeta').value='';
+  if(resetPort)$('puerto').value='';
+  const currentCard=$('tarjeta').value,currentPort=$('puerto').value;
+  const d=await call({action:'filter-options',olt:$('olt').value,tarjeta:currentCard});
+  const cards=d.tarjetas||[],ports=d.puertos||[];
+  $('tarjeta').innerHTML='<option value="">Todas las tarjetas</option>'+cards.map(x=>'<option value="'+esc(x.value)+'">'+esc(x.label)+' · '+esc(x.puertos_detectados)+' PON con datos</option>').join('');
+  if(cards.some(x=>String(x.value)===String(currentCard)))$('tarjeta').value=currentCard;
+  $('puerto').innerHTML='<option value="">Todos los puertos</option>'+ports.map(x=>'<option value="'+esc(x)+'">PON '+esc(x)+'</option>').join('');
+  if(ports.some(x=>String(x)===String(currentPort)))$('puerto').value=currentPort;
+}
 async function loadList(reset=false){
   if(reset)state.offset=0;
   $('tbody').innerHTML='<tr><td colspan="9" class="loading">Consultando ONU…</td></tr>';
@@ -133,9 +144,6 @@ async function loadList(reset=false){
   $('counter').textContent=(state.total?state.offset+1:0)+'-'+Math.min(state.offset+state.limit,state.total)+' de '+state.total;
   $('pageLabel').textContent='Página '+(Math.floor(state.offset/state.limit)+1);
   $('prev').disabled=state.offset<=0;$('next').disabled=state.offset+state.limit>=state.total;
-  const cards=[...new Set(rows.map(x=>x.tarjeta).filter(Boolean))].sort();const ports=[...new Set(rows.map(x=>x.puerto).filter(Boolean))].sort();
-  if(!$('tarjeta').value)$('tarjeta').innerHTML='<option value="">Todas las tarjetas</option>'+cards.map(x=>'<option>'+esc(x)+'</option>').join('');
-  if(!$('puerto').value)$('puerto').innerHTML='<option value="">Todos los puertos</option>'+ports.map(x=>'<option>'+esc(x)+'</option>').join('');
   $('tbody').innerHTML=rows.length?rows.map(r=>{
     const gpon=r.gpon||[r.tarjeta,r.puerto,r.onu_asignada].filter(x=>x!=null&&x!=='').join('/');
     const zone=r.zona||'—',nap=r.nap&&r.nap!==r.zona?r.nap:'';
@@ -161,7 +169,9 @@ async function openDetail(id){
 }
 async function refreshAll(){
   try{
-    await Promise.all([loadSummary(),loadList(false)]);
+    await loadSummary();
+    await loadFilterOptions();
+    await loadList(false);
     const now=new Date();
     const info=$('autoInfo');
     if(info)info.textContent='ACTUALIZACIÓN AUTOMÁTICA · HUAWEI CADA 5 MIN · VISTA '+now.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -188,7 +198,9 @@ document.querySelectorAll('.metric[data-filter]').forEach(el=>{
   el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setMetricFilter(el.dataset.filter)}});
 });
 $('searchBtn').onclick=()=>loadList(true).catch(e=>alert(e.message));$('q').addEventListener('keydown',e=>{if(e.key==='Enter')loadList(true).catch(x=>alert(x.message))});
-['olt','tarjeta','puerto'].forEach(id=>$(id).onchange=()=>loadList(true).catch(e=>alert(e.message)));
+$('olt').onchange=async()=>{try{await loadFilterOptions({resetCard:true,resetPort:true});await loadList(true)}catch(e){alert(e.message)}};
+$('tarjeta').onchange=async()=>{try{await loadFilterOptions({resetPort:true});await loadList(true)}catch(e){alert(e.message)}};
+$('puerto').onchange=()=>loadList(true).catch(e=>alert(e.message));
 $('estado').onchange=()=>{state.quickFilter='all';document.querySelectorAll('.metric[data-filter]').forEach(el=>el.classList.toggle('active',el.dataset.filter==='all'));loadList(true).catch(e=>alert(e.message));};
 $('prev').onclick=()=>{state.offset=Math.max(0,state.offset-state.limit);loadList(false).catch(e=>alert(e.message))};$('next').onclick=()=>{if(state.offset+state.limit<state.total){state.offset+=state.limit;loadList(false).catch(e=>alert(e.message))}};
 $('closeModal').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};document.addEventListener('keydown',e=>{if(e.key==='Escape')$('modal').classList.remove('show')});
