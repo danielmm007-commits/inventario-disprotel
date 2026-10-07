@@ -471,6 +471,11 @@ function reconcileSmart(){
   smartResult=out;renderSmart();
 }
 function smartIsOk(r){return /^OK_/.test(String(r||''))}
+function smartScopeFileName(){
+  const v=document.getElementById('smartSucursal').value;
+  if(v==='GRUPO_LATACUNGA')return 'GRUPO_SAQUISILI_CUICUNO';
+  return v;
+}
 function renderSmart(){
   const reportRows=smartResult.filter(x=>x.resultado!=='OK_RADIO_SIN_SMARTOLT');
   const c={};reportRows.forEach(x=>c[x.resultado]=(c[x.resultado]||0)+1);
@@ -498,11 +503,11 @@ function smartExport(kind,issuesOnly=false){
   const data=issuesOnly?base.filter(x=>!smartIsOk(x.resultado)):base;
   const out=data.map(x=>({Resultado:x.resultado,Codigo_Servicio:x.codigo_servicio,Cliente_ERP:x.erp_nombre,Tipo_ERP:x.erp_tipo||'',IP_ERP:x.erp_ip,Nombre_SmartOLT:x.smart_nombre,IP_SmartOLT:x.smart_ip||x.smart_ip_raw,SN_SmartOLT:x.smart_sn,Detalle:x.detalle,Confianza:x.confianza}));
   const ws=XLSX.utils.json_to_sheet(out),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,issuesOnly?'Inconsistencias':'Resultado');
-  XLSX.writeFile(wb,kind+'_'+document.getElementById('smartSucursal').value+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  XLSX.writeFile(wb,kind+'_'+smartScopeFileName()+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 function smartExportPdf(){
   const data=smartResult.filter(x=>!smartIsOk(x.resultado)),Ctor=window.jspdf?.jsPDF;if(!Ctor)throw Error('No se pudo cargar PDF');
-  const doc=new Ctor({orientation:'landscape',unit:'mm',format:'a4'}),suc=document.getElementById('smartSucursal').value,date=new Date().toISOString().slice(0,10);
+  const doc=new Ctor({orientation:'landscape',unit:'mm',format:'a4'}),suc=smartScopeFileName(),date=new Date().toISOString().slice(0,10);
   doc.setFontSize(14);doc.text('DISPROTEL · Conciliación ERP ↔ SmartOLT',10,10);doc.setFontSize(9);doc.text('Sucursal '+suc+' · Solo inconsistencias · '+date,10,16);
   doc.autoTable({startY:20,head:[['Resultado','Código','ERP','IP ERP','SmartOLT','IP SmartOLT','Detalle']],body:data.map(x=>[x.resultado,x.codigo_servicio,x.erp_nombre,x.erp_ip,x.smart_nombre,x.smart_ip||x.smart_ip_raw,x.detalle]),styles:{fontSize:6,cellPadding:1.2},columnStyles:{2:{cellWidth:42},4:{cellWidth:42},6:{cellWidth:65}}});
   doc.save('INCONSISTENCIAS_ERP_SMARTOLT_'+suc+'_'+date+'.pdf');
