@@ -329,7 +329,7 @@ async def _session_command(reader,writer,command,timeout=60):
 
 
 async def configured_telemetry(cfg, inventory):
-    """Potencias y alarmas masivas por PON. Solo SALCEDO por ahora."""
+    """Potencias y alarmas masivas por PON para cualquier OLT Huawei configurada."""
     ports={}
     for row in inventory:
         parts=str(row.get("fsp") or "").split("/")
@@ -885,24 +885,27 @@ async def poll_configured_olt(cfg):
         telemetry_saved=None
         inventory=[]
         telemetry=[]
-        if str(cfg.get("codigo") or "").upper()=="SALCEDO":
-            inventory=await configured_inventory(cfg)
-            inventory_saved=olt_config_call("scanner-inventory-snapshot",{
-                "olt_id":cfg.get("id"),
+
+        # Inventario + telemetría para cualquier OLT Huawei activa devuelta por
+        # scanner-list. De esta forma una nueva OLT se agrega desde
+        # Configuración de OLT sin modificar de nuevo este agente.
+        inventory=await configured_inventory(cfg)
+        inventory_saved=olt_config_call("scanner-inventory-snapshot",{
+            "olt_id":cfg.get("id"),
+            "olt_codigo":cfg.get("codigo"),
+            "olt_nombre":cfg.get("nombre"),
+            "onts":inventory
+        })
+        telemetry=await configured_telemetry(cfg,inventory)
+        # Evita una petición HTTP enorme: enviar en bloques de 250.
+        saved_count=0
+        for i in range(0,len(telemetry),250):
+            part=olt_config_call("scanner-telemetry-snapshot",{
                 "olt_codigo":cfg.get("codigo"),
-                "olt_nombre":cfg.get("nombre"),
-                "onts":inventory
-            })
-            telemetry=await configured_telemetry(cfg,inventory)
-            # Evita una petición HTTP enorme: enviar en bloques de 250.
-            saved_count=0
-            for i in range(0,len(telemetry),250):
-                part=olt_config_call("scanner-telemetry-snapshot",{
-                    "olt_codigo":cfg.get("codigo"),
-                    "rows":telemetry[i:i+250]
-                }) or {}
-                saved_count+=int(part.get("updated") or 0)
-            telemetry_saved={"ok":True,"updated":saved_count}
+                "rows":telemetry[i:i+250]
+            }) or {}
+            saved_count+=int(part.get("updated") or 0)
+        telemetry_saved={"ok":True,"updated":saved_count}
         return {
             "ok":True,"read_only":True,
             "codigo":cfg.get("codigo"),"olt":cfg.get("nombre"),
