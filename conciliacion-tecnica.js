@@ -164,6 +164,12 @@ function nameSimilarity(a,b){
   const bs=new Set(B),common=A.filter(x=>bs.has(x)).length;
   return common/Math.max(A.length,B.length);
 }
+function smartNameSubsetOfErp(erpName,smartName){
+  const A=nameTokens(erpName),B=nameTokens(smartName);
+  if(!A.length||!B.length)return false;
+  const as=new Set(A);
+  return B.every(t=>as.has(t));
+}
 function branchOfRouter(v){
   const z=n(v);
   if(z.includes('SALCEDO')||z.includes('SANTANA'))return'SALCEDO';
@@ -289,8 +295,19 @@ function reconcileSmart(){
     if(candidates.length===1){
       chosen=candidates[0];
       const sim=nameSimilarity(ename,chosen.s.nombre);
-      if(sim>=0.75){result='OK_IP_NOMBRE';detail='IP exacta y nombre consistente.';score=100}
-      else if(sim>=0.4){result='OK_IP_NOMBRE_PARCIAL';detail='IP exacta; nombre SmartOLT parcial/incompleto.';score=95}
+      const subset=smartNameSubsetOfErp(ename,chosen.s.nombre);
+      if(subset){
+        result='OK_IP_NOMBRE';
+        detail=compact(ename)===compact(chosen.s.nombre)
+          ?'IP exacta y nombre consistente.'
+          :'IP exacta; el nombre de SmartOLT es abreviado pero todos sus nombres/apellidos coinciden con ERP.';
+        score=100;
+      }
+      else if(sim>=0.4){
+        result='OK_IP_NOMBRE_PARCIAL';
+        detail='IP exacta, pero el nombre SmartOLT está incompleto o contiene alguna diferencia respecto al ERP.';
+        score=95;
+      }
       else if(chosen.s.nombre){result='IP_COINCIDE_NOMBRE_DIFERENTE';detail='La IP coincide, pero el nombre de SmartOLT no parece corresponder.';score=80}
       else{result='OK_IP_SMARTOLT_SIN_NOMBRE';detail='IP exacta; SmartOLT no tiene nombre útil.';score=90}
     }else if(candidates.length>1){
