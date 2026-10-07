@@ -17,7 +17,7 @@ input[type=file]{display:none}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.toolbar button{border:0;border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer;background:#fff;color:#244761;border:1px solid var(--line)}.toolbar .primary{background:var(--blue);color:#fff;border-color:var(--blue)}.toolbar button:disabled{opacity:.45;cursor:not-allowed}
 .card{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .tableWrap{overflow:auto}.tbl{width:100%;border-collapse:collapse;min-width:900px}.tbl th{background:#f6f9fa;text-align:left;font-size:9px;color:#60737c;padding:9px;border-bottom:1px solid var(--line);letter-spacing:.05em}.tbl td{padding:8px;border-bottom:1px solid #edf1f3;vertical-align:top;font-size:10px}.tbl tr:last-child td{border-bottom:0}
-.tbl input{width:100%;border:1px solid #cedce3;border-radius:7px;padding:7px 8px;font-size:10px;color:var(--ink)}.tbl input:focus{outline:2px solid #b8d9ef;border-color:#6ca9d1}
+.tbl input,.tbl select{width:100%;border:1px solid #cedce3;border-radius:7px;padding:7px 8px;font-size:10px;color:var(--ink);background:#fff}.tbl input{text-transform:uppercase}.tbl input:focus{outline:2px solid #b8d9ef;border-color:#6ca9d1}
 .fileName{font-weight:700;word-break:break-word}.sub{margin-top:3px;color:var(--muted);font-size:9px}.status{display:inline-block;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:800;background:#eef5f9;color:#27617f}.status.ok{background:#eaf8ef;color:#237a52}.status.warn{background:#fff6df;color:#8a6100}.status.err{background:#fff0f0;color:#a33a3a}
 .namePreview{font-weight:700;color:#0c5b8e;word-break:break-word}.empty{padding:34px;text-align:center;color:#7c8c94;font-size:11px}
 .rowActions{display:flex;gap:5px}.rowActions button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 8px;cursor:pointer;font-size:9px}
@@ -38,14 +38,17 @@ input[type=file]{display:none}
   <input id="files" type="file" accept="application/pdf,.pdf" multiple>
   <div class="progress" id="progress"><i id="progressBar"></i></div>
   <div class="toolbar">
-    <button id="clearBtn" type="button">Limpiar lista</button>
-    <button id="downloadAllBtn" class="primary" type="button" disabled>⬇ Descargar todos renombrados (.zip)</button>
+    <button id="clearBtn" type="button">LIMPIAR LISTA</button>
+    <button id="downloadAllBtn" class="primary" type="button" disabled>⬇ DESCARGAR TODO</button>
+    <button id="downloadSalariesBtn" type="button" disabled>SUELDOS</button>
+    <button id="downloadRentsBtn" type="button" disabled>ARRIENDOS</button>
+    <button id="downloadServicesBtn" type="button" disabled>SERVICIOS BÁSICOS</button>
   </div>
   <section class="card">
     <div class="tableWrap">
       <table class="tbl">
-        <thead><tr><th style="width:18%">ARCHIVO ORIGINAL</th><th style="width:22%">CONCEPTO</th><th style="width:22%">BENEFICIARIO</th><th style="width:25%">NOMBRE RESULTANTE</th><th style="width:8%">ESTADO</th><th style="width:5%"></th></tr></thead>
-        <tbody id="rows"><tr><td colspan="6"><div class="empty">Todavía no has cargado comprobantes.</div></td></tr></tbody>
+        <thead><tr><th style="width:16%">ARCHIVO ORIGINAL</th><th style="width:19%">CONCEPTO</th><th style="width:18%">BENEFICIARIO</th><th style="width:14%">CLASIFICACIÓN</th><th style="width:23%">NOMBRE RESULTANTE</th><th style="width:6%">ESTADO</th><th style="width:4%"></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="7"><div class="empty">Todavía no has cargado comprobantes.</div></td></tr></tbody>
       </table>
     </div>
   </section>
@@ -63,7 +66,7 @@ const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim
 if(!me?.session_token){location.replace('login-general-v2.html?return='+encodeURIComponent('conversor-comprobantes.html'))}
 if(norm(me.usuario)!=='DANIEL'&&!norm(me.nombre).includes('CARLOS DANIEL MOLINA')){document.body.innerHTML='<main class="wrap"><div class="notice" style="border-color:#efc5c5;background:#fff4f4;color:#9c3434"><b>Acceso restringido.</b> Este módulo de prueba está habilitado únicamente para Daniel.</div></main>';throw new Error('Acceso restringido')}
 
-const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), progress=$('progress'), progressBar=$('progressBar');
+const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), downloadSalariesBtn=$('downloadSalariesBtn'), downloadRentsBtn=$('downloadRentsBtn'), downloadServicesBtn=$('downloadServicesBtn'), progress=$('progress'), progressBar=$('progressBar');
 let items=[];
 
 function cleanText(v){return String(v||'').replace(/\s+/g,' ').replace(/^[\s:;-]+|[\s:;-]+$/g,'').trim()}
@@ -126,7 +129,15 @@ function detect(text){
 
   if(servicePayment&&isOwn(beneficiario))beneficiario='';
   beneficiario=cleanText(beneficiario).replace(/^(beneficiario|destinatario|receptor|nombre(?: del beneficiario| del destinatario)?)\s*:?\s*/i,'');
-  return {concepto:normalizeAdministrativeConcept(cleanText(concepto)),beneficiario};
+  const conceptoFinal=upperText(normalizeAdministrativeConcept(cleanText(concepto)));const beneficiarioFinal=upperText(beneficiario);return {concepto:conceptoFinal,beneficiario:beneficiarioFinal,categoria:classifyPayment(conceptoFinal)};
+}
+function upperText(v){return cleanText(v).toLocaleUpperCase('es-EC')}
+function classifyPayment(concepto){
+  const s=norm(concepto);
+  if(/\b(SUELDO|ROL DE PAGOS|NOMINA|NÓMINA|REMUNERACION|REMUNERACIÓN)\b/.test(s))return 'SUELDOS';
+  if(/\b(ARRIENDO|ALQUILER)\b/.test(s))return 'ARRIENDOS';
+  if(/\b(FONO|TELEFONO|TELÉFONO|TELEFONIA|TELEFONÍA|ENERGIA|ENERGÍA|LUZ|ELECTRICIDAD|AGUA|INTERNET|PLANILLA TELEFÓNICA|PLANILLA DE ENERGÍA)\b/.test(s))return 'SERVICIOS BÁSICOS';
+  return 'OTROS';
 }
 function normalizeAdministrativeConcept(v){
   let s=cleanText(v);
@@ -140,11 +151,11 @@ function normalizeAdministrativeConcept(v){
   s=s.replace(/^PAGO\s+(?:DE\s+)?(?:ENERGIA|ENERGÍA|LUZ|ENERGIA ELECTRICA|ENERGÍA ELÉCTRICA)\b\s*/i,'PLANILLA DE ENERGÍA ');
   s=s.replace(/^PAGO\s+(?:DE\s+)?ELECTRICIDAD\b\s*/i,'PLANILLA DE ENERGÍA ');
 
-  return cleanText(s);
+  return upperText(s);
 }
 function filename(it){
-  let c=safeName(normalizeAdministrativeConcept(it.concepto))||'COMPROBANTE';
-  let b=safeName(it.beneficiario);
+  let c=safeName(upperText(normalizeAdministrativeConcept(it.concepto)))||'COMPROBANTE';
+  let b=safeName(upperText(it.beneficiario));
   if(b && !norm(c).includes(norm(b))) c += ' - '+b;
   return c+'.pdf';
 }
@@ -168,13 +179,14 @@ function render(){
   if(!items.length){rows.innerHTML='<tr><td colspan="6"><div class="empty">Todavía no has cargado comprobantes.</div></td></tr>';downloadAllBtn.disabled=true;return}
   rows.innerHTML=items.map((it,i)=>`<tr>
     <td><div class="fileName">${escapeHtml(it.file.name)}</div><div class="sub">${(it.file.size/1024).toFixed(0)} KB</div></td>
-    <td><input data-i="${i}" data-k="concepto" value="${attr(it.concepto)}" placeholder="Ej. SUELDO OCTUBRE"></td>
-    <td><input data-i="${i}" data-k="beneficiario" value="${attr(it.beneficiario)}" placeholder="Ej. BRYAN GARCIA"></td>
+    <td><input data-i="${i}" data-k="concepto" value="${attr(upperText(it.concepto))}" placeholder="EJ. SUELDO OCTUBRE"></td>
+    <td><input data-i="${i}" data-k="beneficiario" value="${attr(upperText(it.beneficiario))}" placeholder="EJ. BRYAN GARCIA"></td>
+    <td><select data-i="${i}" data-k="categoria"><option ${it.categoria==='SUELDOS'?'selected':''}>SUELDOS</option><option ${it.categoria==='ARRIENDOS'?'selected':''}>ARRIENDOS</option><option ${it.categoria==='SERVICIOS BÁSICOS'?'selected':''}>SERVICIOS BÁSICOS</option><option ${it.categoria==='OTROS'?'selected':''}>OTROS</option></select></td>
     <td><div class="namePreview" id="preview-${i}">${escapeHtml(filename(it))}</div></td>
     <td><span class="status ${it.error?'err':(it.concepto||it.beneficiario?'ok':'warn')}">${it.error?'ERROR':(it.concepto||it.beneficiario?'LISTO':'REVISAR')}</span></td>
     <td><div class="rowActions"><button type="button" data-download="${i}" title="Descargar">⬇</button><button type="button" data-remove="${i}" title="Quitar">✕</button></div></td>
   </tr>`).join('');
-  downloadAllBtn.disabled=!items.some(x=>!x.error);
+  const valid=items.filter(x=>!x.error);downloadAllBtn.disabled=!valid.length;downloadSalariesBtn.disabled=!valid.some(x=>x.categoria==='SUELDOS');downloadRentsBtn.disabled=!valid.some(x=>x.categoria==='ARRIENDOS');downloadServicesBtn.disabled=!valid.some(x=>x.categoria==='SERVICIOS BÁSICOS');
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function attr(v){return escapeHtml(v).replace(/\n/g,' ')}
@@ -182,8 +194,8 @@ async function addFiles(files){
   const pdfs=[...files].filter(f=>/\.pdf$/i.test(f.name)||f.type==='application/pdf'); if(!pdfs.length)return;
   progress.style.display='block';let done=0;
   for(const file of pdfs){
-    const it={file,concepto:'',beneficiario:'',error:''};items.push(it);render();
-    try{const text=await extractPdf(file),d=detect(text);it.concepto=d.concepto;it.beneficiario=d.beneficiario;if(!text.trim())it.error='PDF sin texto extraíble'}catch(e){it.error='No se pudo leer'}
+    const it={file,concepto:'',beneficiario:'',categoria:'OTROS',error:''};items.push(it);render();
+    try{const text=await extractPdf(file),d=detect(text);it.concepto=upperText(d.concepto);it.beneficiario=upperText(d.beneficiario);it.categoria=d.categoria||classifyPayment(it.concepto);if(!text.trim())it.error='PDF sin texto extraíble'}catch(e){it.error='No se pudo leer'}
     done++;progressBar.style.width=Math.round(done/pdfs.length*100)+'%';render();
   }
   setTimeout(()=>{progress.style.display='none';progressBar.style.width='0'},450);
@@ -197,13 +209,21 @@ async function downloadAll(){
   for(const it of ok){let n=filename(it),base=n.replace(/\.pdf$/i,'');let k=2;while(used.has(norm(n)))n=base+' ('+(k++)+').pdf';used.add(norm(n));zip.file(n,it.file)}
   const blob=await zip.generateAsync({type:'blob'});downloadBlob(blob,'COMPROBANTES_RENOMBRADOS.zip')
 }
+async function downloadCategory(category){
+  const selected=items.filter(x=>!x.error&&x.categoria===category);
+  if(!selected.length)return;
+  if(selected.length===1){downloadBlob(selected[0].file,filename(selected[0]));return}
+  const zip=new JSZip();const used=new Set();
+  for(const it of selected){let n=filename(it),base=n.replace(/\.pdf$/i,'');let k=2;while(used.has(norm(n)))n=base+' ('+(k++)+').pdf';used.add(norm(n));zip.file(n,it.file)}
+  const blob=await zip.generateAsync({type:'blob'});downloadBlob(blob,category+'.zip')
+}
 input.addEventListener('change',e=>{addFiles(e.target.files);input.value=''});
 ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
 drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
-rows.addEventListener('input',e=>{const el=e.target.closest('input[data-i]');if(!el)return;const i=Number(el.dataset.i);items[i][el.dataset.k]=el.value;const p=document.getElementById('preview-'+i);if(p)p.textContent=filename(items[i])});
+rows.addEventListener('input',e=>{const el=e.target.closest('[data-i][data-k]');if(!el)return;const i=Number(el.dataset.i);let v=el.value;if(el.tagName==='INPUT')v=upperText(v);items[i][el.dataset.k]=v;if(el.dataset.k==='concepto'&&el.tagName==='INPUT')items[i].categoria=classifyPayment(v);const p=document.getElementById('preview-'+i);if(p)p.textContent=filename(items[i]);render()});
 rows.addEventListener('click',e=>{const d=e.target.closest('[data-download]'),r=e.target.closest('[data-remove]');if(d)downloadOne(Number(d.dataset.download));if(r){items.splice(Number(r.dataset.remove),1);render()}});
-clearBtn.onclick=()=>{items=[];render()};downloadAllBtn.onclick=downloadAll;
+clearBtn.onclick=()=>{items=[];render()};downloadAllBtn.onclick=downloadAll;downloadSalariesBtn.onclick=()=>downloadCategory('SUELDOS');downloadRentsBtn.onclick=()=>downloadCategory('ARRIENDOS');downloadServicesBtn.onclick=()=>downloadCategory('SERVICIOS BÁSICOS');
 </script>
 </body>
 </html>
