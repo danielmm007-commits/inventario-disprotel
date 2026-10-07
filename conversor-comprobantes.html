@@ -102,7 +102,7 @@ function detect(text){
   concepto=cleanText(concepto).replace(/^(concepto(?: de pago)?|detalle(?: de pago)?|motivo|descripci[oó]n|referencia)\s*:?\s*/i,'');
   if(generic.test(concepto))concepto='';
 
-  const servicePayment=lines.some(x=>/EMPRESA O SERVICIO|DATOS ADICIONALES DEL PAGO|NO\.\s*TEL[ÉE]FONO/i.test(x));
+  const servicePayment=lines.some(x=>/EMPRESA O SERVICIO|DATOS ADICIONALES DEL PAGO|NO\.\s*TEL[ÉE]FONO/i.test(x));const provider=valueAfter(lines,['Empresa o servicio','Empresa','Servicio']);
   const candidates=lines.filter(x=>{
     const s=cleanText(x);
     if(!s||s.length<4||s.length>110||generic.test(s))return false;
@@ -129,7 +129,7 @@ function detect(text){
 
   if(servicePayment&&isOwn(beneficiario))beneficiario='';
   beneficiario=cleanText(beneficiario).replace(/^(beneficiario|destinatario|receptor|nombre(?: del beneficiario| del destinatario)?)\s*:?\s*/i,'');
-  const conceptoFinal=upperText(normalizeAdministrativeConcept(cleanText(concepto)));const beneficiarioFinal=upperText(beneficiario);return {concepto:conceptoFinal,beneficiario:beneficiarioFinal,categoria:(servicePayment&&classifyPayment(conceptoFinal)==='OTROS'?'SERVICIOS BÁSICOS':classifyPayment(conceptoFinal)),servicePayment};
+  let conceptoFinal=upperText(normalizeAdministrativeConcept(cleanText(concepto)));conceptoFinal=upperText(normalizeByProvider(conceptoFinal,provider));const beneficiarioFinal=upperText(beneficiario);return {concepto:conceptoFinal,beneficiario:beneficiarioFinal,categoria:(servicePayment&&classifyPayment(conceptoFinal)==='OTROS'?'SERVICIOS BÁSICOS':classifyPayment(conceptoFinal)),servicePayment,provider:upperText(provider)};
 }
 function upperText(v){return cleanText(v).toLocaleUpperCase('es-EC')}
 function classifyPayment(concepto){
@@ -138,6 +138,23 @@ function classifyPayment(concepto){
   if(/\b(ARRIENDO|ALQUILER)\b/.test(s))return 'ARRIENDOS';
   if(/\b(FONO|TELEFONO|TELÉFONO|TELEFONIA|TELEFONÍA|ENERGIA|ENERGÍA|LUZ|ELECTRICIDAD|AGUA|INTERNET|PLANILLA TELEFÓNICA|PLANILLA DE ENERGÍA)\b/.test(s))return 'SERVICIOS BÁSICOS';
   return 'OTROS';
+}
+function normalizeByProvider(concepto,provider){
+  let c=upperText(concepto),p=upperText(provider);
+  if(!c)return c;
+
+  const isEnergy=/ELECTRICA|ELÉCTRICA|ENERGIA|ENERGÍA|LUZ|EEQ|EEASA|ELEPCO|CENTROSUR|CNEL/.test(p);
+  const isPhone=/TELEFONO|TELÉFONO|TELEFONIA|TELEFONÍA|CNT|CLARO|MOVISTAR|CONECEL|OTECEL/.test(p);
+
+  if(isEnergy){
+    c=c.replace(/^PAGO\s+/,'').replace(/^PLANILLA DE ENERGÍA\s+/,'');
+    return 'PLANILLA DE ENERGÍA '+cleanText(c);
+  }
+  if(isPhone){
+    c=c.replace(/^PAGO\s+(?:FONO|TELEFONO|TELÉFONO|TELEFONIA|TELEFONÍA)?\s*/,'').replace(/^PLANILLA TELEFÓNICA\s+/,'');
+    return 'PLANILLA TELEFÓNICA '+cleanText(c);
+  }
+  return c;
 }
 function normalizeAdministrativeConcept(v){
   let s=cleanText(v);
