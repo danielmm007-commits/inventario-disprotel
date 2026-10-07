@@ -255,7 +255,6 @@ function isFibraSmart(v){
 }
 function scopeCities(scope){
   if(scope==='GRUPO_SALCEDO')return new Set(['SALCEDO','MULALILLO','CHAMBAPONGO']);
-  if(scope==='GRUPO_LATACUNGA')return new Set(['SAQUISILI','CUICUNO']);
   return new Set([scope]);
 }
 function smartOltCity(v){
@@ -271,8 +270,6 @@ function smartOltCity(v){
   return '';
 }
 function allowedSmartOltCities(scope){
-  if(scope==='CUICUNO')return new Set(['SAQUISILI','CUICUNO']);
-  if(scope==='GRUPO_LATACUNGA')return new Set(['SAQUISILI','CUICUNO']);
   if(scope==='GRUPO_SALCEDO')return new Set(['SALCEDO','MULALILLO','CHAMBAPONGO']);
   return new Set([scope]);
 }
@@ -473,7 +470,6 @@ function reconcileSmart(){
 function smartIsOk(r){return /^OK_/.test(String(r||''))}
 function smartScopeFileName(){
   const v=document.getElementById('smartSucursal').value;
-  if(v==='GRUPO_LATACUNGA')return 'GRUPO_SAQUISILI_CUICUNO';
   return v;
 }
 function renderSmart(){
