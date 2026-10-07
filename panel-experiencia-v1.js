@@ -117,6 +117,9 @@ function ensureMenuShell(){
     const oltCard=cards.find(x=>String(x.href||'').includes('monitoreo-olt.html'));
     if(oltCard){oltCard.title='OLT / ONU';oltCard.icon='📡'}
 
+    const conciliacionAllowed=me?.es_admin_principal===true||['SUPERVISOR TECNICO','ADMINISTRADOR','ADMINISTRADOR SUPREMO'].includes(role.trim());
+    if(conciliacionAllowed&&!cards.some(x=>String(x.href||'').includes('conciliacion-tecnica.html')))cards.push({title:'Conciliación técnica',icon:'🔄',href:'conciliacion-tecnica.html?v='+Date.now(),i:cards.length});
+
     aside.innerHTML='<div class="sideTitle"><div class="navAvatar">'+(avatarEmoji[prefs.avatar_tipo]||'🧑')+'</div><b>Navegación</b><small>Módulos habilitados para ti</small></div><div class="navGroup">MÓDULOS PRINCIPALES</div>'+cards.map(x=>'<button data-href="'+x.href.replace(/"/g,'&quot;')+'">'+x.icon+' <span>'+x.title+'</span></button>').join('');
 
     dash.innerHTML=isRubi
