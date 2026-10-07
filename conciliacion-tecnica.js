@@ -306,5 +306,17 @@ document.getElementById('smartPdf').onclick=()=>{try{smartExportPdf()}catch(x){s
 document.getElementById('smartClear').onclick=()=>{smartErpRows=[];smartRows=[];smartResult=[];erpSmartFile.value='';smartOltFile.value='';sErp.textContent='0';sSmart.textContent='0';sOk.textContent='0';sIssue.textContent='0';smartRun.disabled=true;smartExcel.disabled=true;smartIssuesExcel.disabled=true;smartPdf.disabled=true;smartCards.innerHTML='';smartResults.innerHTML='<tr><td colspan="7">Sin resultados.</td></tr>';smartMsgSet('Carga los dos archivos para comenzar.')};
 document.getElementById('smartSucursal').onchange=()=>{if(erpSmartFile.files[0])loadSmartErp(erpSmartFile.files[0]).catch(x=>smartMsgSet(x.message,'err'))};
 
-document.getElementById('modeRed').onclick=()=>{redMode.style.display='block';smartMode.style.display='none';modeRed.classList.add('on');modeSmart.classList.remove('on')};
-document.getElementById('modeSmart').onclick=()=>{redMode.style.display='none';smartMode.style.display='block';modeSmart.classList.add('on');modeRed.classList.remove('on')};
+document.getElementById('modeRed').onclick=()=>{
+  redMode.style.display='block';smartMode.style.display='none';
+  modeRed.classList.add('on');modeSmart.classList.remove('on');
+  modeBanner.className='modeBanner red';
+  modeBanner.textContent='MODO ACTIVO: CONCILIACIÓN DE RED · ERP/Base ↔ MikroTik ↔ Huawei';
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+document.getElementById('modeSmart').onclick=()=>{
+  redMode.style.display='none';smartMode.style.display='block';
+  modeSmart.classList.add('on');modeRed.classList.remove('on');
+  modeBanner.className='modeBanner smart';
+  modeBanner.textContent='MODO ACTIVO: CONCILIACIÓN DE DATOS FIBRA · carga manual ERP ↔ archivo SmartOLT';
+  window.scrollTo({top:0,behavior:'smooth'});
+};
