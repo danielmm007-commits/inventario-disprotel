@@ -2,14 +2,23 @@ const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-conc
 let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
 const H=()=>({'Content-Type':'application/json','x-user':me.usuario||'','x-pin':me.pin||'','x-session':me.session_token||''});
 const n=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase(),e=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-let rows=[],lote=null,meta=null,currentGroup={codigo:'AUTO',nombre:'Por detectar'},sourceSheet='',lastResultRows=[],lastLote=null;
+let rows=[],lote=null,meta=null,currentGroup={codigo:'AUTO',nombre:'Por detectar'},sourceSheet='',lastResultRows=[],lastLote=null,previewFilter='',resultFilter='';
 async function call(b){const r=await fetch(API,{method:'POST',headers:H(),body:JSON.stringify(b)}),d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw Error(d.error||'Error');return d}
 function msg(t,k=''){const x=document.getElementById('msg');x.textContent=t;x.className='status '+k}
 function map(o){const m={};for(const k of Object.keys(o||{}))m[n(k).replace(/[^A-Z0-9]/g,'')]=k;return m}
 function pick(o,m,ks){for(const k of ks){const z=m[k];if(z!=null&&String(o[z]??'').trim())return o[z]}return ''}
 function one(o,i){const m=map(o),router=pick(o,m,['ROUTER','ROUTERLEGACY','ROUTERACTUALSUGERIDO','RB','NODO']);return{fila_origen:i,codigo_servicio:pick(o,m,['CODSERVICIO','CODIGOSERVICIOLEGACY','CODIGOSERVICIO','CODIGO','SERVICIO','IDSERVICIO']),identificacion:pick(o,m,['IDENTIFICACION','CEDULA','RUC','DOCUMENTO']),cliente:pick(o,m,['CLIENTE','NOMBRECLIENTE','NOMBRE','TITULAR']),router,ciudad:pick(o,m,['CIUDAD','CANTON','ZONA']),tipo_conexion:pick(o,m,['TIPOCONEXION','TIPOSERVICIO','CONEXION','TIPO']),ip_cliente:String(pick(o,m,['IPCLIENTE','IP','DIRECCIONIP','ADDRESS'])||'').replace(/\/\d+$/,'').trim(),plan:pick(o,m,['PLAN','PLANCODIGO','PLANINTERNET','VELOCIDAD']),direccion:pick(o,m,['DIRECCION','DIRECCIONSERVICIO','DOMICILIO']),raw:o}}
 function stats(){const f=rows.filter(x=>/FIBRA|GPON|FTTH/i.test(x.tipo_conexion)).length,r=rows.filter(x=>/RADIO|ANTENA|WIRELESS/i.test(x.tipo_conexion)).length,rs=new Set(rows.map(x=>n(x.router)).filter(Boolean));cTotal.textContent=rows.length;cFibra.textContent=f;cRadio.textContent=r;cRouters.textContent=rs.size}
-function preview(){document.getElementById('preview').innerHTML=rows.length?rows.slice(0,300).map(x=>'<tr><td>'+x.fila_origen+'</td><td>'+e(x.codigo_servicio)+'</td><td>'+e(x.cliente)+'</td><td>'+e(x.router)+'</td><td>'+e(x.tipo_conexion)+'</td><td>'+e(x.ip_cliente)+'</td><td>'+e(x.plan)+'</td><td>'+e(x.direccion)+'</td></tr>').join(''):'<tr><td colspan="8">Sin filas.</td></tr>'}
+function preview(){
+  let data=rows;
+  if(previewFilter==='FIBRA')data=rows.filter(x=>/FIBRA|GPON|FTTH/i.test(x.tipo_conexion));
+  else if(previewFilter==='RADIO')data=rows.filter(x=>/RADIO|ANTENA|WIRELESS/i.test(x.tipo_conexion));
+  else if(previewFilter==='ROUTER')data=rows.filter(x=>String(x.router||'').trim());
+  document.getElementById('preview').innerHTML=data.length?data.slice(0,300).map(x=>'<tr><td>'+x.fila_origen+'</td><td>'+e(x.codigo_servicio)+'</td><td>'+e(x.cliente)+'</td><td>'+e(x.router)+'</td><td>'+e(x.tipo_conexion)+'</td><td>'+e(x.ip_cliente)+'</td><td>'+e(x.plan)+'</td><td>'+e(x.direccion)+'</td></tr>').join(''):'<tr><td colspan="8">Sin filas para este filtro.</td></tr>';
+  ['cTotal','cFibra','cRadio','cRouters'].forEach(id=>document.getElementById(id)?.closest('.card')?.classList.remove('active'));
+  const activeId=previewFilter==='FIBRA'?'cFibra':previewFilter==='RADIO'?'cRadio':previewFilter==='ROUTER'?'cRouters':previewFilter===''?'cTotal':'';
+  if(activeId)document.getElementById(activeId)?.closest('.card')?.classList.add('active');
+}
 function headerScore(arr){
  const ks=(arr||[]).map(x=>n(x).replace(/[^A-Z0-9]/g,''));
  const wanted=['CODSERVICIO','CLIENTE','ROUTER','TIPOCONEXION','IPCLIENTE','PLAN','DIRECCION'];
@@ -56,9 +65,26 @@ file.onchange=()=>file.files[0]&&readFile(file.files[0]).catch(x=>msg(x.message,
 ['dragenter','dragover'].forEach(v=>drop.addEventListener(v,x=>{x.preventDefault();drop.classList.add('drag')}));['dragleave','drop'].forEach(v=>drop.addEventListener(v,x=>{x.preventDefault();drop.classList.remove('drag')}));drop.ondrop=x=>{const f=x.dataTransfer.files[0];if(f)readFile(f).catch(y=>msg(y.message,'err'))};
 save.onclick=async()=>{try{save.disabled=true;save.textContent='Guardando…';const d=await call({action:'upload',archivo_nombre:meta?.name||'archivo.xlsx',archivo_tipo:meta?.type||'',grupo_codigo:currentGroup.codigo,grupo_nombre:currentGroup.nombre,rows});lote=d.lote_id;reconcile.disabled=false;msg('Lote guardado. Ya puedes conciliar.','ok');await history()}catch(x){msg(x.message,'err')}finally{save.disabled=false;save.textContent='Guardar lote'}};
 reconcile.onclick=async()=>{try{if(!lote)throw Error('Primero guarda el lote');reconcile.disabled=true;reconcile.textContent='Conciliando…';await call({action:'reconcile',lote_id:lote});await openLote(lote);show('result');msg('Conciliación terminada.','ok');await history()}catch(x){msg(x.message,'err')}finally{reconcile.disabled=false;reconcile.textContent='Ejecutar conciliación'}};
-clear.onclick=()=>{rows=[];lote=null;lastResultRows=[];lastLote=null;file.value='';currentGroup={codigo:'AUTO',nombre:'Por detectar'};sourceSheet='';stats();preview();save.disabled=true;reconcile.disabled=true;exportIssues.disabled=true;exportIssuesPdf.disabled=true;exportResultExcel.disabled=true;exportResultPdf.disabled=true;document.getElementById('groupDetected').innerHTML='';msg('Sin archivo cargado.')};
+clear.onclick=()=>{rows=[];lote=null;lastResultRows=[];lastLote=null;previewFilter='';resultFilter='';file.value='';currentGroup={codigo:'AUTO',nombre:'Por detectar'};sourceSheet='';stats();preview();save.disabled=true;reconcile.disabled=true;exportIssues.disabled=true;exportIssuesPdf.disabled=true;exportResultExcel.disabled=true;exportResultPdf.disabled=true;document.getElementById('groupDetected').innerHTML='';msg('Sin archivo cargado.')};
+[['cTotal',''],['cFibra','FIBRA'],['cRadio','RADIO'],['cRouters','ROUTER']].forEach(([id,filter])=>{
+  const card=document.getElementById(id)?.closest('.card');
+  if(card){
+    card.classList.add('clickableStat');
+    card.onclick=()=>{previewFilter=previewFilter===filter?'':filter;show('preview');preview();};
+  }
+});
 function cls(r){return /^OK_/.test(r)?'ok':/SIN_|DUPLICADA|OTRA|REVISAR/.test(r)?'warn':''}
-function render(a,l){lastResultRows=a||[];lastLote=l||null;const has=lastResultRows.length>0,hasIssues=lastResultRows.some(x=>!/^OK_/.test(String(x.resultado||'')));document.getElementById('exportIssues').disabled=!hasIssues;document.getElementById('exportIssuesPdf').disabled=!hasIssues;document.getElementById('exportResultExcel').disabled=!has;document.getElementById('exportResultPdf').disabled=!has;const c={};a.forEach(x=>c[x.resultado||'SIN_RESULTADO']=(c[x.resultado||'SIN_RESULTADO']||0)+1);resultCards.innerHTML=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([k,v])=>'<div class="card"><strong>'+v+'</strong><span>'+e(k.replaceAll('_',' '))+'</span></div>').join('');resultSub.textContent=l?(l.archivo_nombre+' · '+(l.grupo_nombre||'')+' · '+a.length+' servicios'):'';results.innerHTML=a.length?a.map(x=>'<tr><td><span class="badge '+cls(x.resultado||'')+'">'+e(x.resultado||'—')+'</span></td><td>'+e(x.codigo_servicio)+'</td><td>'+e(x.cliente)+'</td><td>'+e(x.tipo_conexion)+'</td><td>'+e(x.ip_cliente)+'</td><td>'+e(x.rb_encontrado?((x.rb_comentario||'Encontrado')+' · '+(x.rb_lista||'')):'NO')+'</td><td>'+e(x.huawei_encontrado?((x.huawei_olt_codigo||'')+' · '+(x.huawei_fsp||'')+' · '+(x.huawei_onu_sn||'')):'NO')+'</td><td>'+e(x.detalle||'')+'</td></tr>').join(''):'<tr><td colspan="8">Sin resultados.</td></tr>'}
+function render(a,l){
+  lastResultRows=a||[];lastLote=l||null;
+  const has=lastResultRows.length>0,hasIssues=lastResultRows.some(x=>!/^OK_/.test(String(x.resultado||'')));
+  document.getElementById('exportIssues').disabled=!hasIssues;document.getElementById('exportIssuesPdf').disabled=!hasIssues;document.getElementById('exportResultExcel').disabled=!has;document.getElementById('exportResultPdf').disabled=!has;
+  const c={};lastResultRows.forEach(x=>c[x.resultado||'SIN_RESULTADO']=(c[x.resultado||'SIN_RESULTADO']||0)+1);
+  resultCards.innerHTML=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([k,v])=>'<button type="button" class="card resultFilterCard'+(resultFilter===k?' active':'')+'" data-result="'+e(k)+'"><strong>'+v+'</strong><span>'+e(k.replaceAll('_',' '))+'</span></button>').join('');
+  document.querySelectorAll('.resultFilterCard').forEach(b=>b.onclick=()=>{const v=b.dataset.result||'';resultFilter=resultFilter===v?'':v;render(lastResultRows,lastLote)});
+  const visible=resultFilter?lastResultRows.filter(x=>x.resultado===resultFilter):lastResultRows;
+  resultSub.textContent=l?(l.archivo_nombre+' · '+(l.grupo_nombre||'')+' · '+visible.length+' de '+lastResultRows.length+' servicios'+(resultFilter?' · FILTRO: '+resultFilter.replaceAll('_',' '):'')):'';
+  results.innerHTML=visible.length?visible.map(x=>'<tr><td><span class="badge '+cls(x.resultado||'')+'">'+e(x.resultado||'—')+'</span></td><td>'+e(x.codigo_servicio)+'</td><td>'+e(x.cliente)+'</td><td>'+e(x.tipo_conexion)+'</td><td>'+e(x.ip_cliente)+'</td><td>'+e(x.rb_encontrado?((x.rb_comentario||'Encontrado')+' · '+(x.rb_lista||'')):'NO')+'</td><td>'+e(x.huawei_encontrado?((x.huawei_olt_codigo||'')+' · '+(x.huawei_fsp||'')+' · '+(x.huawei_onu_sn||'')):'NO')+'</td><td>'+e(x.detalle||'')+'</td></tr>').join(''):'<tr><td colspan="8">Sin resultados para este filtro.</td></tr>';
+}
 async function openLote(id){const d=await call({action:'detail',lote_id:id});lote=id;render(d.rows,d.lote);reconcile.disabled=false}
 async function history(){const d=await call({action:'list-lotes'});document.getElementById('history').innerHTML=(d.lotes||[]).length?d.lotes.map(x=>'<div class="histItem"><div><b>'+e(x.archivo_nombre)+'</b><small>'+e(x.grupo_nombre||'Sin grupo')+' · '+e(x.cargado_por_nombre||'')+' · '+new Date(x.created_at).toLocaleString('es-EC')+' · '+x.filas_total+' servicios · '+e(x.estado)+'</small></div><button class="btn alt" onclick="openLote(\''+x.id+'\').then(()=>show(\'result\')).catch(x=>msg(x.message,\'err\'))">Abrir</button></div>').join(''):'<div class="status">Aún no hay cargas.</div>'}
 function exportInconsistencias(){
