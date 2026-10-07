@@ -144,7 +144,7 @@ function show(v){previewView.style.display=v==='preview'?'block':'none';resultVi
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>show(b.dataset.view));history().catch(x=>history.innerHTML='<div class="status err">'+e(x.message)+'</div>');
 
 /* ===== Conciliación manual ERP ↔ SmartOLT (solo FIBRA) ===== */
-let smartErpRows=[],smartRows=[],smartResult=[];
+let smartErpRows=[],smartRows=[],smartAllRows=[],smartResult=[];
 
 function smartMsgSet(t,k=''){const x=document.getElementById('smartMsg');x.textContent=t;x.className='status '+k}
 function compact(v){return n(v).replace(/[^A-Z0-9]/g,'')}
@@ -167,9 +167,34 @@ function nameSimilarity(a,b){
 function branchOfRouter(v){
   const z=n(v);
   if(z.includes('SALCEDO')||z.includes('SANTANA'))return'SALCEDO';
+  if(z.includes('MULALILLO'))return'MULALILLO';
+  if(z.includes('CHAMBAPONGO'))return'CHAMBAPONGO';
   if(z.includes('LATACUNGA'))return'LATACUNGA';
-  if(z.includes('SAQUISILI')||z.includes('CUICUNO'))return'SAQUISILI';
+  if(z.includes('SAQUISILI'))return'SAQUISILI';
+  if(z.includes('CUICUNO'))return'CUICUNO';
   return '';
+}
+function scopeCities(scope){
+  if(scope==='GRUPO_SALCEDO')return new Set(['SALCEDO','MULALILLO','CHAMBAPONGO']);
+  if(scope==='GRUPO_LATACUNGA')return new Set(['LATACUNGA','SAQUISILI','CUICUNO']);
+  return new Set([scope]);
+}
+function smartOltCity(v){
+  const z=n(v);
+  if(z.includes('SALCEDO'))return'SALCEDO';
+  if(z.includes('MULALILLO'))return'MULALILLO';
+  if(z.includes('CHAMBAPONGO'))return'CHAMBAPONGO';
+  if(z.includes('LATACUNGA'))return'LATACUNGA';
+  if(z.includes('SAQUISILI'))return'SAQUISILI';
+  if(z.includes('CUICUNO'))return'CUICUNO';
+  if(z.includes('QUITO'))return'QUITO';
+  return '';
+}
+function allowedSmartOltCities(scope){
+  if(scope==='CUICUNO')return new Set(['SAQUISILI','CUICUNO']);
+  if(scope==='GRUPO_LATACUNGA')return new Set(['LATACUNGA','SAQUISILI','CUICUNO']);
+  if(scope==='GRUPO_SALCEDO')return new Set(['SALCEDO','MULALILLO','CHAMBAPONGO']);
+  return new Set([scope]);
 }
 function smartHeaderScore(arr){
   const ks=(arr||[]).map(x=>compact(x));
@@ -233,19 +258,25 @@ function smartRowsFromWorkbook(wb){
 async function loadSmartErp(f){
   const b=await f.arrayBuffer(),wb=XLSX.read(b,{type:'array'}),det=rowsFromWorkbook(wb);
   if(!det)throw Error('No pude reconocer el archivo ERP.');
-  const suc=document.getElementById('smartSucursal').value;
-  smartErpRows=det.rows.filter(x=>/FIBRA|GPON|FTTH/i.test(x.tipo_conexion)&&branchOfRouter(x.router)===suc);
+  const scope=document.getElementById('smartSucursal').value,cities=scopeCities(scope);
+  smartErpRows=det.rows.filter(x=>/FIBRA|GPON|FTTH/i.test(x.tipo_conexion)&&cities.has(branchOfRouter(x.router)));
   document.getElementById('sErp').textContent=smartErpRows.length;
-  smartMsgSet('ERP listo: '+smartErpRows.length+' servicios FIBRA de '+suc+'.','ok');
+  smartMsgSet('ERP listo: '+smartErpRows.length+' servicios FIBRA del ámbito '+scope.replaceAll('_',' ')+'.','ok');
   smartReady();
 }
 async function loadSmartOlt(f){
   const b=await f.arrayBuffer(),wb=XLSX.read(b,{type:'array'}),det=smartRowsFromWorkbook(wb);
   if(!det)throw Error('No pude reconocer las columnas del archivo SmartOLT.');
-  smartRows=det.rows;
-  document.getElementById('sSmart').textContent=smartRows.length;
-  smartMsgSet('SmartOLT listo: '+smartRows.length+' registros.','ok');
+  smartAllRows=det.rows;
+  filterSmartRowsForScope();
+  smartMsgSet('SmartOLT listo: '+smartRows.length+' registros del ámbito seleccionado (de '+smartAllRows.length+' registros totales del archivo).','ok');
   smartReady();
+}
+function filterSmartRowsForScope(){
+  const scope=document.getElementById('smartSucursal').value,allowed=allowedSmartOltCities(scope);
+  const withOlt=smartAllRows.filter(x=>smartOltCity(x.olt));
+  smartRows=withOlt.length?smartAllRows.filter(x=>allowed.has(smartOltCity(x.olt))):smartAllRows.slice();
+  document.getElementById('sSmart').textContent=smartRows.length;
 }
 function smartReady(){document.getElementById('smartRun').disabled=!(smartErpRows.length&&smartRows.length)}
 function reconcileSmart(){
@@ -289,7 +320,11 @@ function reconcileSmart(){
     if(chosen)used.add(chosen.i);
     out.push({resultado:result,codigo_servicio:erp.codigo_servicio,erp_nombre:ename,erp_ip:eip,smart_nombre:chosen?.s.nombre||'',smart_ip:chosen?.s.ip||'',smart_ip_raw:chosen?.s.ip_raw||'',smart_sn:chosen?.s.sn||'',detalle:detail,confianza:score});
   }
-  smartRows.forEach((s,i)=>{if(!used.has(i))out.push({resultado:'ONU_SMARTOLT_SIN_CLIENTE_ERP',codigo_servicio:'',erp_nombre:'',erp_ip:'',smart_nombre:s.nombre,smart_ip:s.ip,smart_ip_raw:s.ip_raw,smart_sn:s.sn,detalle:'Registro SmartOLT sin correspondencia en los servicios FIBRA ERP de la sucursal seleccionada.',confianza:70})});
+  const scope=document.getElementById('smartSucursal').value;
+  const sharedOltScope=scope==='CUICUNO';
+  if(!sharedOltScope){
+    smartRows.forEach((s,i)=>{if(!used.has(i))out.push({resultado:'ONU_SMARTOLT_SIN_CLIENTE_ERP',codigo_servicio:'',erp_nombre:'',erp_ip:'',smart_nombre:s.nombre,smart_ip:s.ip,smart_ip_raw:s.ip_raw,smart_sn:s.sn,detalle:'Registro SmartOLT sin correspondencia en los servicios FIBRA ERP del ámbito seleccionado.',confianza:70})});
+  }
   smartResult=out;renderSmart();
 }
 function smartIsOk(r){return /^OK_/.test(String(r||''))}
@@ -324,8 +359,11 @@ document.getElementById('smartRun').onclick=()=>{try{reconcileSmart()}catch(x){s
 document.getElementById('smartExcel').onclick=()=>smartExport('RESULTADO_ERP_SMARTOLT',false);
 document.getElementById('smartIssuesExcel').onclick=()=>smartExport('INCONSISTENCIAS_ERP_SMARTOLT',true);
 document.getElementById('smartPdf').onclick=()=>{try{smartExportPdf()}catch(x){smartMsgSet(x.message,'err')}};
-document.getElementById('smartClear').onclick=()=>{smartErpRows=[];smartRows=[];smartResult=[];erpSmartFile.value='';smartOltFile.value='';sErp.textContent='0';sSmart.textContent='0';sOk.textContent='0';sIssue.textContent='0';smartRun.disabled=true;smartExcel.disabled=true;smartIssuesExcel.disabled=true;smartPdf.disabled=true;smartCards.innerHTML='';smartResults.innerHTML='<tr><td colspan="7">Sin resultados.</td></tr>';smartMsgSet('Carga los dos archivos para comenzar.')};
-document.getElementById('smartSucursal').onchange=()=>{if(erpSmartFile.files[0])loadSmartErp(erpSmartFile.files[0]).catch(x=>smartMsgSet(x.message,'err'))};
+document.getElementById('smartClear').onclick=()=>{smartErpRows=[];smartRows=[];smartAllRows=[];smartResult=[];erpSmartFile.value='';smartOltFile.value='';sErp.textContent='0';sSmart.textContent='0';sOk.textContent='0';sIssue.textContent='0';smartRun.disabled=true;smartExcel.disabled=true;smartIssuesExcel.disabled=true;smartPdf.disabled=true;smartCards.innerHTML='';smartResults.innerHTML='<tr><td colspan="7">Sin resultados.</td></tr>';smartMsgSet('Carga los dos archivos para comenzar.')};
+document.getElementById('smartSucursal').onchange=()=>{
+  if(erpSmartFile.files[0])loadSmartErp(erpSmartFile.files[0]).catch(x=>smartMsgSet(x.message,'err'));
+  if(smartAllRows.length){filterSmartRowsForScope();smartReady();smartMsgSet('Ámbito cambiado. SmartOLT filtrado a '+smartRows.length+' registros relacionados.','ok')}
+};
 
 document.getElementById('modeRed').onclick=()=>{
   redMode.style.display='block';smartMode.style.display='none';
