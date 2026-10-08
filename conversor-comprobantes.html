@@ -630,7 +630,7 @@ const SALARY_TWO_PAYMENTS=[
 ];
 function salaryExpectedPayments(it){
   const b=norm(it?.beneficiario);
-  if(b.includes('RUBI PAZMIÑO'))return 3;
+  if(b.includes(norm('RUBI PAZMIÑO')))return 3;
   if(b.includes('DIEGO MANCERO'))return 2;
   return SALARY_TWO_PAYMENTS.some(n=>b.includes(norm(n))||norm(n).includes(b))?2:1;
 }
@@ -859,7 +859,7 @@ function applySalaryGroupRules(){
       }
 
       // ADMIN recurrente: Rubi $1000 desde Daniel/0338.
-      if(b.includes('RUBI PAZMIÑO')&&Math.abs(amount-1000)<0.01){
+      if(b.includes(norm('RUBI PAZMIÑO'))&&Math.abs(amount-1000)<0.01){
         it.categoria='SUELDOS';
         if(!it.manualConcept)it.concepto='SUELDO ADMIN'+(period?' '+period:'');
         if(it.originSuffix&&it.originSuffix!=='0338')it.originMismatch=true;
