@@ -294,6 +294,15 @@ function customRecurringForItem(it){
 }
 function setCustomRecurring(it,type){
   if(!it)return;
+
+  const staff=staffMatch(it?.beneficiario);
+  if(it?.categoria==='SUELDOS'||staff&&/\bSUELDO\b|\bROL\b|\bNOMINA\b|\bNÓMINA\b|\bADMIN\b/.test(norm(it?.concepto))){
+    alert('Los sueldos se controlan únicamente en SUELDOS RECURRENTES. No se agregarán a OTROS RECURRENTES.');
+    cleanCustomRecurringDuplicates();
+    render();
+    return;
+  }
+
   const automatic=recurringMatch(it?.concepto,it?.beneficiario,it?.valor)||salaryRecurringForItem(it);
   if(automatic){
     // Si ya existe una regla automática, eliminar una posible copia personalizada anterior.
@@ -420,8 +429,22 @@ function salaryRecurringForItem(it){
 function cleanCustomRecurringDuplicates(){
   const all=loadCustomRecurring();
   const cleaned=all.filter(r=>{
+    const concept=norm(r.concept);
+    const beneficiary=norm(r.beneficiary);
     const fake={concepto:r.concept,beneficiario:r.beneficiary,valor:r.expectedAmount||'',categoria:'OTROS',error:false,duplicate:false,salarySubgroup:''};
-    return !recurringMatch(fake.concepto,fake.beneficiario,fake.valor);
+
+    // Nunca duplicar servicios/arriendos que ya tienen tarjeta automática.
+    if(recurringMatch(fake.concepto,fake.beneficiario,fake.valor))return false;
+
+    // Nunca guardar en OTROS un sueldo de personal conocido.
+    // Incluye también eventuales como Josue/Mateo: no deben ser recurrentes.
+    const knownStaff=STAFF.some(s=>{
+      const full=norm(s.full),short=norm(s.short);
+      return beneficiary&&(beneficiary.includes(short)||short.includes(beneficiary)||beneficiary.includes(full)||full.includes(beneficiary));
+    });
+    if(/\bSUELDO\b|\bROL\b|\bNOMINA\b|\bNÓMINA\b|\bADMIN\b/.test(concept)&&knownStaff)return false;
+
+    return true;
   });
   if(cleaned.length!==all.length)saveCustomRecurring(cleaned);
 }
