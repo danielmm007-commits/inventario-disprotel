@@ -46,6 +46,21 @@ input[type=file]{display:none}
 .pdfModalActions{display:flex;gap:7px}
 .pdfModalActions button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:7px 9px;cursor:pointer;font-weight:700}
 .pdfFrame{border:0;width:100%;height:100%;background:#eef3f5}
+.recModal{position:fixed;inset:0;background:rgba(9,26,36,.72);display:none;align-items:center;justify-content:center;z-index:10000;padding:18px}
+.recModal.open{display:flex}
+.recCard{width:min(900px,96vw);max-height:92vh;background:#fff;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.recHead{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+.recBody{padding:14px;overflow:auto}
+.recList{display:grid;gap:7px;margin-top:10px}
+.recRow{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #e4e9ef;border-radius:9px;padding:8px 10px;background:#fafbfd}
+.recRow.off{opacity:.55}
+.recRow b{font-size:11px}.recRow small{display:block;color:var(--muted);font-size:9px;margin-top:2px}
+.recRowBtns{display:flex;gap:6px;flex-wrap:wrap}
+.recRowBtns button,.recHead button,.recAdd button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 8px;cursor:pointer;font-size:9px;font-weight:800}
+.recAdd{display:grid;grid-template-columns:2fr 1.3fr 1fr 1fr auto;gap:7px;align-items:end;margin-top:10px}
+.recAdd input,.recAdd select{width:100%;border:1px solid #cedce3;border-radius:7px;padding:7px 8px;font-size:10px}
+@media(max-width:760px){.recAdd{grid-template-columns:1fr}}
+
 .progress{height:5px;background:#dce7ec;border-radius:999px;overflow:hidden;margin-top:10px;display:none}.progress>i{display:block;height:100%;width:0;background:#176fc4;transition:.2s}
 @media(max-width:700px){.wrap{padding:10px}.hero{align-items:flex-start;flex-direction:column}.drop{padding:20px 12px}}
 
@@ -95,6 +110,7 @@ input[type=file]{display:none}
     <button id="clearBtn" type="button">LIMPIAR LISTA</button>
     <button id="downloadAllBtn" class="primary" type="button" disabled>⬇ DESCARGAR TODO</button>
     <button id="confirmPaymentsBtn" type="button" disabled>✅ CONFIRMAR PAGOS</button>
+    <button id="manageRecurringBtn" type="button">⚙ ADMINISTRAR RECURRENTES</button>
     <button id="filterAllBtn" type="button" class="filterOn">TODOS</button>
     <button id="filterSalariesBtn" type="button">SUELDOS</button>
     <button id="filterRentsBtn" type="button">ARRIENDOS</button>
@@ -170,6 +186,30 @@ input[type=file]{display:none}
   </section>
   <div class="privacy">El conversor no modifica el contenido del PDF; únicamente cambia el nombre del archivo al descargarlo.</div>
 </main>
+<div class="recModal" id="recModal" aria-hidden="true">
+  <div class="recCard">
+    <div class="recHead">
+      <b>⚙ ADMINISTRAR PAGOS RECURRENTES</b>
+      <button id="recModalClose" type="button">✕ CERRAR</button>
+    </div>
+    <div class="recBody">
+      <div><b>SERVICIOS BÁSICOS Y ARRIENDOS</b></div>
+      <div class="recList" id="recServiceList"></div>
+      <div style="margin-top:16px"><b>SUELDOS RECURRENTES</b></div>
+      <div class="recList" id="recSalaryList"></div>
+      <div style="margin-top:16px"><b>OTROS RECURRENTES</b></div>
+      <div class="recList" id="recCustomList"></div>
+      <div style="margin-top:16px"><b>AGREGAR NUEVO RECURRENTE</b></div>
+      <div class="recAdd">
+        <input id="newRecConcept" placeholder="CONCEPTO / NOMBRE">
+        <input id="newRecBeneficiary" placeholder="BENEFICIARIO">
+        <select id="newRecType"><option value="VARIABLE">VARIABLE</option><option value="FIJO">FIJO</option></select>
+        <input id="newRecAmount" type="number" step="0.01" placeholder="MONTO">
+        <button id="newRecAddBtn" type="button">+ AGREGAR</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="pdfModal" id="pdfModal" aria-hidden="true">
   <div class="pdfModalCard">
     <div class="pdfModalHead">
@@ -194,9 +234,22 @@ const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim
 if(!me?.session_token){location.replace('login-general-v2.html?return='+encodeURIComponent('conversor-comprobantes.html'))}
 if(norm(me.usuario)!=='DANIEL'&&!norm(me.nombre).includes('CARLOS DANIEL MOLINA')){document.body.innerHTML='<main class="wrap"><div class="notice" style="border-color:#efc5c5;background:#fff4f4;color:#9c3434"><b>Acceso restringido.</b> Este módulo de prueba está habilitado únicamente para Daniel.</div></main>';throw new Error('Acceso restringido')}
 
-const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), mailSelect=$('mailSelect'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), salaryMonthlySummary=$('salaryMonthlySummary'), salaryMonthlyGrid=$('salaryMonthlyGrid'), customRecurringSection=$('customRecurringSection'), customMonthlySummary=$('customMonthlySummary'), customMonthlyGrid=$('customMonthlyGrid'), servicesBody=$('servicesBody'), salariesBody=$('salariesBody'), customBody=$('customBody'), servicesArrow=$('servicesArrow'), salariesArrow=$('salariesArrow'), customArrow=$('customArrow'), progress=$('progress'), progressBar=$('progressBar'), pdfModal=$('pdfModal'), pdfModalTitle=$('pdfModalTitle'), pdfModalDownload=$('pdfModalDownload'), pdfModalClose=$('pdfModalClose'), pdfFrame=$('pdfFrame');
+const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), manageRecurringBtn=$('manageRecurringBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), mailSelect=$('mailSelect'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), salaryMonthlySummary=$('salaryMonthlySummary'), salaryMonthlyGrid=$('salaryMonthlyGrid'), customRecurringSection=$('customRecurringSection'), customMonthlySummary=$('customMonthlySummary'), customMonthlyGrid=$('customMonthlyGrid'), servicesBody=$('servicesBody'), salariesBody=$('salariesBody'), customBody=$('customBody'), servicesArrow=$('servicesArrow'), salariesArrow=$('salariesArrow'), customArrow=$('customArrow'), progress=$('progress'), progressBar=$('progressBar'), recModal=$('recModal'), recModalClose=$('recModalClose'), recServiceList=$('recServiceList'), recSalaryList=$('recSalaryList'), recCustomList=$('recCustomList'), newRecConcept=$('newRecConcept'), newRecBeneficiary=$('newRecBeneficiary'), newRecType=$('newRecType'), newRecAmount=$('newRecAmount'), newRecAddBtn=$('newRecAddBtn'), pdfModal=$('pdfModal'), pdfModalTitle=$('pdfModalTitle'), pdfModalDownload=$('pdfModalDownload'), pdfModalClose=$('pdfModalClose'), pdfFrame=$('pdfFrame');
 let items=[];let activeCategory='TODOS';let activeOrigin='TODOS';let mailGroups=new Set();
 const MONTHLY_KEY='disprotel_recurring_payments_v3';
+const RECURRING_STATE_KEY='disprotel_recurring_active_v1';
+function loadRecurringState(){
+  try{return JSON.parse(localStorage.getItem(RECURRING_STATE_KEY)||'{}')}catch{return {}}
+}
+function saveRecurringState(v){localStorage.setItem(RECURRING_STATE_KEY,JSON.stringify(v))}
+function recurringIsActive(id){
+  const s=loadRecurringState();
+  return s[id]!==false;
+}
+function setRecurringActive(id,active){
+  const s=loadRecurringState();s[id]=!!active;saveRecurringState(s);renderMonthlyControl();renderRecurringManager();
+}
+
 const ACCORDION_KEY='disprotel_recurring_accordion_v1';
 function loadAccordionState(){
   try{return JSON.parse(localStorage.getItem(ACCORDION_KEY)||'{}')}catch{return {}}
@@ -350,7 +403,8 @@ function recurringMatch(concept,beneficiario='',valor=''){
     ['ENE_CENTRAL_SAL',/ENERGIA.*(?:NODO )?(?:PRINCIPAL|CENTRAL)(?:.*SALCEDO)?/]
   ];
   const hit=rules.find(x=>x[1].test(s));
-  return hit?RECURRING.find(r=>r.id===hit[0])||null:null;
+  const r=hit?RECURRING.find(r=>r.id===hit[0])||null:null;
+  return r&&recurringIsActive(r.id)?r:null;
 }
 function salaryRecurringForItem(it){
   if(!it||it.error||it.duplicate||it.categoria!=='SUELDOS')return null;
@@ -358,6 +412,7 @@ function salaryRecurringForItem(it){
   const subgroup=it.salaryAdmin||/\bADMIN\b/i.test(it.concepto||'')?'ADMIN':it.salarySubgroup;
   if(!b||!subgroup)return null;
   return SALARY_RECURRING.find(r=>{
+    if(!recurringIsActive(r.id))return false;
     const rb=norm(r.beneficiary);
     return (b.includes(rb)||rb.includes(b))&&r.subgroup===subgroup;
   })||null;
@@ -458,6 +513,35 @@ function focusRecurringPayment(recurringId){
     if(firstRow)firstRow.scrollIntoView({behavior:'smooth',block:'center'});
   });
 }
+function renderRecurringManager(){
+  const row=(r,type,canDelete=false)=>{
+    const active=recurringIsActive(r.id);
+    return '<div class="recRow '+(active?'':'off')+'"><div><b>'+escapeHtml(r.label)+'</b><small>'+escapeHtml(type)+(r.valueType?' · '+escapeHtml(r.valueType):'')+'</small></div><div class="recRowBtns"><button type="button" data-rec-toggle="'+escapeHtml(r.id)+'">'+(active?'DESACTIVAR':'ACTIVAR')+'</button>'+(canDelete?'<button type="button" data-rec-delete="'+escapeHtml(r.id)+'">ELIMINAR</button>':'')+'</div></div>';
+  };
+  recServiceList.innerHTML=RECURRING.map(r=>row(r,'SERVICIO / ARRIENDO')).join('');
+  recSalaryList.innerHTML=SALARY_RECURRING.map(r=>row(r,'SUELDO')).join('');
+  recCustomList.innerHTML=loadCustomRecurring().map(r=>row(r,'OTRO RECURRENTE',true)).join('')||'<div class="sub">No hay recurrentes personalizados.</div>';
+}
+function openRecurringManager(){
+  renderRecurringManager();
+  recModal.classList.add('open');recModal.setAttribute('aria-hidden','false');
+}
+function closeRecurringManager(){
+  recModal.classList.remove('open');recModal.setAttribute('aria-hidden','true');
+}
+function addManualRecurringFromManager(){
+  const concept=upperText(newRecConcept.value),beneficiary=upperText(newRecBeneficiary.value),type=newRecType.value;
+  if(!concept){alert('Escribe el concepto o nombre del recurrente.');return}
+  if(type==='FIJO'&&!Number(newRecAmount.value||0)){alert('Para un recurrente fijo escribe el monto esperado.');return}
+  const key=norm(concept)+'|'+norm(beneficiary);
+  const all=loadCustomRecurring().filter(r=>r.key!==key);
+  const id='CUSTOM_'+btoa(unescape(encodeURIComponent(key))).replace(/[^A-Za-z0-9]/g,'').slice(0,24);
+  all.push({id,key,label:beneficiary?concept+' · '+beneficiary:concept,concept,beneficiary,valueType:type,expectedAmount:type==='FIJO'?Number(newRecAmount.value):null});
+  saveCustomRecurring(all);
+  setRecurringActive(id,true);
+  newRecConcept.value='';newRecBeneficiary.value='';newRecAmount.value='';newRecType.value='VARIABLE';
+  renderRecurringManager();renderMonthlyControl();
+}
 function renderMonthlyControl(){
   cleanCustomRecurringDuplicates();
   const p=controlPeriod(),ledger=loadMonthlyLedger(),data=ledger[p.key]||{};
@@ -488,9 +572,9 @@ function renderMonthlyControl(){
   };
 
   monthlyPeriod.textContent='Período controlado: '+monthLabel(p)+' · fecha límite provisional: día 5 del mes siguiente';
-  renderCards(RECURRING.filter(r=>r.cardGroup==='SERVICE'),monthlyGrid,monthlySummary);
-  renderCards(SALARY_RECURRING,salaryMonthlyGrid,salaryMonthlySummary);
-  const customDefs=loadCustomRecurring();
+  renderCards(RECURRING.filter(r=>r.cardGroup==='SERVICE'&&recurringIsActive(r.id)),monthlyGrid,monthlySummary);
+  renderCards(SALARY_RECURRING.filter(r=>recurringIsActive(r.id)),salaryMonthlyGrid,salaryMonthlySummary);
+  const customDefs=loadCustomRecurring().filter(r=>recurringIsActive(r.id));
   customRecurringSection.style.display=customDefs.length?'block':'none';
   if(customDefs.length)renderCards(customDefs,customMonthlyGrid,customMonthlySummary);
   applyAccordionState();
@@ -1579,6 +1663,20 @@ function handleRecurringCardClick(e){
 monthlyGrid.addEventListener('click',handleRecurringCardClick);
 salaryMonthlyGrid.addEventListener('click',handleRecurringCardClick);
 customMonthlyGrid.addEventListener('click',handleRecurringCardClick);
+manageRecurringBtn.addEventListener('click',openRecurringManager);
+recModalClose.addEventListener('click',closeRecurringManager);
+recModal.addEventListener('click',e=>{if(e.target===recModal)closeRecurringManager()});
+newRecAddBtn.addEventListener('click',addManualRecurringFromManager);
+recModal.addEventListener('click',e=>{
+  const t=e.target.closest('[data-rec-toggle]'),d=e.target.closest('[data-rec-delete]');
+  if(t){const id=t.dataset.recToggle;setRecurringActive(id,!recurringIsActive(id));return}
+  if(d){
+    const id=d.dataset.recDelete;
+    saveCustomRecurring(loadCustomRecurring().filter(r=>r.id!==id));
+    const s=loadRecurringState();delete s[id];saveRecurringState(s);
+    renderRecurringManager();renderMonthlyControl();
+  }
+});
 clearBtn.onclick=()=>{items=[];activeCategory='TODOS';activeOrigin='TODOS';mailGroups.clear();mailSelect.querySelectorAll('[data-mail-group]').forEach(x=>x.checked=false);render()};downloadAllBtn.onclick=downloadAll;confirmPaymentsBtn.onclick=confirmLoadedPayments;filterAllBtn.onclick=()=>{activeCategory='TODOS';activeOrigin='TODOS';render()};filterSalariesBtn.onclick=()=>{activeCategory='SUELDOS';render()};filterRentsBtn.onclick=()=>{activeCategory='ARRIENDOS';render()};filterServicesBtn.onclick=()=>{activeCategory='SERVICIOS BÁSICOS';render()};filterSalcedoBtn.onclick=()=>{activeOrigin=activeOrigin==='DISPROTEL SALCEDO'?'TODOS':'DISPROTEL SALCEDO';render()};filterSaqLatBtn.onclick=()=>{activeOrigin=activeOrigin==='DISPROTEL SAQUISILÍ-LATACUNGA'?'TODOS':'DISPROTEL SAQUISILÍ-LATACUNGA';render()};emailBtn.onclick=prepareEmail;
 </script>
 </body>
