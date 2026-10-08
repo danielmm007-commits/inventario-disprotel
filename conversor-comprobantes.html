@@ -1300,20 +1300,24 @@ function applySpecialRules(d){
   }
 
   // Servicios básicos esperados por cuenta/origen.
-  const saqLat=/ZUMBALICA|LOMA GRANDE|OFICINA LATACUNGA/.test(c);
-  const salcedo=/FONO SALCEDO|TELEFON(?:O|ÍA).*SALCEDO|OFICINA SALCEDO|NODO PRINCIPAL(?:.*SALCEDO)?|NODO CENTRAL(?:.*SALCEDO)?/.test(c);
+  // IMPORTANTE: nunca reinterpretar un ARRIENDO como planilla de servicio
+  // solo porque el concepto contiene "NODO CENTRAL" o "LOMA GRANDE".
+  if(d.categoria!=='ARRIENDOS'){
+    const saqLat=/ENERGIA.*(?:ZUMBALICA|LOMA GRANDE|OFICINA LATACUNGA)|PLANILLA DE ENERGIA.*(?:ZUMBALICA|LOMA GRANDE|OFICINA LATACUNGA)/.test(c);
+    const salcedo=/FONO SALCEDO|TELEFON(?:O|IA).*SALCEDO|ENERGIA.*OFICINA SALCEDO|PLANILLA DE ENERGIA.*OFICINA SALCEDO|ENERGIA.*NODO (?:PRINCIPAL|CENTRAL)|PLANILLA DE ENERGIA.*NODO (?:PRINCIPAL|CENTRAL)/.test(c);
 
-  if(saqLat){
-    d.categoria='SERVICIOS BÁSICOS';
-    if(suffix&&suffix!=='0338')d.originMismatch=true;
-  }
-  if(salcedo){
-    d.categoria='SERVICIOS BÁSICOS';
-    if(!(b.includes('ALFREDO')&&b.includes('ALBAN'))&&/NODO (?:PRINCIPAL|CENTRAL)/.test(c)){
-      d.concepto='PLANILLA DE ENERGÍA NODO CENTRAL SALCEDO';
-      if(suffix&&suffix!=='7051')d.originMismatch=true;
-    }else if(suffix&&suffix!=='7051'){
-      d.originMismatch=true;
+    if(saqLat){
+      d.categoria='SERVICIOS BÁSICOS';
+      if(suffix&&suffix!=='0338')d.originMismatch=true;
+    }
+    if(salcedo){
+      d.categoria='SERVICIOS BÁSICOS';
+      if(!(b.includes('ALFREDO')&&b.includes('ALBAN'))&&/NODO (?:PRINCIPAL|CENTRAL)/.test(c)){
+        d.concepto='PLANILLA DE ENERGÍA NODO CENTRAL SALCEDO';
+        if(suffix&&suffix!=='7051')d.originMismatch=true;
+      }else if(suffix&&suffix!=='7051'){
+        d.originMismatch=true;
+      }
     }
   }
 
