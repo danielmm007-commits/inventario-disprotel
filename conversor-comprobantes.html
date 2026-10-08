@@ -97,17 +97,33 @@ function likelyPerson(v){
   return s;
 }
 function detectOriginOwner(lines){
+  // 1) Intentar leer específicamente el bloque de origen.
   for(let i=0;i<lines.length;i++){
-    if(/CUENTA DE ORIGEN|DATOS DE ORIGEN/i.test(lines[i])){
-      for(let j=i+1;j<Math.min(lines.length,i+9);j++){
+    if(/CUENTA DE ORIGEN|DATOS DE ORIGEN|DESDE|CUENTA ORIGEN/i.test(lines[i])){
+      for(let j=i+1;j<Math.min(lines.length,i+12);j++){
         const line=cleanText(lines[j]);
         if(/^NOMBRE\b/i.test(line)){
           const inline=line.replace(/^NOMBRE\s*:?\s*/i,'').trim();
           if(inline)return inline;
           if(lines[j+1])return cleanText(lines[j+1]);
         }
+        const n=norm(line);
+        if((n.includes('PEDRO')&&n.includes('MANCERO'))||
+           (n.includes('DANIEL')&&n.includes('MOLINA'))||
+           n.includes('CARLOS MOLINA MUÑOZ')||
+           n.includes('MOLINA MUÑOZ CARLOS DANIEL'))return line;
       }
     }
+  }
+
+  // 2) Fallback para comprobantes de transferencia que no muestran
+  // "Cuenta de origen" con el mismo formato.
+  for(const raw of lines){
+    const line=cleanText(raw),n=norm(line);
+    if(n.includes('PEDRO')&&n.includes('MANCERO'))return line;
+    if((n.includes('DANIEL')&&n.includes('MOLINA'))||
+       n.includes('CARLOS MOLINA MUÑOZ')||
+       n.includes('MOLINA MUÑOZ CARLOS DANIEL'))return line;
   }
   return '';
 }
