@@ -1070,9 +1070,18 @@ function refreshSalaryPaymentNumbers(){
       const av=ad?(ad.y*10000+ad.m*100+ad.d):99999999;
       const bv=bd?(bd.y*10000+bd.m*100+bd.d):99999999;
       if(av!==bv)return av-bv;
-      const ah=String(a.it.hora||'99:99:99');
-      const bh=String(b.it.hora||'99:99:99');
-      if(ah!==bh)return ah.localeCompare(bh);
+      const ah=String(a.it.hora||'');
+      const bh=String(b.it.hora||'');
+      if(ah&&bh&&ah!==bh)return ah.localeCompare(bh);
+
+      // Si el banco no trae hora, usar el número de comprobante como secuencia
+      // antes de depender del orden en que el usuario cargó los archivos.
+      const atx=String(a.it.transactionId||'').replace(/\D/g,'');
+      const btx=String(b.it.transactionId||'').replace(/\D/g,'');
+      if(atx&&btx&&atx!==btx){
+        const an=BigInt(atx),bn=BigInt(btx);
+        return an<bn?-1:1;
+      }
       return a.idx-b.idx;
     });
 
