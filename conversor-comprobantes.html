@@ -76,7 +76,10 @@ input[type=file]{display:none}
   </div>
   <div class="mailSelect" id="mailSelect">
     <strong>SELECCIÓN PARA CORREO:</strong>
-    <label><input type="checkbox" data-mail-group="SUELDOS"> SUELDOS</label>
+    <label><input type="checkbox" data-mail-group="SUELDOS_SALCEDO"> SUELDOS SALCEDO</label>
+    <label><input type="checkbox" data-mail-group="SUELDOS_SAQLAT"> SUELDOS SAQUISILÍ-LATACUNGA</label>
+    <label><input type="checkbox" data-mail-group="SUELDOS_AUX"> PAGOS AUX SALCEDO</label>
+    <label><input type="checkbox" data-mail-group="SUELDOS_ADMIN"> ADMIN</label>
     <label><input type="checkbox" data-mail-group="ARRIENDOS"> ARRIENDOS</label>
     <label><input type="checkbox" data-mail-group="SERV_SALCEDO"> SERVICIOS SALCEDO</label>
     <label><input type="checkbox" data-mail-group="SERV_SAQLAT"> SERVICIOS SAQUISILÍ-LATACUNGA</label>
@@ -712,6 +715,8 @@ function applyCntCounterpartRule(d,counterpart){
   d.cntCounterpart=counterpart;
   if(counterpart==='032730493'){
     d.concepto='PLANILLA TELEFÓNICA SALCEDO';
+    d.categoria='SERVICIOS BÁSICOS';
+    d.originGroup='DISPROTEL SALCEDO';
     if(d.originSuffix&&d.originSuffix!=='7051')d.originMismatch=true;
   }else if(counterpart==='032722491'){
     d.concepto='PLANILLA TELEFÓNICA LATACUNGA';
@@ -1023,7 +1028,10 @@ async function downloadCategory(category){
 }
 function mailGroupItems(group){
   const valid=items.filter(x=>!x.error&&!x.duplicate);
-  if(group==='SUELDOS')return valid.filter(x=>x.categoria==='SUELDOS');
+  if(group==='SUELDOS_SALCEDO')return valid.filter(x=>x.categoria==='SUELDOS'&&x.salaryGroup==='SALCEDO'&&(x.salarySubgroup==='ROL'||x.salarySubgroup==='COM'));
+  if(group==='SUELDOS_SAQLAT')return valid.filter(x=>x.categoria==='SUELDOS'&&x.salaryGroup==='SAQUISILÍ-LATACUNGA'&&(x.salarySubgroup==='ROL'||x.salarySubgroup==='COM'));
+  if(group==='SUELDOS_AUX')return valid.filter(x=>x.categoria==='SUELDOS'&&x.salaryGroup==='PAGOS AUX SALCEDO');
+  if(group==='SUELDOS_ADMIN')return valid.filter(x=>x.categoria==='SUELDOS'&&x.salarySubgroup==='ADMIN');
   if(group==='ARRIENDOS')return valid.filter(x=>x.categoria==='ARRIENDOS');
   if(group==='SERV_SALCEDO')return valid.filter(x=>x.categoria==='SERVICIOS BÁSICOS'&&x.originGroup==='DISPROTEL SALCEDO');
   if(group==='SERV_SAQLAT')return valid.filter(x=>x.categoria==='SERVICIOS BÁSICOS'&&x.originGroup==='DISPROTEL SAQUISILÍ-LATACUNGA');
@@ -1031,14 +1039,17 @@ function mailGroupItems(group){
 }
 function mailGroupName(group){
   return ({
-    SUELDOS:'SUELDOS',
+    SUELDOS_SALCEDO:'SUELDOS_SALCEDO',
+    SUELDOS_SAQLAT:'SUELDOS_SAQUISILI_LATACUNGA',
+    SUELDOS_AUX:'PAGOS_AUX_SALCEDO',
+    SUELDOS_ADMIN:'ADMIN',
     ARRIENDOS:'ARRIENDOS',
     SERV_SALCEDO:'SERVICIOS_BASICOS_SALCEDO',
     SERV_SAQLAT:'SERVICIOS_BASICOS_SAQUISILI_LATACUNGA'
   })[group]||group;
 }
 function effectiveMailGroups(){
-  if(mailGroups.has('TODOS'))return ['SUELDOS','ARRIENDOS','SERV_SALCEDO','SERV_SAQLAT'];
+  if(mailGroups.has('TODOS'))return ['SUELDOS_SALCEDO','SUELDOS_SAQLAT','SUELDOS_AUX','SUELDOS_ADMIN','ARRIENDOS','SERV_SALCEDO','SERV_SAQLAT'];
   return [...mailGroups].filter(x=>x!=='TODOS');
 }
 function selectedMailPacks(){
@@ -1047,27 +1058,19 @@ function selectedMailPacks(){
 function refreshEmailButton(){
   emailBtn.disabled=!selectedMailPacks().length;
 }
-function salaryZipPath(it){
-  if(it.salarySubgroup==='ADMIN')return 'ADMIN/';
-  if(it.salaryGroup==='PAGOS AUX SALCEDO')return 'PAGOS AUX SALCEDO/';
-  if(it.salaryGroup==='SALCEDO'){
-    if(it.salarySubgroup==='ROL')return 'SALCEDO/ROL/';
-    if(it.salarySubgroup==='COM')return 'SALCEDO/COM/';
-    return 'SALCEDO/OTROS/';
+function salaryZipSubpath(group,it){
+  if(group==='SUELDOS_SALCEDO'||group==='SUELDOS_SAQLAT'){
+    if(it.salarySubgroup==='ROL')return 'ROL/';
+    if(it.salarySubgroup==='COM')return 'COM/';
   }
-  if(it.salaryGroup==='SAQUISILÍ-LATACUNGA'){
-    if(it.salarySubgroup==='ROL')return 'SAQUISILI-LATACUNGA/ROL/';
-    if(it.salarySubgroup==='COM')return 'SAQUISILI-LATACUNGA/COM/';
-    return 'SAQUISILI-LATACUNGA/OTROS/';
-  }
-  return 'NO CLASIFICADOS/';
+  return '';
 }
 async function buildMailGroupZip(group,selected){
   if(!selected?.length)return null;
   const zip=new JSZip();const used=new Set();
   for(const it of selected){
     let n=filename(it),base=n.replace(/\.pdf$/i,'');let k=2;
-    const path=group==='SUELDOS'?salaryZipPath(it):'';
+    const path=salaryZipSubpath(group,it);
     let full=path+n;
     while(used.has(norm(full))){
       n=base+' ('+(k++)+').pdf';
