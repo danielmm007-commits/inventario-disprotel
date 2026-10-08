@@ -97,7 +97,7 @@ function likelyPerson(v){
   return s;
 }
 function isOriginStartLine(line){
-  return /CUENTA DE ORIGEN|CUENTA ORIGEN|DATOS DE ORIGEN|CUENTA DEBITADA|CUENTA DE DÉBITO|DESDE/i.test(line);
+  return /CUENTA DE ORIGEN|CUENTA ORIGEN|DATOS DE ORIGEN|CUENTA DEBITADA|CUENTA DE DÉBITO|DESDE/i.test(cleanText(line));
 }
 function isDestinationStartLine(line){
   return /^(PARA|DESTINO|DATOS DE DESTINO|BENEFICIARIO|TRANSFERENCIA DIRECTA A|TRANSFERENCIA A|CUENTA DESTINO)\b/i.test(cleanText(line));
@@ -105,62 +105,20 @@ function isDestinationStartLine(line){
 function originBlock(lines){
   for(let i=0;i<lines.length;i++){
     if(!isOriginStartLine(lines[i]))continue;
-    const block=[lines[i]];
-    for(let j=i+1;j<Math.min(lines.length,i+12);j++){
+    const out=[cleanText(lines[i])];
+    for(let j=i+1;j<Math.min(lines.length,i+10);j++){
       if(isDestinationStartLine(lines[j]))break;
-      block.push(lines[j]);
+      out.push(cleanText(lines[j]));
     }
-    return block;
+    return out;
   }
   return [];
 }
 function detectOriginAccountSuffix(lines){
   const block=originBlock(lines);
-  if(block.length){
-    const joined=block.join(' ');
-    for(const known of ['7051','0338','2000']){
-      if(new RegExp('(?:X|\\*)*'+known+'\\b','i').test(joined))return known;
-    }
-    const candidates=[...joined.matchAll(/(?:X|\*){2,}\s*([0-9]{4})\b/gi)];
-    if(candidates.length)return candidates[0][1];
-  }
-
-  // Fallback muy restringido: solo reconocer nuestras tres terminaciones conocidas
-  // cuando el texto cercano menciona explícitamente origen/débito.
-  for(let i=0;i<lines.length;i++){
-    if(!/ORIGEN|DEBITADA|DÉBITO|DESDE/i.test(lines[i]))continue;
-    const near=[lines[i],lines[i+1]||'',lines[i+2]||''].join(' ');
-    for(const known of ['7051','0338','2000']){
-      if(new RegExp('(?:X|\\*)*'+known+'\\b','i').test(near))return known;
-    }
-  }
-  return '';
-}
-function detectOriginOwner(lines){
-  const block=originBlock(lines);
-  if(block.length){
-    for(let i=0;i<block.length;i++){
-      const line=cleanText(block[i]),n=norm(line);
-      if(/^NOMBRE\b/i.test(line)){
-        const inline=line.replace(/^NOMBRE\s*:?\s*/i,'').trim();
-        if(inline)return inline;
-        if(block[i+1]&&!isDestinationStartLine(block[i+1]))return cleanText(block[i+1]);
-      }
-      if(n.includes('PEDRO')&&n.includes('MANCERO'))return line;
-      if((n.includes('DANIEL')&&n.includes('MOLINA'))||
-         n.includes('CARLOS MOLINA MUÑOZ')||
-         n.includes('MOLINA MUÑOZ CARLOS DANIEL'))return line;
-    }
-  }
-
-  // Nunca usar nombres del destinatario como origen.
-  // Solo aceptar fuera del bloque nombres de titulares conocidos.
-  for(const raw of lines){
-    const line=cleanText(raw),n=norm(line);
-    if(n.includes('PEDRO')&&n.includes('MANCERO'))return line;
-    if((n.includes('DANIEL')&&n.includes('MOLINA'))||
-       n.includes('CARLOS MOLINA MUÑOZ')||
-       n.includes('MOLINA MUÑOZ CARLOS DANIEL'))return line;
+  const joined=block.join(' ');
+  for(const known of ['7051','0338','2000']){
+    if(new RegExp(known+'\\b').test(joined))return known;
   }
   return '';
 }
@@ -171,27 +129,22 @@ function originGroupBySuffix(suffix){
   return '';
 }
 function detectOriginOwner(lines){
-  // 1) Intentar leer específicamente el bloque de origen.
-  for(let i=0;i<lines.length;i++){
-    if(/CUENTA DE ORIGEN|DATOS DE ORIGEN|DESDE|CUENTA ORIGEN/i.test(lines[i])){
-      for(let j=i+1;j<Math.min(lines.length,i+12);j++){
-        const line=cleanText(lines[j]);
-        if(/^NOMBRE\b/i.test(line)){
-          const inline=line.replace(/^NOMBRE\s*:?\s*/i,'').trim();
-          if(inline)return inline;
-          if(lines[j+1])return cleanText(lines[j+1]);
-        }
-        const n=norm(line);
-        if((n.includes('PEDRO')&&n.includes('MANCERO'))||
-           (n.includes('DANIEL')&&n.includes('MOLINA'))||
-           n.includes('CARLOS MOLINA MUÑOZ')||
-           n.includes('MOLINA MUÑOZ CARLOS DANIEL'))return line;
-      }
+  const block=originBlock(lines);
+
+  for(let i=0;i<block.length;i++){
+    const line=cleanText(block[i]),n=norm(line);
+    if(/^NOMBRE\b/i.test(line)){
+      const inline=line.replace(/^NOMBRE\s*:?\s*/i,'').trim();
+      if(inline)return inline;
+      if(block[i+1])return cleanText(block[i+1]);
     }
+    if(n.includes('PEDRO')&&n.includes('MANCERO'))return line;
+    if((n.includes('DANIEL')&&n.includes('MOLINA'))||
+       n.includes('CARLOS MOLINA MUÑOZ')||
+       n.includes('MOLINA MUÑOZ CARLOS DANIEL'))return line;
   }
 
-  // 2) Fallback para comprobantes de transferencia que no muestran
-  // "Cuenta de origen" con el mismo formato.
+  // Fuera del bloque solo aceptamos titulares conocidos, nunca beneficiarios genéricos.
   for(const raw of lines){
     const line=cleanText(raw),n=norm(line);
     if(n.includes('PEDRO')&&n.includes('MANCERO'))return line;
