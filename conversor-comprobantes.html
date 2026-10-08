@@ -474,23 +474,58 @@ function detectTransactionMeta(lines){
   }
   return {fecha,hora};
 }
+const SALARY_TWO_PAYMENTS=[
+  'FERNANDO MOLINA',
+  'BRYAN GARCIA',
+  'CARLOS LUIS MOLINA',
+  'LUIS MOLINA TELLO',
+  'FRANKLIN OROZCO',
+  'STALIN VILCA',
+  'STALIN MOLINA',
+  'JONATHAN OROZCO',
+  'BRISA PURUNCAJAS',
+  'RUBI PAZMIÑO',
+  'MAYRA MOLINA',
+  'THALYA CALAPAQUI',
+  'DANIELA VELASTEGUI'
+];
+function salaryExpectedPayments(it){
+  const b=norm(it?.beneficiario);
+  return SALARY_TWO_PAYMENTS.some(n=>b.includes(norm(n))||norm(n).includes(b))?2:1;
+}
 function refreshSalaryPaymentNumbers(){
   const groups=new Map();
   items.forEach((it,idx)=>{
     it.pagoNumero='';
+    it.salaryPaymentCount=0;
+    it.salaryExpectedCount=0;
+    it.salaryMissingPayment=false;
     if(it.categoria!=='SUELDOS'||!it.beneficiario)return;
-    const key=norm(it.beneficiario)+'|'+String(it.fecha||'');
+    const period=salaryPeriodLabel(it.fecha)||String(it.fecha||'SIN-PERIODO');
+    const key=norm(it.beneficiario)+'|'+period;
     if(!groups.has(key))groups.set(key,[]);
     groups.get(key).push({it,idx});
   });
+
   for(const arr of groups.values()){
     arr.sort((a,b)=>{
+      const ad=parseDateParts(a.it.fecha),bd=parseDateParts(b.it.fecha);
+      const av=ad?(ad.y*10000+ad.m*100+ad.d):99999999;
+      const bv=bd?(bd.y*10000+bd.m*100+bd.d):99999999;
+      if(av!==bv)return av-bv;
       const ah=String(a.it.hora||'99:99:99');
       const bh=String(b.it.hora||'99:99:99');
       if(ah!==bh)return ah.localeCompare(bh);
       return a.idx-b.idx;
     });
-    arr.forEach((x,i)=>x.it.pagoNumero=i+1);
+
+    const expected=Math.max(...arr.map(x=>salaryExpectedPayments(x.it)));
+    arr.forEach((x,i)=>{
+      x.it.pagoNumero=i+1;
+      x.it.salaryPaymentCount=arr.length;
+      x.it.salaryExpectedCount=expected;
+      x.it.salaryMissingPayment=expected>1&&arr.length<expected;
+    });
   }
 }
 function parseDateParts(v){
@@ -753,7 +788,7 @@ function render(){
     <td><select data-i="${i}" data-k="categoria"><option ${it.categoria==='SUELDOS'?'selected':''}>SUELDOS</option><option ${it.categoria==='ARRIENDOS'?'selected':''}>ARRIENDOS</option><option ${it.categoria==='SERVICIOS BÁSICOS'?'selected':''}>SERVICIOS BÁSICOS</option><option ${it.categoria==='OTROS'?'selected':''}>OTROS</option></select></td>
     <td><div class="sub"><b>${escapeHtml(it.originGroup||'SIN CLASIFICAR')}</b></div><div class="sub">${escapeHtml(it.originOwner||'')}${it.originSuffix?' · ****'+escapeHtml(it.originSuffix):''}</div>${it.personalAccount?'<div class="status err" style="margin-top:4px">REVISAR: CUENTA PERSONAL</div>':''}${it.originMismatch?'<div class="status err" style="margin-top:4px">REVISAR ORIGEN</div>':''}</td>
     <td><div class="namePreview" id="preview-${i}">${escapeHtml(filename(it))}</div></td>
-    <td><span class="status ${it.error||it.duplicate?'err':(it.concepto||it.beneficiario?'ok':'warn')}">${it.error?'ERROR':(it.duplicate?'DUPLICADO':(it.personalAccount?'REVISAR CUENTA':(it.originMismatch?'REVISAR ORIGEN':(it.concepto||it.beneficiario?'LISTO':'REVISAR'))))}</span></td>
+    <td><span class="status ${it.error||it.duplicate?'err':(it.salaryMissingPayment?'warn':(it.concepto||it.beneficiario?'ok':'warn'))}">${it.error?'ERROR':(it.duplicate?'DUPLICADO':(it.personalAccount?'REVISAR CUENTA':(it.originMismatch?'REVISAR ORIGEN':(it.salaryMissingPayment?('1 DE '+it.salaryExpectedCount+' · FALTA PAGO 2'):(it.concepto||it.beneficiario?'LISTO':'REVISAR')))))}</span></td>
     <td><div class="rowActions"><button type="button" data-download="${i}" title="Descargar">⬇</button><button type="button" data-remove="${i}" title="Quitar">✕</button></div></td>
   </tr>`}).join('')||'<tr><td colspan="8"><div class="empty">No hay archivos en esta clasificación.</div></td></tr>';
   renderMonthlyControl();
@@ -765,7 +800,7 @@ async function addFiles(files){
   const pdfs=[...files].filter(f=>/\.pdf$/i.test(f.name)||f.type==='application/pdf'); if(!pdfs.length)return;
   progress.style.display='block';let done=0;
   for(const file of pdfs){
-    const it={file,concepto:'',beneficiario:'',categoria:'OTROS',servicePayment:false,valor:'',fecha:'',hora:'',pagoNumero:'',originOwner:'',originSuffix:'',originGroup:'SIN CLASIFICAR',personalAccount:false,originMismatch:false,cntCounterpart:'',serviceContract:'',transactionId:'',manualConcept:false,duplicate:false,duplicateOf:'',error:''};items.push(it);render();
+    const it={file,concepto:'',beneficiario:'',categoria:'OTROS',servicePayment:false,valor:'',fecha:'',hora:'',pagoNumero:'',salaryPaymentCount:0,salaryExpectedCount:0,salaryMissingPayment:false,originOwner:'',originSuffix:'',originGroup:'SIN CLASIFICAR',personalAccount:false,originMismatch:false,cntCounterpart:'',serviceContract:'',transactionId:'',manualConcept:false,duplicate:false,duplicateOf:'',error:''};items.push(it);render();
     try{const text=await extractPdf(file),d=detect(text);it.concepto=upperText(d.concepto);it.beneficiario=upperText(d.beneficiario);it.servicePayment=!!d.servicePayment;it.valor=d.valor||'';it.fecha=d.fecha||'';it.hora=d.hora||'';it.originOwner=d.originOwner||'';it.originSuffix=d.originSuffix||'';it.originGroup=d.originGroup||'SIN CLASIFICAR';it.personalAccount=!!d.personalAccount;it.originMismatch=!!d.originMismatch;it.cntCounterpart=d.cntCounterpart||'';it.serviceContract=d.serviceContract||'';it.transactionId=d.transactionId||'';it.categoria=d.categoria||classifyPayment(it.concepto);normalizeFixedServiceItem(it);if(!text.trim())it.error='PDF sin texto extraíble'}catch(e){it.error='No se pudo leer'}
     applySalaryGroupRules();refreshSalaryPaymentNumbers();refreshDuplicateFlags();learnServiceContract(it);renderMonthlyControl();done++;progressBar.style.width=Math.round(done/pdfs.length*100)+'%';render();
   }
