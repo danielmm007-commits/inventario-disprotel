@@ -54,6 +54,14 @@ input[type=file]{display:none}
   .monthlyHead h3{margin:0;font-size:17px}
   .monthlySummary{font-size:13px;color:#52606d}
   .monthlyGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:9px}
+  .accordionHead{width:100%;border:0;background:transparent;padding:0;cursor:pointer;text-align:left;color:inherit}
+  .accordionHead .monthlyHead{margin-bottom:8px}
+  .accordionArrow{display:inline-block;width:18px;font-weight:900;color:#4d6570}
+  .accordionBody{display:none}
+  .accordionBody.open{display:block}
+  .accordionSection{border-top:1px solid #edf1f3;padding-top:10px;margin-top:8px}
+  .accordionSection:first-of-type{border-top:0}
+
   .dueItem{border:1px solid #e4e9ef;border-radius:10px;padding:10px 12px;background:#fafbfd;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
   .dueItem:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
   tr.reviewFlash td{animation:reviewFlash 1.4s ease-in-out 2}
@@ -116,24 +124,40 @@ input[type=file]{display:none}
       </div>
     </div>
 
-    <div class="monthlyHead" style="margin-top:6px">
-      <div><h3 style="font-size:15px">🏠 SERVICIOS BÁSICOS Y ARRIENDOS</h3></div>
-      <div class="monthlySummary" id="monthlySummary"></div>
-    </div>
-    <div class="monthlyGrid" id="monthlyGrid"></div>
-
-    <div class="monthlyHead" style="margin-top:20px">
-      <div><h3 style="font-size:15px">👥 SUELDOS RECURRENTES</h3></div>
-      <div class="monthlySummary" id="salaryMonthlySummary"></div>
-    </div>
-    <div class="monthlyGrid" id="salaryMonthlyGrid"></div>
-
-    <div id="customRecurringSection" style="display:none">
-      <div class="monthlyHead" style="margin-top:20px">
-        <div><h3 style="font-size:15px">🔁 OTROS RECURRENTES</h3></div>
-        <div class="monthlySummary" id="customMonthlySummary"></div>
+    <div class="accordionSection">
+      <button type="button" class="accordionHead" data-accordion="services">
+        <div class="monthlyHead">
+          <div><h3 style="font-size:15px"><span class="accordionArrow" id="servicesArrow">▶</span>🏠 SERVICIOS BÁSICOS Y ARRIENDOS</h3></div>
+          <div class="monthlySummary" id="monthlySummary"></div>
+        </div>
+      </button>
+      <div class="accordionBody" id="servicesBody">
+        <div class="monthlyGrid" id="monthlyGrid"></div>
       </div>
-      <div class="monthlyGrid" id="customMonthlyGrid"></div>
+    </div>
+
+    <div class="accordionSection">
+      <button type="button" class="accordionHead" data-accordion="salaries">
+        <div class="monthlyHead">
+          <div><h3 style="font-size:15px"><span class="accordionArrow" id="salariesArrow">▶</span>👥 SUELDOS RECURRENTES</h3></div>
+          <div class="monthlySummary" id="salaryMonthlySummary"></div>
+        </div>
+      </button>
+      <div class="accordionBody" id="salariesBody">
+        <div class="monthlyGrid" id="salaryMonthlyGrid"></div>
+      </div>
+    </div>
+
+    <div id="customRecurringSection" class="accordionSection" style="display:none">
+      <button type="button" class="accordionHead" data-accordion="custom">
+        <div class="monthlyHead">
+          <div><h3 style="font-size:15px"><span class="accordionArrow" id="customArrow">▶</span>🔁 OTROS RECURRENTES</h3></div>
+          <div class="monthlySummary" id="customMonthlySummary"></div>
+        </div>
+      </button>
+      <div class="accordionBody" id="customBody">
+        <div class="monthlyGrid" id="customMonthlyGrid"></div>
+      </div>
     </div>
   </section>
   <section class="card">
@@ -170,9 +194,36 @@ const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim
 if(!me?.session_token){location.replace('login-general-v2.html?return='+encodeURIComponent('conversor-comprobantes.html'))}
 if(norm(me.usuario)!=='DANIEL'&&!norm(me.nombre).includes('CARLOS DANIEL MOLINA')){document.body.innerHTML='<main class="wrap"><div class="notice" style="border-color:#efc5c5;background:#fff4f4;color:#9c3434"><b>Acceso restringido.</b> Este módulo de prueba está habilitado únicamente para Daniel.</div></main>';throw new Error('Acceso restringido')}
 
-const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), mailSelect=$('mailSelect'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), salaryMonthlySummary=$('salaryMonthlySummary'), salaryMonthlyGrid=$('salaryMonthlyGrid'), customRecurringSection=$('customRecurringSection'), customMonthlySummary=$('customMonthlySummary'), customMonthlyGrid=$('customMonthlyGrid'), progress=$('progress'), progressBar=$('progressBar'), pdfModal=$('pdfModal'), pdfModalTitle=$('pdfModalTitle'), pdfModalDownload=$('pdfModalDownload'), pdfModalClose=$('pdfModalClose'), pdfFrame=$('pdfFrame');
+const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), mailSelect=$('mailSelect'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), salaryMonthlySummary=$('salaryMonthlySummary'), salaryMonthlyGrid=$('salaryMonthlyGrid'), customRecurringSection=$('customRecurringSection'), customMonthlySummary=$('customMonthlySummary'), customMonthlyGrid=$('customMonthlyGrid'), servicesBody=$('servicesBody'), salariesBody=$('salariesBody'), customBody=$('customBody'), servicesArrow=$('servicesArrow'), salariesArrow=$('salariesArrow'), customArrow=$('customArrow'), progress=$('progress'), progressBar=$('progressBar'), pdfModal=$('pdfModal'), pdfModalTitle=$('pdfModalTitle'), pdfModalDownload=$('pdfModalDownload'), pdfModalClose=$('pdfModalClose'), pdfFrame=$('pdfFrame');
 let items=[];let activeCategory='TODOS';let activeOrigin='TODOS';let mailGroups=new Set();
 const MONTHLY_KEY='disprotel_recurring_payments_v3';
+const ACCORDION_KEY='disprotel_recurring_accordion_v1';
+function loadAccordionState(){
+  try{return JSON.parse(localStorage.getItem(ACCORDION_KEY)||'{}')}catch{return {}}
+}
+function saveAccordionState(v){
+  localStorage.setItem(ACCORDION_KEY,JSON.stringify(v));
+}
+function applyAccordionState(){
+  const state=loadAccordionState();
+  const defs=[
+    {key:'services',body:servicesBody,arrow:servicesArrow},
+    {key:'salaries',body:salariesBody,arrow:salariesArrow},
+    {key:'custom',body:customBody,arrow:customArrow}
+  ];
+  defs.forEach(x=>{
+    const open=!!state[x.key];
+    x.body?.classList.toggle('open',open);
+    if(x.arrow)x.arrow.textContent=open?'▼':'▶';
+  });
+}
+function toggleAccordion(key){
+  const state=loadAccordionState();
+  state[key]=!state[key];
+  saveAccordionState(state);
+  applyAccordionState();
+}
+
 const CUSTOM_RECURRING_KEY='disprotel_custom_recurring_v1';
 function loadCustomRecurring(){
   try{return JSON.parse(localStorage.getItem(CUSTOM_RECURRING_KEY)||'[]')}catch{return []}
@@ -409,6 +460,7 @@ function renderMonthlyControl(){
   const customDefs=loadCustomRecurring();
   customRecurringSection.style.display=customDefs.length?'block':'none';
   if(customDefs.length)renderCards(customDefs,customMonthlyGrid,customMonthlySummary);
+  applyAccordionState();
 }
 
 function cleanText(v){return String(v||'').replace(/\s+/g,' ').replace(/^[\s:;-]+|[\s:;-]+$/g,'').trim()}
@@ -1478,6 +1530,9 @@ pdfModalClose.addEventListener('click',closePdfPreview);
 pdfModal.addEventListener('click',e=>{if(e.target===pdfModal)closePdfPreview()});
 pdfModalDownload.addEventListener('click',()=>{if(activePreviewIndex>=0)downloadOne(activePreviewIndex)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&pdfModal.classList.contains('open'))closePdfPreview()});
+document.querySelectorAll('[data-accordion]').forEach(btn=>{
+  btn.addEventListener('click',()=>toggleAccordion(btn.dataset.accordion));
+});
 renderMonthlyControl();
 function handleRecurringCardClick(e){
   const card=e.target.closest('[data-recurring-id]');
