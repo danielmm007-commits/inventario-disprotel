@@ -517,9 +517,12 @@ function canonicalEnergyConcept(v){
   if(s.includes('NODO CENTRAL')||s.includes('NODO PRINCIPAL'))return 'PLANILLA DE ENERGÍA NODO CENTRAL SALCEDO';
   return '';
 }
+const FIXED_SERVICE_CONTRACTS={
+  '200035857461':'PLANILLA DE ENERGÍA OFICINA SALCEDO'
+};
 function applyKnownServiceContract(d){
   if(!d.serviceContract)return d;
-  const known=loadServiceContractMap()[d.serviceContract];
+  const known=FIXED_SERVICE_CONTRACTS[d.serviceContract]||loadServiceContractMap()[d.serviceContract];
   if(known){
     d.concepto=known;
     d.categoria='SERVICIOS BÁSICOS';
@@ -528,6 +531,7 @@ function applyKnownServiceContract(d){
 }
 function learnServiceContract(it){
   if(!it.serviceContract)return;
+  if(FIXED_SERVICE_CONTRACTS[it.serviceContract])return;
   const canonical=canonicalEnergyConcept(it.concepto);
   if(!canonical)return;
   const map=loadServiceContractMap();
