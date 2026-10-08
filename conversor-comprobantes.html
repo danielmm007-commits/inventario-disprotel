@@ -185,14 +185,18 @@ function availableRecurringForItem(currentIt){
 }
 function needsManualRecurringAssociation(it){
   if(it?.manualRecurringId)return true;
-  if(recurringMatch(it?.concepto,it?.beneficiario,it?.valor))return false;
   const s=norm(it?.concepto);
-  if(!s)return true;
   const generic=[
     'PAGO','TRANSFERENCIA','COMPROBANTE','OTROS','SIN CONCEPTO',
     'PAGO SERVICIO','PAGO VARIOS','PAGO PROVEEDOR'
   ];
-  return generic.includes(s)||s.length<5;
+
+  // Si no hay concepto útil, SIEMPRE permitir asociación manual.
+  if(!s||generic.includes(s)||s.length<5)return true;
+
+  // Solo ocultar el selector cuando el concepto ya identifica claramente un recurrente.
+  if(recurringMatch(it?.concepto,it?.beneficiario,it?.valor))return false;
+  return false;
 }
 function registerRecurringPayment(it){
   const r=recurringForItem(it);if(!r)return;
