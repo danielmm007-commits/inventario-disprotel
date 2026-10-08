@@ -128,7 +128,10 @@ const RECURRING=[
   {id:'ENE_LOMA',label:'ENERGÍA LOMA GRANDE',match:/ENERG[IÍ]A.*LOMA GRANDE/},
   {id:'ENE_OF_LAT',label:'ENERGÍA OFICINA LATACUNGA',match:/ENERG[IÍ]A.*OFICINA.*LATACUNGA/},
   {id:'ENE_OF_SAL',label:'ENERGÍA OFICINA SALCEDO',match:/ENERG[IÍ]A.*OFICINA.*SALCEDO/},
-  {id:'ENE_CENTRAL_SAL',label:'ENERGÍA NODO CENTRAL SALCEDO',match:/ENERG[IÍ]A.*(?:NODO )?(?:PRINCIPAL|CENTRAL)(?:.*SALCEDO)?/}
+  {id:'ENE_CENTRAL_SAL',label:'ENERGÍA NODO CENTRAL SALCEDO',match:/ENERG[IÍ]A.*(?:NODO )?(?:PRINCIPAL|CENTRAL)(?:.*SALCEDO)?/},
+  {id:'JEMMY_200',label:'PAGO JEMMY',match:/JEMMY/,valueType:'FIJO',expectedAmount:200},
+  {id:'PUBLICIDAD_REDES',label:'PUBLICIDAD EN REDES',match:/PUBLICIDAD/,valueType:'VARIABLE'},
+  {id:'DISENO_ARTES',label:'DISEÑO DE ARTES',match:/DISENO|DISEÑO/,valueType:'VARIABLE'}
 ];
 function controlPeriod(){
   const now=new Date();
@@ -145,25 +148,31 @@ function loadMonthlyLedger(){
 function saveMonthlyLedger(v){
   localStorage.setItem(MONTHLY_KEY,JSON.stringify(v));
 }
-function recurringMatch(concept){
+function recurringMatch(concept,beneficiario='',valor=''){
+  const b=norm(beneficiario);
+  const amount=Number(valor||0);
+  if(b.includes('JEMMY')&&Math.abs(amount-200)<0.01){
+    return RECURRING.find(r=>r.id==='JEMMY_200')||null;
+  }
   const s=upperText(concept);
+  if(norm(s).includes('PUBLICIDAD'))return RECURRING.find(r=>r.id==='PUBLICIDAD_REDES')||null;
+  if(norm(s).includes('DISENO'))return RECURRING.find(r=>r.id==='DISENO_ARTES')||null;
   return RECURRING.find(r=>r.match.test(s))||null;
 }
 function registerRecurringPayment(it){
-  if(!['ARRIENDOS','SERVICIOS BÁSICOS'].includes(it.categoria))return;
-  const r=recurringMatch(it.concepto);if(!r)return;
+  const r=recurringMatch(it.concepto,it.beneficiario,it.valor);if(!r)return;
   const p=controlPeriod(),ledger=loadMonthlyLedger();
   if(!ledger[p.key])ledger[p.key]={};
   ledger[p.key][r.id]={paid:true,at:new Date().toISOString(),concept:it.concepto,amount:it.valor||''};
   saveMonthlyLedger(ledger);
 }
 function confirmLoadedPayments(){
-  const candidates=items.filter(it=>!it.error&&!it.duplicate&&['ARRIENDOS','SERVICIOS BÁSICOS'].includes(it.categoria));
+  const candidates=items.filter(it=>!it.error&&!it.duplicate&&recurringMatch(it.concepto,it.beneficiario,it.valor));
   if(!candidates.length)return;
   let confirmed=0;
   for(const it of candidates){
     learnServiceContract(it);
-    const recurring=recurringMatch(it.concepto);
+    const recurring=recurringMatch(it.concepto,it.beneficiario,it.valor);
     if(!recurring)continue;
     registerRecurringPayment(it);
     confirmed++;
@@ -175,7 +184,7 @@ function focusRecurringPayment(recurringId){
   const r=RECURRING.find(x=>x.id===recurringId);
   if(!r)return;
   const matches=items
-    .map((it,index)=>({it,index,recurring:(!it.error&&!it.duplicate)?recurringMatch(it.concepto):null}))
+    .map((it,index)=>({it,index,recurring:(!it.error&&!it.duplicate)?recurringMatch(it.concepto,it.beneficiario,it.valor):null}))
     .filter(x=>x.recurring?.id===recurringId);
 
   if(!matches.length)return;
@@ -203,7 +212,7 @@ function renderMonthlyControl(){
   const loadedIds=new Set();
   for(const it of items){
     if(it.error||it.duplicate)continue;
-    const r=recurringMatch(it.concepto);
+    const r=recurringMatch(it.concepto,it.beneficiario,it.valor);
     if(r)loadedIds.add(r.id);
   }
 
@@ -219,7 +228,7 @@ function renderMonthlyControl(){
     const hasLoaded=!ok&&loadedIds.has(r.id);
     const cls=ok?'duePaid':(hasLoaded?'dueLoaded':(p.duePassed?'dueLate':'duePending'));
     const status=ok?'PAGADO':(hasLoaded?'COMPROBANTE CARGADO · POR CONFIRMAR':(p.duePassed?'VENCIDO':'PENDIENTE'));
-    return '<div class="dueItem '+cls+'" data-recurring-id="'+escapeHtml(r.id)+'" title="Ver comprobante asociado"><b>'+escapeHtml(r.label)+'</b><span class="dueTag">'+status+'</span></div>';
+    return '<div class="dueItem '+cls+'" data-recurring-id="'+escapeHtml(r.id)+'" title="Ver comprobante asociado"><b>'+escapeHtml(r.label)+'</b><span class="dueTag">'+status+'</span>'+(r.valueType?'<div class="sub">'+escapeHtml(r.valueType)+'</div>':'')+'</div>';
   }).join('');
 }
 
@@ -824,7 +833,7 @@ function render(){
     <td><div class="rowActions"><button type="button" data-download="${i}" title="Descargar">⬇</button><button type="button" data-remove="${i}" title="Quitar">✕</button></div></td>
   </tr>`}).join('')||'<tr><td colspan="8"><div class="empty">No hay archivos en esta clasificación.</div></td></tr>';
   renderMonthlyControl();
-  const valid=items.filter(x=>!x.error);downloadAllBtn.disabled=!valid.length;confirmPaymentsBtn.disabled=!items.some(x=>!x.error&&!x.duplicate&&['ARRIENDOS','SERVICIOS BÁSICOS'].includes(x.categoria));refreshEmailButton();[filterAllBtn,filterSalariesBtn,filterRentsBtn,filterServicesBtn].forEach(b=>b.classList.remove('filterOn'));({TODOS:filterAllBtn,SUELDOS:filterSalariesBtn,ARRIENDOS:filterRentsBtn,'SERVICIOS BÁSICOS':filterServicesBtn}[activeCategory]||filterAllBtn).classList.add('filterOn');[filterSalcedoBtn,filterSaqLatBtn].forEach(b=>b.classList.remove('filterOn'));if(activeOrigin==='DISPROTEL SALCEDO')filterSalcedoBtn.classList.add('filterOn');if(activeOrigin==='DISPROTEL SAQUISILÍ-LATACUNGA')filterSaqLatBtn.classList.add('filterOn');
+  const valid=items.filter(x=>!x.error);downloadAllBtn.disabled=!valid.length;confirmPaymentsBtn.disabled=!items.some(x=>!x.error&&!x.duplicate&&recurringMatch(x.concepto,x.beneficiario,x.valor));refreshEmailButton();[filterAllBtn,filterSalariesBtn,filterRentsBtn,filterServicesBtn].forEach(b=>b.classList.remove('filterOn'));({TODOS:filterAllBtn,SUELDOS:filterSalariesBtn,ARRIENDOS:filterRentsBtn,'SERVICIOS BÁSICOS':filterServicesBtn}[activeCategory]||filterAllBtn).classList.add('filterOn');[filterSalcedoBtn,filterSaqLatBtn].forEach(b=>b.classList.remove('filterOn'));if(activeOrigin==='DISPROTEL SALCEDO')filterSalcedoBtn.classList.add('filterOn');if(activeOrigin==='DISPROTEL SAQUISILÍ-LATACUNGA')filterSaqLatBtn.classList.add('filterOn');
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function attr(v){return escapeHtml(v).replace(/\n/g,' ')}
