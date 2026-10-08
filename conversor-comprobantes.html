@@ -14,7 +14,11 @@
 .drop{margin-top:12px;border:2px dashed #9fbac5;border-radius:14px;background:#fff;padding:28px;text-align:center;cursor:pointer;transition:.15s}
 .drop.drag{border-color:var(--blue);background:#eef7ff}.drop strong{display:block;font-size:15px}.drop span{display:block;margin-top:5px;font-size:11px;color:var(--muted)}
 input[type=file]{display:none}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.toolbar button{border:0;border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer;background:#fff;color:#244761;border:1px solid var(--line)}.toolbar .primary{background:var(--blue);color:#fff;border-color:var(--blue)}.toolbar .filterOn{background:#e8f3ff;border-color:#74aeda;color:#0d5c97}.toolbar button:disabled{opacity:.45;cursor:not-allowed}
+.mailSelect{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 14px;padding:10px 12px;border:1px solid #e4e9ef;border-radius:12px;background:#fafbfd}
+  .mailSelect strong{font-size:12px;margin-right:4px}
+  .mailSelect label{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border:1px solid #d8dee7;border-radius:999px;background:#fff;font-size:12px;font-weight:700;cursor:pointer}
+  .mailSelect input{accent-color:#1f6feb}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.toolbar button{border:0;border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer;background:#fff;color:#244761;border:1px solid var(--line)}.toolbar .primary{background:var(--blue);color:#fff;border-color:var(--blue)}.toolbar .filterOn{background:#e8f3ff;border-color:#74aeda;color:#0d5c97}.toolbar button:disabled{opacity:.45;cursor:not-allowed}
 .card{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .tableWrap{overflow:auto}.tbl{width:100%;border-collapse:collapse;min-width:900px}.tbl th{background:#f6f9fa;text-align:left;font-size:9px;color:#60737c;padding:9px;border-bottom:1px solid var(--line);letter-spacing:.05em}.tbl td{padding:8px;border-bottom:1px solid #edf1f3;vertical-align:top;font-size:10px}.tbl tr:last-child td{border-bottom:0}
 .tbl input,.tbl select{width:100%;border:1px solid #cedce3;border-radius:7px;padding:7px 8px;font-size:10px;color:var(--ink);background:#fff}.tbl input{text-transform:uppercase}.tbl input:focus{outline:2px solid #b8d9ef;border-color:#6ca9d1}
@@ -70,6 +74,14 @@ input[type=file]{display:none}
     <button id="filterSaqLatBtn" type="button">SAQUISILÍ-LATACUNGA</button>
     <button id="emailBtn" type="button" disabled>✉ PREPARAR CORREO</button>
   </div>
+  <div class="mailSelect" id="mailSelect">
+    <strong>SELECCIÓN PARA CORREO:</strong>
+    <label><input type="checkbox" data-mail-group="SUELDOS"> SUELDOS</label>
+    <label><input type="checkbox" data-mail-group="ARRIENDOS"> ARRIENDOS</label>
+    <label><input type="checkbox" data-mail-group="SERV_SALCEDO"> SERVICIOS SALCEDO</label>
+    <label><input type="checkbox" data-mail-group="SERV_SAQLAT"> SERVICIOS SAQUISILÍ-LATACUNGA</label>
+    <label><input type="checkbox" data-mail-group="TODOS"> TODOS CLASIFICADOS</label>
+  </div>
   <section class="monthlyBox">
     <div class="monthlyHead">
       <div>
@@ -102,8 +114,8 @@ const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim
 if(!me?.session_token){location.replace('login-general-v2.html?return='+encodeURIComponent('conversor-comprobantes.html'))}
 if(norm(me.usuario)!=='DANIEL'&&!norm(me.nombre).includes('CARLOS DANIEL MOLINA')){document.body.innerHTML='<main class="wrap"><div class="notice" style="border-color:#efc5c5;background:#fff4f4;color:#9c3434"><b>Acceso restringido.</b> Este módulo de prueba está habilitado únicamente para Daniel.</div></main>';throw new Error('Acceso restringido')}
 
-const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), progress=$('progress'), progressBar=$('progressBar');
-let items=[];let activeCategory='TODOS';let activeOrigin='TODOS';
+const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), mailSelect=$('mailSelect'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), progress=$('progress'), progressBar=$('progressBar');
+let items=[];let activeCategory='TODOS';let activeOrigin='TODOS';let mailGroups=new Set();
 const MONTHLY_KEY='disprotel_recurring_payments_v2';
 const RECURRING=[
   {id:'ARR_NIAGARA',label:'ARRIENDO NODO NIAGARA',match:/ARRIENDO.*NIAGARA/},
@@ -739,7 +751,7 @@ function render(){
     <td><div class="rowActions"><button type="button" data-download="${i}" title="Descargar">⬇</button><button type="button" data-remove="${i}" title="Quitar">✕</button></div></td>
   </tr>`}).join('')||'<tr><td colspan="8"><div class="empty">No hay archivos en esta clasificación.</div></td></tr>';
   renderMonthlyControl();
-  const valid=items.filter(x=>!x.error);downloadAllBtn.disabled=!valid.length;confirmPaymentsBtn.disabled=!items.some(x=>!x.error&&!x.duplicate&&['ARRIENDOS','SERVICIOS BÁSICOS'].includes(x.categoria));emailBtn.disabled=activeCategory==='TODOS'||!valid.some(x=>x.categoria===activeCategory);[filterAllBtn,filterSalariesBtn,filterRentsBtn,filterServicesBtn].forEach(b=>b.classList.remove('filterOn'));({TODOS:filterAllBtn,SUELDOS:filterSalariesBtn,ARRIENDOS:filterRentsBtn,'SERVICIOS BÁSICOS':filterServicesBtn}[activeCategory]||filterAllBtn).classList.add('filterOn');[filterSalcedoBtn,filterSaqLatBtn].forEach(b=>b.classList.remove('filterOn'));if(activeOrigin==='DISPROTEL SALCEDO')filterSalcedoBtn.classList.add('filterOn');if(activeOrigin==='DISPROTEL SAQUISILÍ-LATACUNGA')filterSaqLatBtn.classList.add('filterOn');
+  const valid=items.filter(x=>!x.error);downloadAllBtn.disabled=!valid.length;confirmPaymentsBtn.disabled=!items.some(x=>!x.error&&!x.duplicate&&['ARRIENDOS','SERVICIOS BÁSICOS'].includes(x.categoria));refreshEmailButton();[filterAllBtn,filterSalariesBtn,filterRentsBtn,filterServicesBtn].forEach(b=>b.classList.remove('filterOn'));({TODOS:filterAllBtn,SUELDOS:filterSalariesBtn,ARRIENDOS:filterRentsBtn,'SERVICIOS BÁSICOS':filterServicesBtn}[activeCategory]||filterAllBtn).classList.add('filterOn');[filterSalcedoBtn,filterSaqLatBtn].forEach(b=>b.classList.remove('filterOn'));if(activeOrigin==='DISPROTEL SALCEDO')filterSalcedoBtn.classList.add('filterOn');if(activeOrigin==='DISPROTEL SAQUISILÍ-LATACUNGA')filterSaqLatBtn.classList.add('filterOn');
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function attr(v){return escapeHtml(v).replace(/\n/g,' ')}
@@ -770,6 +782,43 @@ async function downloadCategory(category){
   for(const it of selected){let n=filename(it),base=n.replace(/\.pdf$/i,'');let k=2;while(used.has(norm(n)))n=base+' ('+(k++)+').pdf';used.add(norm(n));zip.file(n,it.file)}
   const blob=await zip.generateAsync({type:'blob'});downloadBlob(blob,category+'.zip')
 }
+function mailGroupItems(group){
+  const valid=items.filter(x=>!x.error&&!x.duplicate);
+  if(group==='SUELDOS')return valid.filter(x=>x.categoria==='SUELDOS');
+  if(group==='ARRIENDOS')return valid.filter(x=>x.categoria==='ARRIENDOS');
+  if(group==='SERV_SALCEDO')return valid.filter(x=>x.categoria==='SERVICIOS BÁSICOS'&&x.originGroup==='DISPROTEL SALCEDO');
+  if(group==='SERV_SAQLAT')return valid.filter(x=>x.categoria==='SERVICIOS BÁSICOS'&&x.originGroup==='DISPROTEL SAQUISILÍ-LATACUNGA');
+  return [];
+}
+function mailGroupName(group){
+  return ({
+    SUELDOS:'SUELDOS',
+    ARRIENDOS:'ARRIENDOS',
+    SERV_SALCEDO:'SERVICIOS_BASICOS_SALCEDO',
+    SERV_SAQLAT:'SERVICIOS_BASICOS_SAQUISILI_LATACUNGA'
+  })[group]||group;
+}
+function effectiveMailGroups(){
+  if(mailGroups.has('TODOS'))return ['SUELDOS','ARRIENDOS','SERV_SALCEDO','SERV_SAQLAT'];
+  return [...mailGroups].filter(x=>x!=='TODOS');
+}
+function selectedMailPacks(){
+  return effectiveMailGroups().map(group=>({group,items:mailGroupItems(group)})).filter(x=>x.items.length);
+}
+function refreshEmailButton(){
+  emailBtn.disabled=!selectedMailPacks().length;
+}
+async function buildMailGroupZip(group,selected){
+  if(!selected?.length)return null;
+  const zip=new JSZip();const used=new Set();
+  for(const it of selected){
+    let n=filename(it),base=n.replace(/\.pdf$/i,'');let k=2;
+    while(used.has(norm(n)))n=base+' ('+(k++)+').pdf';
+    used.add(norm(n));zip.file(n,it.file);
+  }
+  const blob=await zip.generateAsync({type:'blob'});
+  return {blob,name:mailGroupName(group)+'.zip',count:selected.length,group};
+}
 function emailTemplate(category){
   if(category==='SUELDOS')return{
     subject:'PAGO DE SALARIOS',
@@ -799,16 +848,40 @@ async function buildCategoryZip(category){
 }
 
 async function prepareEmail(){
-  if(activeCategory==='TODOS')return;
-  const pack=await buildCategoryZip(activeCategory);if(!pack)return;
-  downloadBlob(pack.blob,pack.name);
-  const tpl=emailTemplate(activeCategory);
+  const packs=selectedMailPacks();
+  if(!packs.length)return;
+  const built=[];
+  for(const p of packs){
+    const z=await buildMailGroupZip(p.group,p.items);
+    if(z){downloadBlob(z.blob,z.name);built.push(z);}
+  }
+  if(!built.length)return;
+
+  const labels=built.map(x=>mailGroupName(x.group).replace(/_/g,' '));
+  const subject=built.length===1?'PAGO DE '+labels[0]:'RESPALDOS DE PAGOS';
+  const body='Estimados,\n\nAdjunto los respaldos correspondientes a: '+labels.join(', ')+'.\n\nSaludos,\nDaniel Molina';
   const to='mayra.molina@disprotel.com;diego.mancero@disprotel.com';
-  const url='mailto:'+to+'?subject='+encodeURIComponent(tpl.subject)+'&body='+encodeURIComponent(tpl.body);
+  const url='mailto:'+to+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
   window.location.href=url;
-  alert('Se descargó '+pack.name+' con '+pack.count+' comprobante(s). Se abrirá tu Outlook de escritorio con el correo preparado. Adjunta ese ZIP antes de enviar.');
+  alert('Se descargaron '+built.length+' ZIP clasificados. Se abrirá Outlook de escritorio para que los adjuntes antes de enviar.');
 }
 
+mailSelect.addEventListener('change',e=>{
+  const cb=e.target.closest('[data-mail-group]');
+  if(!cb)return;
+  const g=cb.dataset.mailGroup;
+  if(g==='TODOS'){
+    if(cb.checked){
+      mailGroups=new Set(['TODOS']);
+      mailSelect.querySelectorAll('[data-mail-group]').forEach(x=>{x.checked=x.dataset.mailGroup==='TODOS'});
+    }else mailGroups.delete('TODOS');
+  }else{
+    mailGroups.delete('TODOS');
+    const all=mailSelect.querySelector('[data-mail-group="TODOS"]');if(all)all.checked=false;
+    if(cb.checked)mailGroups.add(g);else mailGroups.delete(g);
+  }
+  refreshEmailButton();
+});
 input.addEventListener('change',e=>{addFiles(e.target.files);input.value=''});
 ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
@@ -847,7 +920,7 @@ rows.addEventListener('input',e=>{
 
   const valid=items.filter(x=>!x.error);
   downloadAllBtn.disabled=!valid.length;
-  emailBtn.disabled=activeCategory==='TODOS'||!valid.some(x=>x.categoria===activeCategory);
+  refreshEmailButton();
 });
 rows.addEventListener('change',e=>{
   const el=e.target.closest('select[data-i][data-k="categoria"]');
@@ -865,7 +938,7 @@ monthlyGrid.addEventListener('click',e=>{
   if(!card)return;
   focusRecurringPayment(card.dataset.recurringId);
 });
-clearBtn.onclick=()=>{items=[];activeCategory='TODOS';activeOrigin='TODOS';render()};downloadAllBtn.onclick=downloadAll;confirmPaymentsBtn.onclick=confirmLoadedPayments;filterAllBtn.onclick=()=>{activeCategory='TODOS';activeOrigin='TODOS';render()};filterSalariesBtn.onclick=()=>{activeCategory='SUELDOS';render()};filterRentsBtn.onclick=()=>{activeCategory='ARRIENDOS';render()};filterServicesBtn.onclick=()=>{activeCategory='SERVICIOS BÁSICOS';render()};filterSalcedoBtn.onclick=()=>{activeOrigin=activeOrigin==='DISPROTEL SALCEDO'?'TODOS':'DISPROTEL SALCEDO';render()};filterSaqLatBtn.onclick=()=>{activeOrigin=activeOrigin==='DISPROTEL SAQUISILÍ-LATACUNGA'?'TODOS':'DISPROTEL SAQUISILÍ-LATACUNGA';render()};emailBtn.onclick=prepareEmail;
+clearBtn.onclick=()=>{items=[];activeCategory='TODOS';activeOrigin='TODOS';mailGroups.clear();mailSelect.querySelectorAll('[data-mail-group]').forEach(x=>x.checked=false);render()};downloadAllBtn.onclick=downloadAll;confirmPaymentsBtn.onclick=confirmLoadedPayments;filterAllBtn.onclick=()=>{activeCategory='TODOS';activeOrigin='TODOS';render()};filterSalariesBtn.onclick=()=>{activeCategory='SUELDOS';render()};filterRentsBtn.onclick=()=>{activeCategory='ARRIENDOS';render()};filterServicesBtn.onclick=()=>{activeCategory='SERVICIOS BÁSICOS';render()};filterSalcedoBtn.onclick=()=>{activeOrigin=activeOrigin==='DISPROTEL SALCEDO'?'TODOS':'DISPROTEL SALCEDO';render()};filterSaqLatBtn.onclick=()=>{activeOrigin=activeOrigin==='DISPROTEL SAQUISILÍ-LATACUNGA'?'TODOS':'DISPROTEL SAQUISILÍ-LATACUNGA';render()};emailBtn.onclick=prepareEmail;
 </script>
 </body>
 </html>
