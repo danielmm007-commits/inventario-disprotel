@@ -749,9 +749,9 @@ async function prepareEmail(){
   downloadBlob(pack.blob,pack.name);
   const tpl=emailTemplate(activeCategory);
   const to='mayra.molina@disprotel.com;diego.mancero@disprotel.com';
-  const url='https://outlook.office.com/mail/deeplink/compose?to='+encodeURIComponent(to)+'&subject='+encodeURIComponent(tpl.subject)+'&body='+encodeURIComponent(tpl.body);
-  window.open(url,'_blank','noopener');
-  alert('Se descargó '+pack.name+' con '+pack.count+' comprobante(s). Outlook se abrirá con el correo preparado. Adjunta ese ZIP antes de enviar.');
+  const url='mailto:'+to+'?subject='+encodeURIComponent(tpl.subject)+'&body='+encodeURIComponent(tpl.body);
+  window.location.href=url;
+  alert('Se descargó '+pack.name+' con '+pack.count+' comprobante(s). Se abrirá tu Outlook de escritorio con el correo preparado. Adjunta ese ZIP antes de enviar.');
 }
 
 input.addEventListener('change',e=>{addFiles(e.target.files);input.value=''});
