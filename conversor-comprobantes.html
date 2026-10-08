@@ -518,16 +518,36 @@ function canonicalEnergyConcept(v){
   return '';
 }
 const FIXED_SERVICE_CONTRACTS={
-  '200035857461':'PLANILLA DE ENERGÍA OFICINA SALCEDO'
+  '200035857461':{
+    concepto:'PLANILLA DE ENERGÍA OFICINA SALCEDO',
+    categoria:'SERVICIOS BÁSICOS',
+    originGroup:'DISPROTEL SALCEDO'
+  }
 };
 function applyKnownServiceContract(d){
   if(!d.serviceContract)return d;
-  const known=FIXED_SERVICE_CONTRACTS[d.serviceContract]||loadServiceContractMap()[d.serviceContract];
-  if(known){
-    d.concepto=known;
+  const fixed=FIXED_SERVICE_CONTRACTS[d.serviceContract];
+  if(fixed){
+    d.concepto=fixed.concepto;
+    d.categoria=fixed.categoria;
+    d.originGroup=fixed.originGroup||d.originGroup;
+    return d;
+  }
+  const learned=loadServiceContractMap()[d.serviceContract];
+  if(learned){
+    d.concepto=learned;
     d.categoria='SERVICIOS BÁSICOS';
   }
   return d;
+}
+function normalizeFixedServiceItem(it){
+  if(!it?.serviceContract)return it;
+  const fixed=FIXED_SERVICE_CONTRACTS[it.serviceContract];
+  if(!fixed)return it;
+  it.concepto=fixed.concepto;
+  it.categoria=fixed.categoria;
+  if(fixed.originGroup)it.originGroup=fixed.originGroup;
+  return it;
 }
 function learnServiceContract(it){
   if(!it.serviceContract)return;
@@ -675,6 +695,7 @@ async function extractPdf(file){
   return text;
 }
 function render(){
+  items.forEach(normalizeFixedServiceItem);
   if(!items.length){rows.innerHTML='<tr><td colspan="6"><div class="empty">Todavía no has cargado comprobantes.</div></td></tr>';downloadAllBtn.disabled=true;confirmPaymentsBtn.disabled=true;return}
   const visible=items.filter(x=>(activeCategory==='TODOS'||x.categoria===activeCategory)&&(activeOrigin==='TODOS'||x.originGroup===activeOrigin));
   rows.innerHTML=visible.map(it=>{const i=items.indexOf(it);return `<tr>
@@ -697,7 +718,7 @@ async function addFiles(files){
   progress.style.display='block';let done=0;
   for(const file of pdfs){
     const it={file,concepto:'',beneficiario:'',categoria:'OTROS',servicePayment:false,valor:'',fecha:'',hora:'',pagoNumero:'',originOwner:'',originSuffix:'',originGroup:'SIN CLASIFICAR',personalAccount:false,originMismatch:false,cntCounterpart:'',serviceContract:'',transactionId:'',duplicate:false,duplicateOf:'',error:''};items.push(it);render();
-    try{const text=await extractPdf(file),d=detect(text);it.concepto=upperText(d.concepto);it.beneficiario=upperText(d.beneficiario);it.servicePayment=!!d.servicePayment;it.valor=d.valor||'';it.fecha=d.fecha||'';it.hora=d.hora||'';it.originOwner=d.originOwner||'';it.originSuffix=d.originSuffix||'';it.originGroup=d.originGroup||'SIN CLASIFICAR';it.personalAccount=!!d.personalAccount;it.originMismatch=!!d.originMismatch;it.cntCounterpart=d.cntCounterpart||'';it.serviceContract=d.serviceContract||'';it.transactionId=d.transactionId||'';it.categoria=d.categoria||classifyPayment(it.concepto);if(!text.trim())it.error='PDF sin texto extraíble'}catch(e){it.error='No se pudo leer'}
+    try{const text=await extractPdf(file),d=detect(text);it.concepto=upperText(d.concepto);it.beneficiario=upperText(d.beneficiario);it.servicePayment=!!d.servicePayment;it.valor=d.valor||'';it.fecha=d.fecha||'';it.hora=d.hora||'';it.originOwner=d.originOwner||'';it.originSuffix=d.originSuffix||'';it.originGroup=d.originGroup||'SIN CLASIFICAR';it.personalAccount=!!d.personalAccount;it.originMismatch=!!d.originMismatch;it.cntCounterpart=d.cntCounterpart||'';it.serviceContract=d.serviceContract||'';it.transactionId=d.transactionId||'';it.categoria=d.categoria||classifyPayment(it.concepto);normalizeFixedServiceItem(it);if(!text.trim())it.error='PDF sin texto extraíble'}catch(e){it.error='No se pudo leer'}
     applySalaryGroupRules();refreshSalaryPaymentNumbers();refreshDuplicateFlags();learnServiceContract(it);renderMonthlyControl();done++;progressBar.style.width=Math.round(done/pdfs.length*100)+'%';render();
   }
   setTimeout(()=>{progress.style.display='none';progressBar.style.width='0'},450);
