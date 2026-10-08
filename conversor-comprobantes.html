@@ -157,7 +157,7 @@ if(norm(me.usuario)!=='DANIEL'&&!norm(me.nombre).includes('CARLOS DANIEL MOLINA'
 
 const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), mailSelect=$('mailSelect'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), salaryMonthlySummary=$('salaryMonthlySummary'), salaryMonthlyGrid=$('salaryMonthlyGrid'), progress=$('progress'), progressBar=$('progressBar'), pdfModal=$('pdfModal'), pdfModalTitle=$('pdfModalTitle'), pdfModalDownload=$('pdfModalDownload'), pdfModalClose=$('pdfModalClose'), pdfFrame=$('pdfFrame');
 let items=[];let activeCategory='TODOS';let activeOrigin='TODOS';let mailGroups=new Set();
-const MONTHLY_KEY='disprotel_recurring_payments_v2';
+const MONTHLY_KEY='disprotel_recurring_payments_v3';
 const RECURRING=[
   {id:'ARR_NIAGARA',label:'ARRIENDO NODO NIAGARA',match:/ARRIENDO.*NIAGARA/,cardGroup:'SERVICE'},
   {id:'ARR_LOMA',label:'ARRIENDO NODO LOMA GRANDE',match:/ARRIENDO.*LOMA GRANDE/,cardGroup:'SERVICE'},
