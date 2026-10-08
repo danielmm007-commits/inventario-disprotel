@@ -87,6 +87,9 @@ input[type=file]{display:none}
   .duePending{border:2px solid #e5b83f;background:#fff3bd}
   .dueLoaded{border:2px solid #d99b00;background:#ffe38a;box-shadow:0 0 0 1px rgba(217,155,0,.08)}
   .dueLate{border:2px solid #df6b6b;background:#ffdede}
+  .dueOptional{border:2px solid #b9c8d1;background:#f5f8fa}
+  .dueOptional .dueTag{background:#e8eef2;color:#48616d}
+
   .dueTag{display:inline-block;padding:3px 8px;border-radius:999px;font-weight:800}
   .duePaid .dueTag{background:#bde9c8;color:#155b2a}
   .dueLoaded .dueTag{background:#f6bd24;color:#5b3d00}
@@ -161,7 +164,7 @@ input[type=file]{display:none}
       </button>
       <div class="accordionBody" id="salariesBody">
         <div class="monthlyGrid" id="salaryMonthlyGrid"></div>
-        <div class="sub" style="margin-top:8px"><b>EVENTUALES:</b> JOSUE MOLINA y MATEO BARBOSA no generan tarjeta pendiente mensual. Sus pagos se clasifican como SUELDOS AUX cuando se cargan.</div>
+
       </div>
     </div>
 
@@ -405,6 +408,11 @@ const SALARY_RECURRING=[
   {id:'SAL_ALEXANDRA_ROL',label:'ALEXANDRA BARBOSA · ROL',beneficiary:'ALEXANDRA BARBOSA',subgroup:'ROL'},
   {id:'SAL_JEMMY_ROL',label:'JEMMY · SUELDO FIJO $200',beneficiary:'JEMMY',subgroup:'ROL',valueType:'FIJO',expectedAmount:200}
 ];
+
+const AUX_RECURRING=[
+  {id:'AUX_JOSUE',label:'JOSUE MOLINA · EVENTUAL',beneficiary:'JOSUE MOLINA',subgroup:'AUX',optional:true,group:'AUX',valueType:'VARIABLE'},
+  {id:'AUX_MATEO',label:'MATEO BARBOSA · EVENTUAL',beneficiary:'MATEO BARBOSA',subgroup:'AUX',optional:true,group:'AUX',valueType:'VARIABLE'}
+];
 function controlPeriod(){
   const now=new Date();
   let y=now.getFullYear(),m=now.getMonth()-1;
@@ -445,7 +453,7 @@ function salaryRecurringForItem(it){
   const b=norm(it.beneficiario);
   const subgroup=it.salaryAdmin||/\bADMIN\b/i.test(it.concepto||'')?'ADMIN':it.salarySubgroup;
   if(!b||!subgroup)return null;
-  return SALARY_RECURRING.find(r=>{
+  return SALARY_RECURRING.concat(AUX_RECURRING).find(r=>{
     if(!recurringIsActive(r.id))return false;
     const rb=norm(r.beneficiary);
     if(!((b.includes(rb)||rb.includes(b))&&r.subgroup===subgroup))return false;
@@ -549,7 +557,7 @@ function confirmLoadedPayments(){
   alert(confirmed?('Se confirmaron '+confirmed+' pago(s) recurrente(s).'):'No encontré pagos recurrentes para confirmar.');
 }
 function focusRecurringPayment(recurringId){
-  const r=RECURRING.find(x=>x.id===recurringId)||SALARY_RECURRING.find(x=>x.id===recurringId)||loadCustomRecurring().find(x=>x.id===recurringId);
+  const r=RECURRING.find(x=>x.id===recurringId)||SALARY_RECURRING.find(x=>x.id===recurringId)||AUX_RECURRING.find(x=>x.id===recurringId)||loadCustomRecurring().find(x=>x.id===recurringId);
   if(!r)return;
   const matches=items
     .map((it,index)=>({it,index,recurring:(!it.error&&!it.duplicate)?recurringForItem(it):null}))
@@ -581,7 +589,7 @@ function renderRecurringManager(){
     return '<div class="recRow '+(active?'':'off')+'"><div><b>'+escapeHtml(r.label)+'</b><small>'+escapeHtml(type)+(r.valueType?' · '+escapeHtml(r.valueType):'')+'</small></div><div class="recRowBtns"><button type="button" data-rec-toggle="'+escapeHtml(r.id)+'">'+(active?'DESACTIVAR':'ACTIVAR')+'</button>'+(canDelete?'<button type="button" data-rec-delete="'+escapeHtml(r.id)+'">ELIMINAR</button>':'')+'</div></div>';
   };
   recServiceList.innerHTML=RECURRING.map(r=>row(r,'SERVICIO / ARRIENDO')).join('');
-  recSalaryList.innerHTML=SALARY_RECURRING.map(r=>row(r,'SUELDO')).join('');
+  recSalaryList.innerHTML=SALARY_RECURRING.map(r=>row(r,'SUELDO')).concat(AUX_RECURRING.map(r=>row(r,'SUELDO AUX / EVENTUAL'))).join('');
   const groupLabel={SERVICE:'SERVICIO / ARRIENDO',SALARY:'SUELDO RECURRENTE',AUX:'SUELDO AUX',OTHER:'OTRO RECURRENTE'};
   recCustomList.innerHTML=loadCustomRecurring().map(r=>row(r,groupLabel[r.group||'OTHER']||'OTRO RECURRENTE',true)).join('')||'<div class="sub">No hay recurrentes personalizados.</div>';
 }
@@ -622,14 +630,15 @@ function renderMonthlyControl(){
   const renderCards=(defs,target,summary)=>{
     const paid=defs.filter(r=>data[r.id]?.paid).length;
     const loaded=defs.filter(r=>!data[r.id]?.paid&&loadedIds.has(r.id)).length;
-    const pending=defs.length-paid-loaded;
-    summary.textContent=paid+' pagados · '+loaded+' por confirmar · '+pending+' pendientes';
+    const optional=defs.filter(r=>r.optional&&!data[r.id]?.paid&&!loadedIds.has(r.id)).length;
+    const pending=defs.filter(r=>!r.optional&&!data[r.id]?.paid&&!loadedIds.has(r.id)).length;
+    summary.textContent=paid+' pagados · '+loaded+' por confirmar · '+pending+' pendientes'+(optional?' · '+optional+' eventuales':'');
 
     target.innerHTML=defs.map(r=>{
       const ok=!!data[r.id]?.paid;
       const hasLoaded=!ok&&loadedIds.has(r.id);
-      const cls=ok?'duePaid':(hasLoaded?'dueLoaded':(p.duePassed?'dueLate':'duePending'));
-      const status=ok?'PAGADO':(hasLoaded?(manualLoadedIds.has(r.id)?'ASOCIACIÓN MANUAL · POR CONFIRMAR':'COMPROBANTE CARGADO · POR CONFIRMAR'):(p.duePassed?'VENCIDO':'PENDIENTE'));
+      const cls=ok?'duePaid':(hasLoaded?'dueLoaded':(r.optional?'dueOptional':(p.duePassed?'dueLate':'duePending')));
+      const status=ok?'PAGADO':(hasLoaded?(manualLoadedIds.has(r.id)?'ASOCIACIÓN MANUAL · POR CONFIRMAR':'COMPROBANTE CARGADO · POR CONFIRMAR'):(r.optional?'EVENTUAL':(p.duePassed?'VENCIDO':'PENDIENTE')));
       return '<div class="dueItem '+cls+'" data-recurring-id="'+escapeHtml(r.id)+'" title="Ver comprobante asociado"><b>'+escapeHtml(r.label)+'</b><span class="dueTag">'+status+'</span>'+(r.valueType?'<div class="sub">'+escapeHtml(r.valueType)+'</div>':'')+'</div>';
     }).join('');
   };
@@ -647,8 +656,10 @@ function renderMonthlyControl(){
   if(customService.length)renderCards(RECURRING.filter(r=>r.cardGroup==='SERVICE'&&recurringIsActive(r.id)).concat(customService),monthlyGrid,monthlySummary);
   if(customSalary.length)renderCards(SALARY_RECURRING.filter(r=>recurringIsActive(r.id)).concat(customSalary),salaryMonthlyGrid,salaryMonthlySummary);
 
-  auxRecurringSection.style.display=customAux.length?'block':'none';
-  if(customAux.length)renderCards(customAux,auxMonthlyGrid,auxMonthlySummary);
+  const baseAux=AUX_RECURRING.filter(r=>recurringIsActive(r.id));
+  const auxDefs=baseAux.concat(customAux);
+  auxRecurringSection.style.display=auxDefs.length?'block':'none';
+  if(auxDefs.length)renderCards(auxDefs,auxMonthlyGrid,auxMonthlySummary);
 
   customRecurringSection.style.display=customOther.length?'block':'none';
   if(customOther.length)renderCards(customOther,customMonthlyGrid,customMonthlySummary);
