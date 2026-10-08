@@ -1030,7 +1030,7 @@ function mailGroupItems(group){
   const valid=items.filter(x=>!x.error&&!x.duplicate);
   if(group==='SUELDOS_SALCEDO')return valid.filter(x=>x.categoria==='SUELDOS'&&x.salaryGroup==='SALCEDO'&&(x.salarySubgroup==='ROL'||x.salarySubgroup==='COM'));
   if(group==='SUELDOS_SAQLAT')return valid.filter(x=>x.categoria==='SUELDOS'&&x.salaryGroup==='SAQUISILÍ-LATACUNGA'&&(x.salarySubgroup==='ROL'||x.salarySubgroup==='COM'));
-  if(group==='SUELDOS_AUX')return valid.filter(x=>x.categoria==='SUELDOS'&&x.salaryGroup==='PAGOS AUX SALCEDO');
+  if(group==='SUELDOS_AUX')return valid.filter(x=>(x.categoria==='SUELDOS'&&x.salaryGroup==='PAGOS AUX SALCEDO')||x.categoria==='OTROS');
   if(group==='SUELDOS_ADMIN')return valid.filter(x=>x.categoria==='SUELDOS'&&x.salarySubgroup==='ADMIN');
   if(group==='ARRIENDOS')return valid.filter(x=>x.categoria==='ARRIENDOS');
   if(group==='SERV_SALCEDO')return valid.filter(x=>x.categoria==='SERVICIOS BÁSICOS'&&x.originGroup==='DISPROTEL SALCEDO');
