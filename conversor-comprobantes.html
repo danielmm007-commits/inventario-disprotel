@@ -146,7 +146,7 @@ function detect(text){
   concepto=cleanText(concepto).replace(/^(concepto(?: de pago)?|detalle(?: de pago)?|motivo|descripci[oó]n|referencia)\s*:?\s*/i,'');
   if(generic.test(concepto))concepto='';
 
-  const servicePayment=lines.some(x=>/EMPRESA O SERVICIO|DATOS ADICIONALES DEL PAGO|NO\.\s*TEL[ÉE]FONO/i.test(x));const provider=valueAfter(lines,['Empresa o servicio','Empresa','Servicio']);
+  const servicePayment=lines.some(x=>/EMPRESA O SERVICIO|DATOS ADICIONALES DEL PAGO|NO\.\s*TEL[ÉE]FONO/i.test(x));let provider=valueAfter(lines,['Empresa o servicio','Empresa','Servicio']);if(!provider){const known=lines.find(x=>/CORPORACI[ÓO]N NACIONAL DE TELE|CNT|ELECTRICA|ELÉCTRICA|CNEL|EEASA|ELEPCO|CENTROSUR/i.test(x));if(known)provider=known;}
   const candidates=lines.filter(x=>{
     const s=cleanText(x);
     if(!s||s.length<4||s.length>110||generic.test(s))return false;
@@ -342,7 +342,7 @@ function normalizeByProvider(concepto,provider){
   if(!c)return c;
 
   const isEnergy=/ELECTRICA|ELÉCTRICA|ENERGIA|ENERGÍA|LUZ|EEQ|EEASA|ELEPCO|CENTROSUR|CNEL/.test(p);
-  const isPhone=/TELEFONO|TELÉFONO|TELEFONIA|TELEFONÍA|CNT|CLARO|MOVISTAR|CONECEL|OTECEL/.test(p);
+  const isPhone=/TELEFONO|TELÉFONO|TELEFONIA|TELEFONÍA|CNT|CORPORACION NACIONAL DE TELE|CORPORACIÓN NACIONAL DE TELE|CLARO|MOVISTAR|CONECEL|OTECEL/.test(p);
 
   if(isEnergy){
     c=c.replace(/^PAGO\s+/,'').replace(/^PLANILLA DE ENERGÍA\s+/,'');
