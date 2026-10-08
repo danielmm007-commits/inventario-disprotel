@@ -57,7 +57,7 @@ input[type=file]{display:none}
 .recRow b{font-size:11px}.recRow small{display:block;color:var(--muted);font-size:9px;margin-top:2px}
 .recRowBtns{display:flex;gap:6px;flex-wrap:wrap}
 .recRowBtns button,.recHead button,.recAdd button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 8px;cursor:pointer;font-size:9px;font-weight:800}
-.recAdd{display:grid;grid-template-columns:2fr 1.3fr 1fr 1fr auto;gap:7px;align-items:end;margin-top:10px}
+.recAdd{display:grid;grid-template-columns:1.8fr 1.3fr 1.2fr 1fr 1fr auto;gap:7px;align-items:end;margin-top:10px}
 .recAdd input,.recAdd select{width:100%;border:1px solid #cedce3;border-radius:7px;padding:7px 8px;font-size:10px}
 @media(max-width:760px){.recAdd{grid-template-columns:1fr}}
 
@@ -165,10 +165,22 @@ input[type=file]{display:none}
       </div>
     </div>
 
+    <div id="auxRecurringSection" class="accordionSection" style="display:none">
+      <button type="button" class="accordionHead" data-accordion="aux">
+        <div class="monthlyHead">
+          <div><h3 style="font-size:15px"><span class="accordionArrow" id="auxArrow">▶</span>🧰 SUELDOS AUX / EVENTUALES</h3></div>
+          <div class="monthlySummary" id="auxMonthlySummary"></div>
+        </div>
+      </button>
+      <div class="accordionBody" id="auxBody">
+        <div class="monthlyGrid" id="auxMonthlyGrid"></div>
+      </div>
+    </div>
+
     <div id="customRecurringSection" class="accordionSection" style="display:none">
       <button type="button" class="accordionHead" data-accordion="custom">
         <div class="monthlyHead">
-          <div><h3 style="font-size:15px"><span class="accordionArrow" id="customArrow">▶</span>🔁 OTROS RECURRENTES / AUX</h3></div>
+          <div><h3 style="font-size:15px"><span class="accordionArrow" id="customArrow">▶</span>🔁 OTROS RECURRENTES</h3></div>
           <div class="monthlySummary" id="customMonthlySummary"></div>
         </div>
       </button>
@@ -204,6 +216,12 @@ input[type=file]{display:none}
       <div class="recAdd">
         <input id="newRecConcept" placeholder="CONCEPTO / NOMBRE">
         <input id="newRecBeneficiary" placeholder="BENEFICIARIO">
+        <select id="newRecGroup">
+          <option value="OTHER">OTROS RECURRENTES</option>
+          <option value="SERVICE">SERVICIOS / ARRIENDOS</option>
+          <option value="SALARY">SUELDOS RECURRENTES</option>
+          <option value="AUX">SUELDOS AUX</option>
+        </select>
         <select id="newRecType"><option value="VARIABLE">VARIABLE</option><option value="FIJO">FIJO</option></select>
         <input id="newRecAmount" type="number" step="0.01" placeholder="MONTO">
         <button id="newRecAddBtn" type="button">+ AGREGAR</button>
@@ -235,7 +253,7 @@ const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim
 if(!me?.session_token){location.replace('login-general-v2.html?return='+encodeURIComponent('conversor-comprobantes.html'))}
 if(norm(me.usuario)!=='DANIEL'&&!norm(me.nombre).includes('CARLOS DANIEL MOLINA')){document.body.innerHTML='<main class="wrap"><div class="notice" style="border-color:#efc5c5;background:#fff4f4;color:#9c3434"><b>Acceso restringido.</b> Este módulo de prueba está habilitado únicamente para Daniel.</div></main>';throw new Error('Acceso restringido')}
 
-const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), manageRecurringBtn=$('manageRecurringBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), mailSelect=$('mailSelect'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), salaryMonthlySummary=$('salaryMonthlySummary'), salaryMonthlyGrid=$('salaryMonthlyGrid'), customRecurringSection=$('customRecurringSection'), customMonthlySummary=$('customMonthlySummary'), customMonthlyGrid=$('customMonthlyGrid'), servicesBody=$('servicesBody'), salariesBody=$('salariesBody'), customBody=$('customBody'), servicesArrow=$('servicesArrow'), salariesArrow=$('salariesArrow'), customArrow=$('customArrow'), progress=$('progress'), progressBar=$('progressBar'), recModal=$('recModal'), recModalClose=$('recModalClose'), recServiceList=$('recServiceList'), recSalaryList=$('recSalaryList'), recCustomList=$('recCustomList'), newRecConcept=$('newRecConcept'), newRecBeneficiary=$('newRecBeneficiary'), newRecType=$('newRecType'), newRecAmount=$('newRecAmount'), newRecAddBtn=$('newRecAddBtn'), pdfModal=$('pdfModal'), pdfModalTitle=$('pdfModalTitle'), pdfModalDownload=$('pdfModalDownload'), pdfModalClose=$('pdfModalClose'), pdfFrame=$('pdfFrame');
+const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), manageRecurringBtn=$('manageRecurringBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), mailSelect=$('mailSelect'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), salaryMonthlySummary=$('salaryMonthlySummary'), salaryMonthlyGrid=$('salaryMonthlyGrid'), auxRecurringSection=$('auxRecurringSection'), auxMonthlySummary=$('auxMonthlySummary'), auxMonthlyGrid=$('auxMonthlyGrid'), customRecurringSection=$('customRecurringSection'), customMonthlySummary=$('customMonthlySummary'), customMonthlyGrid=$('customMonthlyGrid'), servicesBody=$('servicesBody'), salariesBody=$('salariesBody'), auxBody=$('auxBody'), customBody=$('customBody'), servicesArrow=$('servicesArrow'), salariesArrow=$('salariesArrow'), auxArrow=$('auxArrow'), customArrow=$('customArrow'), progress=$('progress'), progressBar=$('progressBar'), recModal=$('recModal'), recModalClose=$('recModalClose'), recServiceList=$('recServiceList'), recSalaryList=$('recSalaryList'), recCustomList=$('recCustomList'), newRecConcept=$('newRecConcept'), newRecBeneficiary=$('newRecBeneficiary'), newRecGroup=$('newRecGroup'), newRecType=$('newRecType'), newRecAmount=$('newRecAmount'), newRecAddBtn=$('newRecAddBtn'), pdfModal=$('pdfModal'), pdfModalTitle=$('pdfModalTitle'), pdfModalDownload=$('pdfModalDownload'), pdfModalClose=$('pdfModalClose'), pdfFrame=$('pdfFrame');
 let items=[];let activeCategory='TODOS';let activeOrigin='TODOS';let mailGroups=new Set();
 const MONTHLY_KEY='disprotel_recurring_payments_v3';
 const RECURRING_STATE_KEY='disprotel_recurring_active_v1';
@@ -263,6 +281,7 @@ function applyAccordionState(){
   const defs=[
     {key:'services',body:servicesBody,arrow:servicesArrow},
     {key:'salaries',body:salariesBody,arrow:salariesArrow},
+    {key:'aux',body:auxBody,arrow:auxArrow},
     {key:'custom',body:customBody,arrow:customArrow}
   ];
   defs.forEach(x=>{
@@ -330,6 +349,7 @@ function setCustomRecurring(it,type){
     label:concept+' · '+beneficiary,
     concept:concept,
     beneficiary:beneficiary,
+    group:'OTHER',
     valueType:type,
     expectedAmount:type==='FIJO'?Number(it.valor||0):null
   });
@@ -562,7 +582,8 @@ function renderRecurringManager(){
   };
   recServiceList.innerHTML=RECURRING.map(r=>row(r,'SERVICIO / ARRIENDO')).join('');
   recSalaryList.innerHTML=SALARY_RECURRING.map(r=>row(r,'SUELDO')).join('');
-  recCustomList.innerHTML=loadCustomRecurring().map(r=>row(r,'OTRO RECURRENTE',true)).join('')||'<div class="sub">No hay recurrentes personalizados.</div>';
+  const groupLabel={SERVICE:'SERVICIO / ARRIENDO',SALARY:'SUELDO RECURRENTE',AUX:'SUELDO AUX',OTHER:'OTRO RECURRENTE'};
+  recCustomList.innerHTML=loadCustomRecurring().map(r=>row(r,groupLabel[r.group||'OTHER']||'OTRO RECURRENTE',true)).join('')||'<div class="sub">No hay recurrentes personalizados.</div>';
 }
 function openRecurringManager(){
   renderRecurringManager();
@@ -572,16 +593,16 @@ function closeRecurringManager(){
   recModal.classList.remove('open');recModal.setAttribute('aria-hidden','true');
 }
 function addManualRecurringFromManager(){
-  const concept=upperText(newRecConcept.value),beneficiary=upperText(newRecBeneficiary.value),type=newRecType.value;
+  const concept=upperText(newRecConcept.value),beneficiary=upperText(newRecBeneficiary.value),group=newRecGroup.value||'OTHER',type=newRecType.value;
   if(!concept){alert('Escribe el concepto o nombre del recurrente.');return}
   if(type==='FIJO'&&!Number(newRecAmount.value||0)){alert('Para un recurrente fijo escribe el monto esperado.');return}
   const key=norm(concept)+'|'+norm(beneficiary);
   const all=loadCustomRecurring().filter(r=>r.key!==key);
   const id='CUSTOM_'+btoa(unescape(encodeURIComponent(key))).replace(/[^A-Za-z0-9]/g,'').slice(0,24);
-  all.push({id,key,label:beneficiary?concept+' · '+beneficiary:concept,concept,beneficiary,valueType:type,expectedAmount:type==='FIJO'?Number(newRecAmount.value):null});
+  all.push({id,key,label:beneficiary?concept+' · '+beneficiary:concept,concept,beneficiary,group,valueType:type,expectedAmount:type==='FIJO'?Number(newRecAmount.value):null});
   saveCustomRecurring(all);
   setRecurringActive(id,true);
-  newRecConcept.value='';newRecBeneficiary.value='';newRecAmount.value='';newRecType.value='VARIABLE';
+  newRecConcept.value='';newRecBeneficiary.value='';newRecGroup.value='OTHER';newRecAmount.value='';newRecType.value='VARIABLE';
   renderRecurringManager();renderMonthlyControl();
 }
 function renderMonthlyControl(){
@@ -616,9 +637,21 @@ function renderMonthlyControl(){
   monthlyPeriod.textContent='Período controlado: '+monthLabel(p)+' · fecha límite provisional: día 5 del mes siguiente';
   renderCards(RECURRING.filter(r=>r.cardGroup==='SERVICE'&&recurringIsActive(r.id)),monthlyGrid,monthlySummary);
   renderCards(SALARY_RECURRING.filter(r=>recurringIsActive(r.id)),salaryMonthlyGrid,salaryMonthlySummary);
-  const customDefs=loadCustomRecurring().filter(r=>recurringIsActive(r.id));
-  customRecurringSection.style.display=customDefs.length?'block':'none';
-  if(customDefs.length)renderCards(customDefs,customMonthlyGrid,customMonthlySummary);
+  const customAll=loadCustomRecurring().filter(r=>recurringIsActive(r.id));
+  const customService=customAll.filter(r=>(r.group||'OTHER')==='SERVICE');
+  const customSalary=customAll.filter(r=>(r.group||'OTHER')==='SALARY');
+  const customAux=customAll.filter(r=>(r.group||'OTHER')==='AUX');
+  const customOther=customAll.filter(r=>(r.group||'OTHER')==='OTHER');
+
+  // Los personalizados pueden reforzar cualquiera de los bloques.
+  if(customService.length)renderCards(RECURRING.filter(r=>r.cardGroup==='SERVICE'&&recurringIsActive(r.id)).concat(customService),monthlyGrid,monthlySummary);
+  if(customSalary.length)renderCards(SALARY_RECURRING.filter(r=>recurringIsActive(r.id)).concat(customSalary),salaryMonthlyGrid,salaryMonthlySummary);
+
+  auxRecurringSection.style.display=customAux.length?'block':'none';
+  if(customAux.length)renderCards(customAux,auxMonthlyGrid,auxMonthlySummary);
+
+  customRecurringSection.style.display=customOther.length?'block':'none';
+  if(customOther.length)renderCards(customOther,customMonthlyGrid,customMonthlySummary);
   applyAccordionState();
 }
 
@@ -1362,6 +1395,8 @@ function rememberFinalClass(it){
 }
 function deriveFinalClass(it){
   if(!it||it.error)return '';
+  const customRecurring=customRecurringForItem(it);
+  if(customRecurring?.group==='AUX')return 'SUELDOS AUX';
   if(it.categoria==='SUELDOS'){
     if(it.salarySubgroup==='ADMIN'||it.salaryAdmin)return 'SUELDOS ADMIN';
     if(it.salaryGroup==='PAGOS AUX SALCEDO')return 'SUELDOS AUX';
@@ -1715,6 +1750,7 @@ function handleRecurringCardClick(e){
 }
 monthlyGrid.addEventListener('click',handleRecurringCardClick);
 salaryMonthlyGrid.addEventListener('click',handleRecurringCardClick);
+auxMonthlyGrid.addEventListener('click',handleRecurringCardClick);
 customMonthlyGrid.addEventListener('click',handleRecurringCardClick);
 manageRecurringBtn.addEventListener('click',openRecurringManager);
 recModalClose.addEventListener('click',closeRecurringManager);
