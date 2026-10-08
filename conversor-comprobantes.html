@@ -809,7 +809,12 @@ function detect(text,fileName=''){
   concepto=cleanText(concepto).replace(/^(concepto(?: de pago)?|detalle(?: de pago)?|motivo|descripci[oó]n|referencia)\s*:?\s*/i,'');
   if(generic.test(concepto))concepto='';
 
-  const servicePayment=lines.some(x=>/EMPRESA O SERVICIO|DATOS ADICIONALES DEL PAGO|NO\.\s*TEL[ÉE]FONO/i.test(x));let provider=valueAfter(lines,['Empresa o servicio','Empresa','Servicio']);if(!provider){const known=lines.find(x=>/CORPORACI[ÓO]N NACIONAL DE TELE|CNT|ELECTRICA|ELÉCTRICA|CNEL|EEASA|ELEPCO|CENTROSUR/i.test(x));if(known)provider=known;}
+  const servicePayment=lines.some(x=>/EMPRESA O SERVICIO|DATOS ADICIONALES DEL PAGO|NO\.\s*TEL[ÉE]FONO|NOMBRE DE EMPRESA|NOMBRE DE SERVICIO|CONTRAPARTIDA|CUENTA CONTRATO/i.test(x));
+  let provider=valueAfter(lines,['Nombre De Empresa','Nombre de empresa','Empresa o servicio','Empresa','Nombre De Servicio','Nombre de servicio','Servicio']);
+  if(!provider){
+    const known=lines.find(x=>/CORPORACI[ÓO]N NACIONAL DE TELE|CNT|SERVICIO ELECTRICO NACIONAL|SERVICIO ELÉCTRICO NACIONAL|ELECTRICA NACIONAL|ELÉCTRICA NACIONAL|CNEL|EEASA|ELEPCO|CENTROSUR/i.test(x));
+    if(known)provider=known;
+  }
   const candidates=lines.filter(x=>{
     const s=cleanText(x);
     if(!s||s.length<4||s.length>110||generic.test(s))return false;
@@ -839,9 +844,22 @@ function detect(text,fileName=''){
   let conceptoFinal=upperText(normalizeAdministrativeConcept(cleanText(concepto)));
   conceptoFinal=upperText(normalizeByProvider(conceptoFinal,provider));
   let beneficiarioFinal=upperText(beneficiario);
-  let staff=staffMatch(beneficiarioFinal);
-  if(!staff&&fileName){staff=staffMatch(fileName)}
-  if(!staff){for(const line of lines){const s=staffMatch(line);if(s){staff=s;break}}}
+
+  // En planillas, el beneficiario es la empresa prestadora, no una persona.
+  const pNorm=norm(provider);
+  if(servicePayment){
+    if(/CORPORACION NACIONAL DE TELE|CNT/.test(pNorm)){
+      beneficiarioFinal='CNT';
+    }else if(/SERVICIO ELECTRICO NACIONAL|ELECTRICA NACIONAL|CNEL|EEASA|ELEPCO|CENTROSUR/.test(pNorm)){
+      beneficiarioFinal='ELÉCTRICA NACIONAL';
+    }else if(provider){
+      beneficiarioFinal=upperText(provider);
+    }
+  }
+
+  let staff=servicePayment?null:staffMatch(beneficiarioFinal);
+  if(!servicePayment&&!staff&&fileName){staff=staffMatch(fileName)}
+  if(!servicePayment&&!staff){for(const line of lines){const s=staffMatch(line);if(s){staff=s;break}}}
   if(staff){beneficiarioFinal=staff.short;conceptoFinal='SUELDO';}
   const valor=detectAmount(lines);
   const tx=detectTransactionMeta(lines);
@@ -1141,6 +1159,7 @@ function applyCntCounterpartRule(d,counterpart){
   if(!counterpart)return d;
   d.categoria='SERVICIOS BÁSICOS';
   d.cntCounterpart=counterpart;
+  d.beneficiario='CNT';
   if(counterpart==='032730493'){
     d.concepto='PLANILLA TELEFÓNICA SALCEDO';
     d.categoria='SERVICIOS BÁSICOS';
@@ -1148,9 +1167,11 @@ function applyCntCounterpartRule(d,counterpart){
     if(d.originSuffix&&d.originSuffix!=='7051')d.originMismatch=true;
   }else if(counterpart==='032722491'){
     d.concepto='PLANILLA TELEFÓNICA LATACUNGA';
+    d.originGroup='DISPROTEL SAQUISILÍ-LATACUNGA';
     if(d.originSuffix&&d.originSuffix!=='0338')d.originMismatch=true;
   }else if(counterpart==='032801738'){
     d.concepto='PLANILLA TELEFÓNICA SAQUISILÍ';
+    d.originGroup='DISPROTEL SAQUISILÍ-LATACUNGA';
     if(d.originSuffix&&d.originSuffix!=='0338')d.originMismatch=true;
   }
   return d;
@@ -1187,13 +1208,33 @@ function canonicalEnergyConcept(v){
 const FIXED_SERVICE_CONTRACTS={
   '200035857461':{
     concepto:'PLANILLA DE ENERGÍA OFICINA SALCEDO',
+    beneficiario:'ELÉCTRICA NACIONAL',
     categoria:'SERVICIOS BÁSICOS',
     originGroup:'DISPROTEL SALCEDO'
   },
   '201017003801':{
     concepto:'PLANILLA DE ENERGÍA NODO CENTRAL SALCEDO',
+    beneficiario:'ELÉCTRICA NACIONAL',
     categoria:'SERVICIOS BÁSICOS',
     originGroup:'DISPROTEL SALCEDO'
+  },
+  '200036234330':{
+    concepto:'PLANILLA DE ENERGÍA ZUMBALICA',
+    beneficiario:'ELÉCTRICA NACIONAL',
+    categoria:'SERVICIOS BÁSICOS',
+    originGroup:'DISPROTEL SAQUISILÍ-LATACUNGA'
+  },
+  '200035579875':{
+    concepto:'PLANILLA DE ENERGÍA OFICINA LATACUNGA',
+    beneficiario:'ELÉCTRICA NACIONAL',
+    categoria:'SERVICIOS BÁSICOS',
+    originGroup:'DISPROTEL SAQUISILÍ-LATACUNGA'
+  },
+  '200037177058':{
+    concepto:'PLANILLA DE ENERGÍA LOMA GRANDE',
+    beneficiario:'ELÉCTRICA NACIONAL',
+    categoria:'SERVICIOS BÁSICOS',
+    originGroup:'DISPROTEL SAQUISILÍ-LATACUNGA'
   }
 };
 function applyKnownServiceContract(d){
@@ -1201,6 +1242,7 @@ function applyKnownServiceContract(d){
   const fixed=FIXED_SERVICE_CONTRACTS[d.serviceContract];
   if(fixed){
     d.concepto=fixed.concepto;
+    if(fixed.beneficiario)d.beneficiario=fixed.beneficiario;
     d.categoria=fixed.categoria;
     d.originGroup=fixed.originGroup||d.originGroup;
     return d;
@@ -1220,6 +1262,7 @@ function normalizeFixedServiceItem(it){
     it.concepto=fixed.concepto;
     it.categoria=fixed.categoria;
   }
+  if(!it.manualBeneficiary&&fixed.beneficiario)it.beneficiario=fixed.beneficiario;
   if(fixed.originGroup)it.originGroup=fixed.originGroup;
   return it;
 }
@@ -1470,7 +1513,7 @@ function deriveFinalClass(it){
 }
 function syncFinalClassification(it){
   if(!it||it.manualFinalClass)return;
-  it.finalClass=learnedFinalClass(it)||deriveFinalClass(it);
+  it.finalClass=deriveFinalClass(it)||learnedFinalClass(it);
 }
 function finalClassZipName(v){
   return safeName(upperText(v)).replace(/\s+/g,'_')+'.zip';
