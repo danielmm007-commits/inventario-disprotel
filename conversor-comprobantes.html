@@ -29,7 +29,10 @@ input[type=file]{display:none}
   .monthlyHead h3{margin:0;font-size:17px}
   .monthlySummary{font-size:13px;color:#52606d}
   .monthlyGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:9px}
-  .dueItem{border:1px solid #e4e9ef;border-radius:10px;padding:10px 12px;background:#fafbfd}
+  .dueItem{border:1px solid #e4e9ef;border-radius:10px;padding:10px 12px;background:#fafbfd;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+  .dueItem:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+  tr.reviewFlash td{animation:reviewFlash 1.4s ease-in-out 2}
+  @keyframes reviewFlash{0%,100%{background:transparent}35%,65%{background:#fff0a8}}
   .dueItem b{display:block;font-size:13px;margin-bottom:4px}
   .dueItem span{font-size:12px}
   .duePaid{border:2px solid #69b77b;background:#dcf6e3}
@@ -156,6 +159,33 @@ function confirmLoadedPayments(){
   renderMonthlyControl();
   alert(confirmed?('Se confirmaron '+confirmed+' pago(s) recurrente(s).'):'No encontré pagos recurrentes para confirmar.');
 }
+function focusRecurringPayment(recurringId){
+  const r=RECURRING.find(x=>x.id===recurringId);
+  if(!r)return;
+  const matches=items
+    .map((it,index)=>({it,index,recurring:(!it.error&&!it.duplicate)?recurringMatch(it.concepto):null}))
+    .filter(x=>x.recurring?.id===recurringId);
+
+  if(!matches.length)return;
+
+  activeCategory='TODOS';
+  activeOrigin='TODOS';
+  render();
+
+  requestAnimationFrame(()=>{
+    const firstIndex=matches[0].index;
+    const firstRow=document.querySelector('tr[data-item-index="'+firstIndex+'"]');
+    matches.forEach(x=>{
+      const row=document.querySelector('tr[data-item-index="'+x.index+'"]');
+      if(!row)return;
+      row.classList.remove('reviewFlash');
+      void row.offsetWidth;
+      row.classList.add('reviewFlash');
+      setTimeout(()=>row.classList.remove('reviewFlash'),3000);
+    });
+    if(firstRow)firstRow.scrollIntoView({behavior:'smooth',block:'center'});
+  });
+}
 function renderMonthlyControl(){
   const p=controlPeriod(),ledger=loadMonthlyLedger(),data=ledger[p.key]||{};
   const loadedIds=new Set();
@@ -177,7 +207,7 @@ function renderMonthlyControl(){
     const hasLoaded=!ok&&loadedIds.has(r.id);
     const cls=ok?'duePaid':(hasLoaded?'dueLoaded':(p.duePassed?'dueLate':'duePending'));
     const status=ok?'PAGADO':(hasLoaded?'COMPROBANTE CARGADO · POR CONFIRMAR':(p.duePassed?'VENCIDO':'PENDIENTE'));
-    return '<div class="dueItem '+cls+'"><b>'+escapeHtml(r.label)+'</b><span class="dueTag">'+status+'</span></div>';
+    return '<div class="dueItem '+cls+'" data-recurring-id="'+escapeHtml(r.id)+'" title="Ver comprobante asociado"><b>'+escapeHtml(r.label)+'</b><span class="dueTag">'+status+'</span></div>';
   }).join('');
 }
 
@@ -698,7 +728,7 @@ function render(){
   items.forEach(normalizeFixedServiceItem);
   if(!items.length){rows.innerHTML='<tr><td colspan="6"><div class="empty">Todavía no has cargado comprobantes.</div></td></tr>';downloadAllBtn.disabled=true;confirmPaymentsBtn.disabled=true;return}
   const visible=items.filter(x=>(activeCategory==='TODOS'||x.categoria===activeCategory)&&(activeOrigin==='TODOS'||x.originGroup===activeOrigin));
-  rows.innerHTML=visible.map(it=>{const i=items.indexOf(it);return `<tr>
+  rows.innerHTML=visible.map(it=>{const i=items.indexOf(it);return `<tr data-item-index="${i}">
     <td><div class="fileName">${escapeHtml(it.file.name)}</div><div class="sub">${(it.file.size/1024).toFixed(0)} KB</div></td>
     <td><input data-i="${i}" data-k="concepto" value="${attr(upperText(it.concepto))}" placeholder="EJ. SUELDO OCTUBRE">${it.serviceContract?'<div class="sub">CONTRATO: '+escapeHtml(it.serviceContract)+'</div>':''}</td>
     <td><input data-i="${i}" data-k="beneficiario" value="${attr(upperText(it.beneficiario))}" placeholder="EJ. BRYAN GARCIA"></td>
@@ -830,6 +860,11 @@ rows.addEventListener('change',e=>{
 });
 rows.addEventListener('click',e=>{const d=e.target.closest('[data-download]'),r=e.target.closest('[data-remove]');if(d)downloadOne(Number(d.dataset.download));if(r){items.splice(Number(r.dataset.remove),1);render()}});
 renderMonthlyControl();
+monthlyGrid.addEventListener('click',e=>{
+  const card=e.target.closest('[data-recurring-id]');
+  if(!card)return;
+  focusRecurringPayment(card.dataset.recurringId);
+});
 clearBtn.onclick=()=>{items=[];activeCategory='TODOS';activeOrigin='TODOS';render()};downloadAllBtn.onclick=downloadAll;confirmPaymentsBtn.onclick=confirmLoadedPayments;filterAllBtn.onclick=()=>{activeCategory='TODOS';activeOrigin='TODOS';render()};filterSalariesBtn.onclick=()=>{activeCategory='SUELDOS';render()};filterRentsBtn.onclick=()=>{activeCategory='ARRIENDOS';render()};filterServicesBtn.onclick=()=>{activeCategory='SERVICIOS BÁSICOS';render()};filterSalcedoBtn.onclick=()=>{activeOrigin=activeOrigin==='DISPROTEL SALCEDO'?'TODOS':'DISPROTEL SALCEDO';render()};filterSaqLatBtn.onclick=()=>{activeOrigin=activeOrigin==='DISPROTEL SAQUISILÍ-LATACUNGA'?'TODOS':'DISPROTEL SAQUISILÍ-LATACUNGA';render()};emailBtn.onclick=prepareEmail;
 </script>
 </body>
