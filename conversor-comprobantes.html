@@ -1198,9 +1198,23 @@ rows.addEventListener('input',e=>{
   if(!el)return;
   const i=Number(el.dataset.i);
   const key=el.dataset.k;
+  const it=items[i];
+  if(!it)return;
+
+  // Los SELECT de clasificación final se manejan aquí de forma prioritaria
+  // para que la clasificación automática no pise la elección manual.
+  if(key==='finalClass'&&el.tagName==='SELECT'){
+    it.finalClass=el.value||'';
+    it.manualFinalClass=!!it.finalClass;
+    if(it.manualFinalClass)rememberFinalClass(it);
+    else syncFinalClassification(it);
+    refreshEmailButton();
+    return;
+  }
+
   let v=el.value;
   if(el.tagName==='INPUT')v=String(v||'').toLocaleUpperCase('es-EC');
-  items[i][key]=v;
+  it[key]=v;
 
   if(key==='concepto'&&el.tagName==='INPUT'){
     items[i].manualConcept=true;
@@ -1265,7 +1279,11 @@ rows.addEventListener('change',e=>{
   if(key==='finalClass'&&el.tagName==='SELECT'){
     it.finalClass=el.value||'';
     it.manualFinalClass=!!it.finalClass;
-    if(it.manualFinalClass)rememberFinalClass(it);
+    if(it.manualFinalClass){
+      rememberFinalClass(it);
+    }else{
+      syncFinalClassification(it);
+    }
     render();
     return;
   }
