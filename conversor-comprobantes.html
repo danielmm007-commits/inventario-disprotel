@@ -161,13 +161,14 @@ input[type=file]{display:none}
       </button>
       <div class="accordionBody" id="salariesBody">
         <div class="monthlyGrid" id="salaryMonthlyGrid"></div>
+        <div class="sub" style="margin-top:8px"><b>EVENTUALES:</b> JOSUE MOLINA y MATEO BARBOSA no generan tarjeta pendiente mensual. Sus pagos se clasifican como SUELDOS AUX cuando se cargan.</div>
       </div>
     </div>
 
     <div id="customRecurringSection" class="accordionSection" style="display:none">
       <button type="button" class="accordionHead" data-accordion="custom">
         <div class="monthlyHead">
-          <div><h3 style="font-size:15px"><span class="accordionArrow" id="customArrow">▶</span>🔁 OTROS RECURRENTES</h3></div>
+          <div><h3 style="font-size:15px"><span class="accordionArrow" id="customArrow">▶</span>🔁 OTROS RECURRENTES / AUX</h3></div>
           <div class="monthlySummary" id="customMonthlySummary"></div>
         </div>
       </button>
@@ -289,8 +290,10 @@ function customRecurringKey(it){
 }
 function customRecurringForItem(it){
   if(!it)return null;
+  // Si ya pertenece a una regla base, nunca usar una copia personalizada antigua.
+  if(recurringMatch(it?.concepto,it?.beneficiario,it?.valor)||salaryRecurringForItem(it))return null;
   const key=customRecurringKey(it);
-  return loadCustomRecurring().find(r=>r.key===key)||null;
+  return loadCustomRecurring().find(r=>r.key===key&&recurringIsActive(r.id))||null;
 }
 function setCustomRecurring(it,type){
   if(!it)return;
@@ -435,6 +438,12 @@ function cleanCustomRecurringDuplicates(){
   const cleaned=all.filter(r=>{
     const concept=norm(r.concept);
     const beneficiary=norm(r.beneficiary);
+
+    // Migraciones explícitas de recurrentes personalizados antiguos.
+    // Estos ya tienen tarjeta propia en SERVICIOS / SUELDOS.
+    if(/ARRIENDO.*NODO CENTRAL/.test(concept))return false;
+    if((concept.includes('CNT')||beneficiary.includes('CNT'))&&concept.includes('SUELDO'))return false;
+    if(beneficiary.includes('JEMMY')&&Math.abs(Number(r.expectedAmount||0)-200)<0.01)return false;
     const fake={concepto:r.concept,beneficiario:r.beneficiary,valor:r.expectedAmount||'',categoria:'OTROS',error:false,duplicate:false,salarySubgroup:''};
 
     // Nunca duplicar servicios/arriendos que ya tienen tarjeta automática.
