@@ -27,6 +27,13 @@ input[type=file]{display:none}
 .rowActions{display:flex;gap:5px}.rowActions button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 8px;cursor:pointer;font-size:9px}
 .privacy{margin-top:10px;font-size:9px;color:#72848d}
 .confidence{display:inline-block;margin-top:5px;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:800}
+.reviewMissing{background:#fff4df!important;box-shadow:inset 4px 0 0 #e4a11b}
+.reviewMissing input,.reviewMissing select{border:2px solid #e4a11b!important;background:#fffaf0}
+.fieldMissing{border:2px solid #e4a11b!important;background:#fff7e6!important}
+.quickRecurring{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.quickRecurring button{border:1px solid #b9c8d1;background:#fff;border-radius:7px;padding:5px 7px;cursor:pointer;font-size:8px;font-weight:800}
+.quickRecurring button.active{background:#e8f3ff;border-color:#4e95ca;color:#0b568b}
+
 .conf-high{background:#eaf8ef;color:#237a52}
 .conf-med{background:#fff6df;color:#8a6100}
 .conf-low{background:#fff0f0;color:#a33a3a}
@@ -120,6 +127,14 @@ input[type=file]{display:none}
       <div class="monthlySummary" id="salaryMonthlySummary"></div>
     </div>
     <div class="monthlyGrid" id="salaryMonthlyGrid"></div>
+
+    <div id="customRecurringSection" style="display:none">
+      <div class="monthlyHead" style="margin-top:20px">
+        <div><h3 style="font-size:15px">🔁 OTROS RECURRENTES</h3></div>
+        <div class="monthlySummary" id="customMonthlySummary"></div>
+      </div>
+      <div class="monthlyGrid" id="customMonthlyGrid"></div>
+    </div>
   </section>
   <section class="card">
     <div class="tableWrap">
@@ -155,9 +170,47 @@ const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim
 if(!me?.session_token){location.replace('login-general-v2.html?return='+encodeURIComponent('conversor-comprobantes.html'))}
 if(norm(me.usuario)!=='DANIEL'&&!norm(me.nombre).includes('CARLOS DANIEL MOLINA')){document.body.innerHTML='<main class="wrap"><div class="notice" style="border-color:#efc5c5;background:#fff4f4;color:#9c3434"><b>Acceso restringido.</b> Este módulo de prueba está habilitado únicamente para Daniel.</div></main>';throw new Error('Acceso restringido')}
 
-const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), mailSelect=$('mailSelect'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), salaryMonthlySummary=$('salaryMonthlySummary'), salaryMonthlyGrid=$('salaryMonthlyGrid'), progress=$('progress'), progressBar=$('progressBar'), pdfModal=$('pdfModal'), pdfModalTitle=$('pdfModalTitle'), pdfModalDownload=$('pdfModalDownload'), pdfModalClose=$('pdfModalClose'), pdfFrame=$('pdfFrame');
+const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), mailSelect=$('mailSelect'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), salaryMonthlySummary=$('salaryMonthlySummary'), salaryMonthlyGrid=$('salaryMonthlyGrid'), customRecurringSection=$('customRecurringSection'), customMonthlySummary=$('customMonthlySummary'), customMonthlyGrid=$('customMonthlyGrid'), progress=$('progress'), progressBar=$('progressBar'), pdfModal=$('pdfModal'), pdfModalTitle=$('pdfModalTitle'), pdfModalDownload=$('pdfModalDownload'), pdfModalClose=$('pdfModalClose'), pdfFrame=$('pdfFrame');
 let items=[];let activeCategory='TODOS';let activeOrigin='TODOS';let mailGroups=new Set();
 const MONTHLY_KEY='disprotel_recurring_payments_v3';
+const CUSTOM_RECURRING_KEY='disprotel_custom_recurring_v1';
+function loadCustomRecurring(){
+  try{return JSON.parse(localStorage.getItem(CUSTOM_RECURRING_KEY)||'[]')}catch{return []}
+}
+function saveCustomRecurring(v){
+  localStorage.setItem(CUSTOM_RECURRING_KEY,JSON.stringify(v));
+}
+function customRecurringKey(it){
+  return norm(it?.concepto)+'|'+norm(it?.beneficiario);
+}
+function customRecurringForItem(it){
+  if(!it)return null;
+  const key=customRecurringKey(it);
+  return loadCustomRecurring().find(r=>r.key===key)||null;
+}
+function setCustomRecurring(it,type){
+  if(!it)return;
+  const concept=upperText(it.concepto);
+  const beneficiary=upperText(it.beneficiario);
+  if(!concept||norm(concept)==='SIN DESCRIPCION'||!beneficiary){
+    alert('Primero completa CONCEPTO y BENEFICIARIO antes de marcarlo como recurrente.');
+    return;
+  }
+  const key=customRecurringKey(it);
+  const all=loadCustomRecurring().filter(r=>r.key!==key);
+  const id='CUSTOM_'+btoa(unescape(encodeURIComponent(key))).replace(/[^A-Za-z0-9]/g,'').slice(0,24);
+  all.push({
+    id,key,
+    label:concept+' · '+beneficiary,
+    concept:concept,
+    beneficiary:beneficiary,
+    valueType:type,
+    expectedAmount:type==='FIJO'?Number(it.valor||0):null
+  });
+  saveCustomRecurring(all);
+  render();
+}
+
 const RECURRING=[
   {id:'ARR_NIAGARA',label:'ARRIENDO NODO NIAGARA',match:/ARRIENDO.*NIAGARA/,cardGroup:'SERVICE'},
   {id:'ARR_LOMA',label:'ARRIENDO NODO LOMA GRANDE',match:/ARRIENDO.*LOMA GRANDE/,cardGroup:'SERVICE'},
@@ -239,7 +292,7 @@ function recurringForItem(it){
     const manual=RECURRING.find(r=>r.id===it.manualRecurringId);
     if(manual)return manual;
   }
-  return recurringMatch(it?.concepto,it?.beneficiario,it?.valor)||salaryRecurringForItem(it);
+  return recurringMatch(it?.concepto,it?.beneficiario,it?.valor)||salaryRecurringForItem(it)||customRecurringForItem(it);
 }
 function availableRecurringForItem(currentIt){
   const p=controlPeriod(),ledger=loadMonthlyLedger(),data=ledger[p.key]||{};
@@ -296,7 +349,7 @@ function confirmLoadedPayments(){
   alert(confirmed?('Se confirmaron '+confirmed+' pago(s) recurrente(s).'):'No encontré pagos recurrentes para confirmar.');
 }
 function focusRecurringPayment(recurringId){
-  const r=RECURRING.find(x=>x.id===recurringId)||SALARY_RECURRING.find(x=>x.id===recurringId);
+  const r=RECURRING.find(x=>x.id===recurringId)||SALARY_RECURRING.find(x=>x.id===recurringId)||loadCustomRecurring().find(x=>x.id===recurringId);
   if(!r)return;
   const matches=items
     .map((it,index)=>({it,index,recurring:(!it.error&&!it.duplicate)?recurringForItem(it):null}))
@@ -353,6 +406,9 @@ function renderMonthlyControl(){
   monthlyPeriod.textContent='Período controlado: '+monthLabel(p)+' · fecha límite provisional: día 5 del mes siguiente';
   renderCards(RECURRING.filter(r=>r.cardGroup==='SERVICE'),monthlyGrid,monthlySummary);
   renderCards(SALARY_RECURRING,salaryMonthlyGrid,salaryMonthlySummary);
+  const customDefs=loadCustomRecurring();
+  customRecurringSection.style.display=customDefs.length?'block':'none';
+  if(customDefs.length)renderCards(customDefs,customMonthlyGrid,customMonthlySummary);
 }
 
 function cleanText(v){return String(v||'').replace(/\s+/g,' ').replace(/^[\s:;-]+|[\s:;-]+$/g,'').trim()}
@@ -1140,15 +1196,19 @@ function closePdfPreview(){
   if(activePreviewUrl){URL.revokeObjectURL(activePreviewUrl);activePreviewUrl=''}
   activePreviewIndex=-1;
 }
+function needsReviewHighlight(it){
+  const c=norm(it?.concepto);
+  return !it?.finalClass||!c||c==='SIN DESCRIPCION'||c==='SIN CONCEPTO'||!it?.beneficiario;
+}
 function render(){
   items.forEach(normalizeFixedServiceItem);
   items.forEach(syncFinalClassification);
   if(!items.length){rows.innerHTML='<tr><td colspan="6"><div class="empty">Todavía no has cargado comprobantes.</div></td></tr>';downloadAllBtn.disabled=true;confirmPaymentsBtn.disabled=true;return}
   const visible=items.filter(x=>(activeCategory==='TODOS'||x.categoria===activeCategory)&&(activeOrigin==='TODOS'||x.originGroup===activeOrigin));
-  rows.innerHTML=visible.map(it=>{const i=items.indexOf(it);return `<tr data-item-index="${i}">
+  rows.innerHTML=visible.map(it=>{const i=items.indexOf(it);const review=needsReviewHighlight(it);const cr=customRecurringForItem(it);return `<tr data-item-index="${i}" class="${review?'reviewMissing':''}">
     <td><div class="fileName">${escapeHtml(it.file.name)}</div><div class="sub">${(it.file.size/1024).toFixed(0)} KB</div></td>
     <td>
-      <input data-i="${i}" data-k="concepto" value="${attr(upperText(it.concepto))}" placeholder="EJ. SUELDO OCTUBRE">
+      <input class="${(!it.concepto||norm(it.concepto)==='SIN DESCRIPCION'||norm(it.concepto)==='SIN CONCEPTO')?'fieldMissing':''}" data-i="${i}" data-k="concepto" value="${attr(upperText(it.concepto))}" placeholder="EJ. SUELDO OCTUBRE">
       ${it.serviceContract?'<div class="sub">CONTRATO: '+escapeHtml(it.serviceContract)+'</div>':''}
       ${needsManualRecurringAssociation(it)?`
       <select data-i="${i}" data-k="manualRecurringId" style="margin-top:6px">
@@ -1158,9 +1218,15 @@ function render(){
       ${it.manualRecurringId?'<div class="sub" style="margin-top:4px"><b>ASOCIACIÓN MANUAL</b></div>':''}
       `:''}
     </td>
-    <td><input data-i="${i}" data-k="beneficiario" value="${attr(upperText(it.beneficiario))}" placeholder="EJ. BRYAN GARCIA"></td>
     <td>
-      <select data-i="${i}" data-k="finalClass">
+      <input class="${!it.beneficiario?'fieldMissing':''}" data-i="${i}" data-k="beneficiario" value="${attr(upperText(it.beneficiario))}" placeholder="EJ. BRYAN GARCIA">
+      <div class="quickRecurring">
+        <button type="button" data-rec-fixed="${i}" class="${cr?.valueType==='FIJO'?'active':''}">RECURRENTE FIJO</button>
+        <button type="button" data-rec-variable="${i}" class="${cr?.valueType==='VARIABLE'?'active':''}">RECURRENTE VARIABLE</button>
+      </div>
+    </td>
+    <td>
+      <select class="${!it.finalClass?'fieldMissing':''}" data-i="${i}" data-k="finalClass">
         <option value="">SIN CLASIFICAR / ELEGIR MANUALMENTE</option>
         ${FINAL_CLASSES.map(v=>'<option value="'+attr(v)+'" '+(it.finalClass===v?'selected':'')+'>'+escapeHtml(v)+'</option>').join('')}
       </select>
@@ -1401,7 +1467,9 @@ rows.addEventListener('change',e=>{
   }
 });
 rows.addEventListener('click',e=>{
-  const p=e.target.closest('[data-preview]'),d=e.target.closest('[data-download]'),r=e.target.closest('[data-remove]');
+  const rf=e.target.closest('[data-rec-fixed]'),rv=e.target.closest('[data-rec-variable]'),p=e.target.closest('[data-preview]'),d=e.target.closest('[data-download]'),r=e.target.closest('[data-remove]');
+  if(rf){setCustomRecurring(items[Number(rf.dataset.recFixed)],'FIJO');return}
+  if(rv){setCustomRecurring(items[Number(rv.dataset.recVariable)],'VARIABLE');return}
   if(p){openPdfPreview(Number(p.dataset.preview));return}
   if(d){downloadOne(Number(d.dataset.download));return}
   if(r){items.splice(Number(r.dataset.remove),1);render()}
@@ -1418,6 +1486,7 @@ function handleRecurringCardClick(e){
 }
 monthlyGrid.addEventListener('click',handleRecurringCardClick);
 salaryMonthlyGrid.addEventListener('click',handleRecurringCardClick);
+customMonthlyGrid.addEventListener('click',handleRecurringCardClick);
 clearBtn.onclick=()=>{items=[];activeCategory='TODOS';activeOrigin='TODOS';mailGroups.clear();mailSelect.querySelectorAll('[data-mail-group]').forEach(x=>x.checked=false);render()};downloadAllBtn.onclick=downloadAll;confirmPaymentsBtn.onclick=confirmLoadedPayments;filterAllBtn.onclick=()=>{activeCategory='TODOS';activeOrigin='TODOS';render()};filterSalariesBtn.onclick=()=>{activeCategory='SUELDOS';render()};filterRentsBtn.onclick=()=>{activeCategory='ARRIENDOS';render()};filterServicesBtn.onclick=()=>{activeCategory='SERVICIOS BÁSICOS';render()};filterSalcedoBtn.onclick=()=>{activeOrigin=activeOrigin==='DISPROTEL SALCEDO'?'TODOS':'DISPROTEL SALCEDO';render()};filterSaqLatBtn.onclick=()=>{activeOrigin=activeOrigin==='DISPROTEL SAQUISILÍ-LATACUNGA'?'TODOS':'DISPROTEL SAQUISILÍ-LATACUNGA';render()};emailBtn.onclick=prepareEmail;
 </script>
 </body>
