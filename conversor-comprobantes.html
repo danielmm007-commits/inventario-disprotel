@@ -1047,13 +1047,34 @@ function selectedMailPacks(){
 function refreshEmailButton(){
   emailBtn.disabled=!selectedMailPacks().length;
 }
+function salaryZipPath(it){
+  if(it.salarySubgroup==='ADMIN')return 'ADMIN/';
+  if(it.salaryGroup==='PAGOS AUX SALCEDO')return 'PAGOS AUX SALCEDO/';
+  if(it.salaryGroup==='SALCEDO'){
+    if(it.salarySubgroup==='ROL')return 'SALCEDO/ROL/';
+    if(it.salarySubgroup==='COM')return 'SALCEDO/COM/';
+    return 'SALCEDO/OTROS/';
+  }
+  if(it.salaryGroup==='SAQUISILÍ-LATACUNGA'){
+    if(it.salarySubgroup==='ROL')return 'SAQUISILI-LATACUNGA/ROL/';
+    if(it.salarySubgroup==='COM')return 'SAQUISILI-LATACUNGA/COM/';
+    return 'SAQUISILI-LATACUNGA/OTROS/';
+  }
+  return 'NO CLASIFICADOS/';
+}
 async function buildMailGroupZip(group,selected){
   if(!selected?.length)return null;
   const zip=new JSZip();const used=new Set();
   for(const it of selected){
     let n=filename(it),base=n.replace(/\.pdf$/i,'');let k=2;
-    while(used.has(norm(n)))n=base+' ('+(k++)+').pdf';
-    used.add(norm(n));zip.file(n,it.file);
+    const path=group==='SUELDOS'?salaryZipPath(it):'';
+    let full=path+n;
+    while(used.has(norm(full))){
+      n=base+' ('+(k++)+').pdf';
+      full=path+n;
+    }
+    used.add(norm(full));
+    zip.file(full,it.file);
   }
   const blob=await zip.generateAsync({type:'blob'});
   return {blob,name:mailGroupName(group)+'.zip',count:selected.length,group};
