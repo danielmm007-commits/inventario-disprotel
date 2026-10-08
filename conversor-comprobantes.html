@@ -34,6 +34,7 @@ input[type=file]{display:none}
   .dueItem span{font-size:12px}
   .duePaid{border-color:#b9dec7;background:#f4fbf6}
   .duePending{border-color:#ead7a6;background:#fffaf0}
+  .dueLoaded{border-color:#e7c96e;background:#fff8d9}
   .dueLate{border-color:#efb5b5;background:#fff5f5}
   .dueTag{display:inline-block;padding:2px 7px;border-radius:999px;font-weight:700}
 </style>
@@ -153,14 +154,25 @@ function confirmLoadedPayments(){
 }
 function renderMonthlyControl(){
   const p=controlPeriod(),ledger=loadMonthlyLedger(),data=ledger[p.key]||{};
+  const loadedIds=new Set();
+  for(const it of items){
+    if(it.error||it.duplicate)continue;
+    const r=recurringMatch(it.concepto);
+    if(r)loadedIds.add(r.id);
+  }
+
   const paid=RECURRING.filter(r=>data[r.id]?.paid).length;
-  const pending=RECURRING.length-paid;
+  const loaded=RECURRING.filter(r=>!data[r.id]?.paid&&loadedIds.has(r.id)).length;
+  const pending=RECURRING.length-paid-loaded;
+
   monthlyPeriod.textContent='Período controlado: '+monthLabel(p)+' · fecha límite provisional: día 5 del mes siguiente';
-  monthlySummary.textContent=paid+' pagados · '+pending+' pendientes';
+  monthlySummary.textContent=paid+' pagados · '+loaded+' por confirmar · '+pending+' pendientes';
+
   monthlyGrid.innerHTML=RECURRING.map(r=>{
     const ok=!!data[r.id]?.paid;
-    const cls=ok?'duePaid':(p.duePassed?'dueLate':'duePending');
-    const status=ok?'PAGADO':(p.duePassed?'VENCIDO':'PENDIENTE');
+    const hasLoaded=!ok&&loadedIds.has(r.id);
+    const cls=ok?'duePaid':(hasLoaded?'dueLoaded':(p.duePassed?'dueLate':'duePending'));
+    const status=ok?'PAGADO':(hasLoaded?'COMPROBANTE CARGADO · POR CONFIRMAR':(p.duePassed?'VENCIDO':'PENDIENTE'));
     return '<div class="dueItem '+cls+'"><b>'+escapeHtml(r.label)+'</b><span class="dueTag">'+status+'</span></div>';
   }).join('');
 }
@@ -663,6 +675,7 @@ function render(){
     <td><span class="status ${it.error||it.duplicate?'err':(it.concepto||it.beneficiario?'ok':'warn')}">${it.error?'ERROR':(it.duplicate?'DUPLICADO':(it.personalAccount?'REVISAR CUENTA':(it.originMismatch?'REVISAR ORIGEN':(it.concepto||it.beneficiario?'LISTO':'REVISAR'))))}</span></td>
     <td><div class="rowActions"><button type="button" data-download="${i}" title="Descargar">⬇</button><button type="button" data-remove="${i}" title="Quitar">✕</button></div></td>
   </tr>`}).join('')||'<tr><td colspan="8"><div class="empty">No hay archivos en esta clasificación.</div></td></tr>';
+  renderMonthlyControl();
   const valid=items.filter(x=>!x.error);downloadAllBtn.disabled=!valid.length;confirmPaymentsBtn.disabled=!items.some(x=>!x.error&&!x.duplicate&&['ARRIENDOS','SERVICIOS BÁSICOS'].includes(x.categoria));emailBtn.disabled=activeCategory==='TODOS'||!valid.some(x=>x.categoria===activeCategory);[filterAllBtn,filterSalariesBtn,filterRentsBtn,filterServicesBtn].forEach(b=>b.classList.remove('filterOn'));({TODOS:filterAllBtn,SUELDOS:filterSalariesBtn,ARRIENDOS:filterRentsBtn,'SERVICIOS BÁSICOS':filterServicesBtn}[activeCategory]||filterAllBtn).classList.add('filterOn');[filterSalcedoBtn,filterSaqLatBtn].forEach(b=>b.classList.remove('filterOn'));if(activeOrigin==='DISPROTEL SALCEDO')filterSalcedoBtn.classList.add('filterOn');if(activeOrigin==='DISPROTEL SAQUISILÍ-LATACUNGA')filterSaqLatBtn.classList.add('filterOn');
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
