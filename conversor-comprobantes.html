@@ -166,6 +166,23 @@ function recurringForItem(it){
   }
   return recurringMatch(it?.concepto,it?.beneficiario,it?.valor);
 }
+function availableRecurringForItem(currentIt){
+  const p=controlPeriod(),ledger=loadMonthlyLedger(),data=ledger[p.key]||{};
+  const occupied=new Set();
+
+  for(const other of items){
+    if(other===currentIt||other.error||other.duplicate)continue;
+    const r=recurringForItem(other);
+    if(r)occupied.add(r.id);
+  }
+
+  return RECURRING.filter(r=>{
+    if(currentIt?.manualRecurringId===r.id)return true;
+    if(data[r.id]?.paid)return false;
+    if(occupied.has(r.id))return false;
+    return true;
+  });
+}
 function registerRecurringPayment(it){
   const r=recurringForItem(it);if(!r)return;
   const p=controlPeriod(),ledger=loadMonthlyLedger();
@@ -884,8 +901,8 @@ function render(){
       <input data-i="${i}" data-k="concepto" value="${attr(upperText(it.concepto))}" placeholder="EJ. SUELDO OCTUBRE">
       ${it.serviceContract?'<div class="sub">CONTRATO: '+escapeHtml(it.serviceContract)+'</div>':''}
       <select data-i="${i}" data-k="manualRecurringId" style="margin-top:6px">
-        <option value="">ASOCIAR A RECORDATORIO...</option>
-        ${RECURRING.map(r=>'<option value="'+attr(r.id)+'" '+(it.manualRecurringId===r.id?'selected':'')+'>'+escapeHtml(r.label)+'</option>').join('')}
+        <option value="">${availableRecurringForItem(it).length?'ASOCIAR A RECORDATORIO...':'SIN RECORDATORIOS PENDIENTES'}</option>
+        ${availableRecurringForItem(it).map(r=>'<option value="'+attr(r.id)+'" '+(it.manualRecurringId===r.id?'selected':'')+'>'+escapeHtml(r.label)+'</option>').join('')}
       </select>
       ${it.manualRecurringId?'<div class="sub" style="margin-top:4px"><b>ASOCIACIÓN MANUAL</b></div>':''}
     </td>
