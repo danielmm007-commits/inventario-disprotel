@@ -576,6 +576,43 @@ function detectTransactionMeta(lines){
   }
   return {fecha,hora};
 }
+const SALARY_GROUP_SALCEDO=[
+  'BRYAN GARCIA',
+  'MAYRA MOLINA',
+  'FERNANDO MOLINA',
+  'JONATHAN OROZCO',
+  'FRANKLIN OROZCO',
+  'DANIELA VELASTEGUI',
+  'CARLOS LUIS MOLINA'
+];
+const SALARY_GROUP_SAQLAT=[
+  'DIEGO MANCERO',
+  'THALYA CALAPAQUI',
+  'BRISA PURUNCAJAS',
+  'STALIN MOLINA',
+  'STALIN VILCA',
+  'RUBI PAZMIÑO',
+  'MARIA EMPERATRIZ MUÑOZ',
+  'ALEXANDRA BARBOSA',
+  'JEMMY'
+];
+const SALARY_AUX_SALCEDO=[
+  'MATEO BARBOSA',
+  'JOSUE MOLINA'
+];
+function beneficiaryMatchesAny(v,list){
+  const b=norm(v);
+  return list.some(n=>{
+    const x=norm(n);
+    return b.includes(x)||x.includes(b);
+  });
+}
+function salaryCityGroup(it){
+  if(beneficiaryMatchesAny(it?.beneficiario,SALARY_AUX_SALCEDO))return 'PAGOS AUX SALCEDO';
+  if(beneficiaryMatchesAny(it?.beneficiario,SALARY_GROUP_SALCEDO))return 'SALCEDO';
+  if(beneficiaryMatchesAny(it?.beneficiario,SALARY_GROUP_SAQLAT))return 'SAQUISILÍ-LATACUNGA';
+  return '';
+}
 const SALARY_TWO_PAYMENTS=[
   'FERNANDO MOLINA',
   'BRYAN GARCIA',
@@ -604,7 +641,12 @@ function refreshSalaryPaymentNumbers(){
     it.salaryPaymentCount=0;
     it.salaryExpectedCount=0;
     it.salaryMissingPayment=false;
+    it.salaryGroup='';
+    it.salarySubgroup='';
     if(it.categoria!=='SUELDOS'||!it.beneficiario)return;
+
+    it.salaryGroup=salaryCityGroup(it);
+
     const period=salaryPeriodLabel(it.fecha)||String(it.fecha||'SIN-PERIODO');
     const key=norm(it.beneficiario)+'|'+period;
     if(!groups.has(key))groups.set(key,[]);
@@ -625,9 +667,22 @@ function refreshSalaryPaymentNumbers(){
 
     const expected=Math.max(...arr.map(x=>salaryExpectedPayments(x.it)));
     const normal=arr.filter(x=>!x.it.salaryAdmin&&!/\bADMIN\b/i.test(x.it.concepto||''));
-    normal.forEach((x,i)=>x.it.pagoNumero=i+1);
+
+    normal.forEach((x,i)=>{
+      x.it.pagoNumero=i+1;
+      if(x.it.salaryGroup==='PAGOS AUX SALCEDO'){
+        x.it.salarySubgroup='AUX';
+      }else if(x.it.salaryGroup){
+        x.it.salarySubgroup=i===0?'ROL':(i===1?'COM':'ADICIONAL');
+      }else{
+        x.it.salarySubgroup='SIN GRUPO';
+      }
+    });
 
     arr.forEach(x=>{
+      if(x.it.salaryAdmin||/\bADMIN\b/i.test(x.it.concepto||'')){
+        x.it.salarySubgroup='ADMIN';
+      }
       x.it.salaryPaymentCount=arr.length;
       x.it.salaryExpectedCount=expected;
       x.it.salaryMissingPayment=expected>1&&arr.length<expected;
@@ -925,7 +980,10 @@ function render(){
       `:''}
     </td>
     <td><input data-i="${i}" data-k="beneficiario" value="${attr(upperText(it.beneficiario))}" placeholder="EJ. BRYAN GARCIA"></td>
-    <td><select data-i="${i}" data-k="categoria"><option ${it.categoria==='SUELDOS'?'selected':''}>SUELDOS</option><option ${it.categoria==='ARRIENDOS'?'selected':''}>ARRIENDOS</option><option ${it.categoria==='SERVICIOS BÁSICOS'?'selected':''}>SERVICIOS BÁSICOS</option><option ${it.categoria==='OTROS'?'selected':''}>OTROS</option></select></td>
+    <td>
+      <select data-i="${i}" data-k="categoria"><option ${it.categoria==='SUELDOS'?'selected':''}>SUELDOS</option><option ${it.categoria==='ARRIENDOS'?'selected':''}>ARRIENDOS</option><option ${it.categoria==='SERVICIOS BÁSICOS'?'selected':''}>SERVICIOS BÁSICOS</option><option ${it.categoria==='OTROS'?'selected':''}>OTROS</option></select>
+      ${it.categoria==='SUELDOS'&&it.salarySubgroup?'<div class="sub" style="margin-top:5px"><b>'+escapeHtml(it.salarySubgroup==='ADMIN'?'ADMIN':((it.salaryGroup?it.salaryGroup+' · ':'')+it.salarySubgroup))+'</b></div>':''}
+    </td>
     <td><div class="sub"><b>${escapeHtml(it.originGroup||'SIN CLASIFICAR')}</b></div><div class="sub">${escapeHtml(it.originOwner||'')}${it.originSuffix?' · ****'+escapeHtml(it.originSuffix):''}</div>${it.personalAccount?'<div class="status err" style="margin-top:4px">REVISAR: CUENTA PERSONAL</div>':''}${it.originMismatch?'<div class="status err" style="margin-top:4px">REVISAR ORIGEN</div>':''}</td>
     <td><div class="namePreview" id="preview-${i}">${escapeHtml(filename(it))}</div></td>
     <td><span class="status ${it.error||it.duplicate?'err':(it.salaryMissingPayment?'warn':(it.concepto||it.beneficiario?'ok':'warn'))}">${it.error?'ERROR':(it.duplicate?'DUPLICADO':(it.personalAccount?'REVISAR CUENTA':(it.originMismatch?'REVISAR ORIGEN':(it.salaryMissingPayment?(it.salaryPaymentCount+' DE '+it.salaryExpectedCount+' · FALTA PAGO'):(it.concepto||it.beneficiario?'LISTO':'REVISAR')))))}</span></td>
@@ -940,7 +998,7 @@ async function addFiles(files){
   const pdfs=[...files].filter(f=>/\.pdf$/i.test(f.name)||f.type==='application/pdf'); if(!pdfs.length)return;
   progress.style.display='block';let done=0;
   for(const file of pdfs){
-    const it={file,concepto:'',beneficiario:'',categoria:'OTROS',servicePayment:false,valor:'',fecha:'',hora:'',pagoNumero:'',salaryPaymentCount:0,salaryExpectedCount:0,salaryMissingPayment:false,salaryAdmin:false,originOwner:'',originSuffix:'',originGroup:'SIN CLASIFICAR',personalAccount:false,originMismatch:false,cntCounterpart:'',serviceContract:'',transactionId:'',manualConcept:false,manualRecurringId:'',duplicate:false,duplicateOf:'',error:''};items.push(it);render();
+    const it={file,concepto:'',beneficiario:'',categoria:'OTROS',servicePayment:false,valor:'',fecha:'',hora:'',pagoNumero:'',salaryPaymentCount:0,salaryExpectedCount:0,salaryMissingPayment:false,salaryAdmin:false,salaryGroup:'',salarySubgroup:'',originOwner:'',originSuffix:'',originGroup:'SIN CLASIFICAR',personalAccount:false,originMismatch:false,cntCounterpart:'',serviceContract:'',transactionId:'',manualConcept:false,manualRecurringId:'',duplicate:false,duplicateOf:'',error:''};items.push(it);render();
     try{const text=await extractPdf(file),d=detect(text);it.concepto=upperText(d.concepto);it.beneficiario=upperText(d.beneficiario);it.servicePayment=!!d.servicePayment;it.valor=d.valor||'';it.fecha=d.fecha||'';it.hora=d.hora||'';it.originOwner=d.originOwner||'';it.originSuffix=d.originSuffix||'';it.originGroup=d.originGroup||'SIN CLASIFICAR';it.personalAccount=!!d.personalAccount;it.originMismatch=!!d.originMismatch;it.cntCounterpart=d.cntCounterpart||'';it.serviceContract=d.serviceContract||'';it.transactionId=d.transactionId||'';it.categoria=d.categoria||classifyPayment(it.concepto);normalizeFixedServiceItem(it);if(!text.trim())it.error='PDF sin texto extraíble'}catch(e){it.error='No se pudo leer'}
     applySalaryGroupRules();refreshSalaryPaymentNumbers();refreshDuplicateFlags();learnServiceContract(it);renderMonthlyControl();done++;progressBar.style.width=Math.round(done/pdfs.length*100)+'%';render();
   }
