@@ -183,6 +183,17 @@ function availableRecurringForItem(currentIt){
     return true;
   });
 }
+function needsManualRecurringAssociation(it){
+  if(it?.manualRecurringId)return true;
+  if(recurringMatch(it?.concepto,it?.beneficiario,it?.valor))return false;
+  const s=norm(it?.concepto);
+  if(!s)return true;
+  const generic=[
+    'PAGO','TRANSFERENCIA','COMPROBANTE','OTROS','SIN CONCEPTO',
+    'PAGO SERVICIO','PAGO VARIOS','PAGO PROVEEDOR'
+  ];
+  return generic.includes(s)||s.length<5;
+}
 function registerRecurringPayment(it){
   const r=recurringForItem(it);if(!r)return;
   const p=controlPeriod(),ledger=loadMonthlyLedger();
@@ -900,11 +911,13 @@ function render(){
     <td>
       <input data-i="${i}" data-k="concepto" value="${attr(upperText(it.concepto))}" placeholder="EJ. SUELDO OCTUBRE">
       ${it.serviceContract?'<div class="sub">CONTRATO: '+escapeHtml(it.serviceContract)+'</div>':''}
+      ${needsManualRecurringAssociation(it)?`
       <select data-i="${i}" data-k="manualRecurringId" style="margin-top:6px">
         <option value="">${availableRecurringForItem(it).length?'ASOCIAR A RECORDATORIO...':'SIN RECORDATORIOS PENDIENTES'}</option>
         ${availableRecurringForItem(it).map(r=>'<option value="'+attr(r.id)+'" '+(it.manualRecurringId===r.id?'selected':'')+'>'+escapeHtml(r.label)+'</option>').join('')}
       </select>
       ${it.manualRecurringId?'<div class="sub" style="margin-top:4px"><b>ASOCIACIÓN MANUAL</b></div>':''}
+      `:''}
     </td>
     <td><input data-i="${i}" data-k="beneficiario" value="${attr(upperText(it.beneficiario))}" placeholder="EJ. BRYAN GARCIA"></td>
     <td><select data-i="${i}" data-k="categoria"><option ${it.categoria==='SUELDOS'?'selected':''}>SUELDOS</option><option ${it.categoria==='ARRIENDOS'?'selected':''}>ARRIENDOS</option><option ${it.categoria==='SERVICIOS BÁSICOS'?'selected':''}>SERVICIOS BÁSICOS</option><option ${it.categoria==='OTROS'?'selected':''}>OTROS</option></select></td>
