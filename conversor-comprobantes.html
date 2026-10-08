@@ -23,6 +23,19 @@ input[type=file]{display:none}
 .rowActions{display:flex;gap:5px}.rowActions button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 8px;cursor:pointer;font-size:9px}
 .privacy{margin-top:10px;font-size:9px;color:#72848d}.progress{height:5px;background:#dce7ec;border-radius:999px;overflow:hidden;margin-top:10px;display:none}.progress>i{display:block;height:100%;width:0;background:#176fc4;transition:.2s}
 @media(max-width:700px){.wrap{padding:10px}.hero{align-items:flex-start;flex-direction:column}.drop{padding:20px 12px}}
+
+  .monthlyBox{margin:16px 0;background:#fff;border:1px solid #dfe6ee;border-radius:14px;padding:16px}
+  .monthlyHead{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .monthlyHead h3{margin:0;font-size:17px}
+  .monthlySummary{font-size:13px;color:#52606d}
+  .monthlyGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:9px}
+  .dueItem{border:1px solid #e4e9ef;border-radius:10px;padding:10px 12px;background:#fafbfd}
+  .dueItem b{display:block;font-size:13px;margin-bottom:4px}
+  .dueItem span{font-size:12px}
+  .duePaid{border-color:#b9dec7;background:#f4fbf6}
+  .duePending{border-color:#ead7a6;background:#fffaf0}
+  .dueLate{border-color:#efb5b5;background:#fff5f5}
+  .dueTag{display:inline-block;padding:2px 7px;border-radius:999px;font-weight:700}
 </style>
 </head>
 <body>
@@ -48,6 +61,16 @@ input[type=file]{display:none}
     <button id="filterSaqLatBtn" type="button">SAQUISILÍ-LATACUNGA</button>
     <button id="emailBtn" type="button" disabled>✉ PREPARAR CORREO</button>
   </div>
+  <section class="monthlyBox">
+    <div class="monthlyHead">
+      <div>
+        <h3>📅 Control mensual de pagos recurrentes</h3>
+        <div class="monthlySummary" id="monthlyPeriod"></div>
+      </div>
+      <div class="monthlySummary" id="monthlySummary"></div>
+    </div>
+    <div class="monthlyGrid" id="monthlyGrid"></div>
+  </section>
   <section class="card">
     <div class="tableWrap">
       <table class="tbl">
@@ -70,8 +93,63 @@ const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim
 if(!me?.session_token){location.replace('login-general-v2.html?return='+encodeURIComponent('conversor-comprobantes.html'))}
 if(norm(me.usuario)!=='DANIEL'&&!norm(me.nombre).includes('CARLOS DANIEL MOLINA')){document.body.innerHTML='<main class="wrap"><div class="notice" style="border-color:#efc5c5;background:#fff4f4;color:#9c3434"><b>Acceso restringido.</b> Este módulo de prueba está habilitado únicamente para Daniel.</div></main>';throw new Error('Acceso restringido')}
 
-const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), progress=$('progress'), progressBar=$('progressBar');
+const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), progress=$('progress'), progressBar=$('progressBar');
 let items=[];let activeCategory='TODOS';let activeOrigin='TODOS';
+const MONTHLY_KEY='disprotel_recurring_payments_v1';
+const RECURRING=[
+  {id:'ARR_NIAGARA',label:'ARRIENDO NODO NIAGARA',match:/ARRIENDO.*NIAGARA/},
+  {id:'ARR_LOMA',label:'ARRIENDO NODO LOMA GRANDE',match:/ARRIENDO.*LOMA GRANDE/},
+  {id:'ARR_GALPON',label:'ARRIENDO NODO GALPON',match:/ARRIENDO.*GALPON/},
+  {id:'CNT_SALCEDO',label:'CNT / TELÉFONO SALCEDO',match:/PLANILLA TELEF[ÓO]NICA.*SALCEDO|FONO.*SALCEDO/},
+  {id:'CNT_LATACUNGA',label:'CNT / TELÉFONO LATACUNGA',match:/PLANILLA TELEF[ÓO]NICA.*LATACUNGA|FONO.*LATACUNGA/},
+  {id:'CNT_SAQUISILI',label:'CNT / TELÉFONO SAQUISILÍ',match:/PLANILLA TELEF[ÓO]NICA.*SAQUISIL[IÍ]|FONO.*SAQUISIL[IÍ]/},
+  {id:'ENE_ZUMBALICA',label:'ENERGÍA ZUMBALICA',match:/ENERG[IÍ]A.*ZUMBALICA/},
+  {id:'ENE_LOMA',label:'ENERGÍA LOMA GRANDE',match:/ENERG[IÍ]A.*LOMA GRANDE/},
+  {id:'ENE_OF_LAT',label:'ENERGÍA OFICINA LATACUNGA',match:/ENERG[IÍ]A.*OFICINA.*LATACUNGA/},
+  {id:'ENE_OF_SAL',label:'ENERGÍA OFICINA SALCEDO',match:/ENERG[IÍ]A.*OFICINA.*SALCEDO/},
+  {id:'ENE_CENTRAL_SAL',label:'ENERGÍA NODO CENTRAL SALCEDO',match:/ENERG[IÍ]A.*(?:NODO )?(?:PRINCIPAL|CENTRAL).*SALCEDO/}
+];
+function controlPeriod(){
+  const now=new Date();
+  let y=now.getFullYear(),m=now.getMonth()-1;
+  if(m<0){m=11;y--}
+  return {key:y+'-'+String(m+1).padStart(2,'0'),year:y,month:m,duePassed:now.getDate()>5};
+}
+function monthLabel(p){
+  return ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'][p.month]+' '+p.year;
+}
+function loadMonthlyLedger(){
+  try{return JSON.parse(localStorage.getItem(MONTHLY_KEY)||'{}')}catch{return {}}
+}
+function saveMonthlyLedger(v){
+  localStorage.setItem(MONTHLY_KEY,JSON.stringify(v));
+}
+function recurringMatch(concept){
+  const s=upperText(concept);
+  return RECURRING.find(r=>r.match.test(s))||null;
+}
+function registerRecurringPayment(it){
+  if(!['ARRIENDOS','SERVICIOS BÁSICOS'].includes(it.categoria))return;
+  const r=recurringMatch(it.concepto);if(!r)return;
+  const p=controlPeriod(),ledger=loadMonthlyLedger();
+  if(!ledger[p.key])ledger[p.key]={};
+  ledger[p.key][r.id]={paid:true,at:new Date().toISOString(),concept:it.concepto,amount:it.valor||''};
+  saveMonthlyLedger(ledger);
+}
+function renderMonthlyControl(){
+  const p=controlPeriod(),ledger=loadMonthlyLedger(),data=ledger[p.key]||{};
+  const paid=RECURRING.filter(r=>data[r.id]?.paid).length;
+  const pending=RECURRING.length-paid;
+  monthlyPeriod.textContent='Período controlado: '+monthLabel(p)+' · fecha límite provisional: día 5 del mes siguiente';
+  monthlySummary.textContent=paid+' pagados · '+pending+' pendientes';
+  monthlyGrid.innerHTML=RECURRING.map(r=>{
+    const ok=!!data[r.id]?.paid;
+    const cls=ok?'duePaid':(p.duePassed?'dueLate':'duePending');
+    const status=ok?'PAGADO':(p.duePassed?'VENCIDO':'PENDIENTE');
+    return '<div class="dueItem '+cls+'"><b>'+escapeHtml(r.label)+'</b><span class="dueTag">'+status+'</span></div>';
+  }).join('');
+}
+
 
 function cleanText(v){return String(v||'').replace(/\s+/g,' ').replace(/^[\s:;-]+|[\s:;-]+$/g,'').trim()}
 function safeName(v){return cleanText(v).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim().slice(0,140)}
@@ -481,7 +559,7 @@ async function addFiles(files){
   for(const file of pdfs){
     const it={file,concepto:'',beneficiario:'',categoria:'OTROS',servicePayment:false,valor:'',fecha:'',hora:'',pagoNumero:'',originOwner:'',originSuffix:'',originGroup:'SIN CLASIFICAR',personalAccount:false,originMismatch:false,cntCounterpart:'',error:''};items.push(it);render();
     try{const text=await extractPdf(file),d=detect(text);it.concepto=upperText(d.concepto);it.beneficiario=upperText(d.beneficiario);it.servicePayment=!!d.servicePayment;it.valor=d.valor||'';it.fecha=d.fecha||'';it.hora=d.hora||'';it.originOwner=d.originOwner||'';it.originSuffix=d.originSuffix||'';it.originGroup=d.originGroup||'SIN CLASIFICAR';it.personalAccount=!!d.personalAccount;it.originMismatch=!!d.originMismatch;it.cntCounterpart=d.cntCounterpart||'';it.categoria=d.categoria||classifyPayment(it.concepto);if(!text.trim())it.error='PDF sin texto extraíble'}catch(e){it.error='No se pudo leer'}
-    applySalaryGroupRules();refreshSalaryPaymentNumbers();done++;progressBar.style.width=Math.round(done/pdfs.length*100)+'%';render();
+    applySalaryGroupRules();refreshSalaryPaymentNumbers();registerRecurringPayment(it);renderMonthlyControl();done++;progressBar.style.width=Math.round(done/pdfs.length*100)+'%';render();
   }
   setTimeout(()=>{progress.style.display='none';progressBar.style.width='0'},450);
 }
@@ -591,6 +669,7 @@ rows.addEventListener('change',e=>{
   if(p)p.textContent=filename(items[i]);
 });
 rows.addEventListener('click',e=>{const d=e.target.closest('[data-download]'),r=e.target.closest('[data-remove]');if(d)downloadOne(Number(d.dataset.download));if(r){items.splice(Number(r.dataset.remove),1);render()}});
+renderMonthlyControl();
 clearBtn.onclick=()=>{items=[];activeCategory='TODOS';activeOrigin='TODOS';render()};downloadAllBtn.onclick=downloadAll;filterAllBtn.onclick=()=>{activeCategory='TODOS';activeOrigin='TODOS';render()};filterSalariesBtn.onclick=()=>{activeCategory='SUELDOS';render()};filterRentsBtn.onclick=()=>{activeCategory='ARRIENDOS';render()};filterServicesBtn.onclick=()=>{activeCategory='SERVICIOS BÁSICOS';render()};filterSalcedoBtn.onclick=()=>{activeOrigin=activeOrigin==='DISPROTEL SALCEDO'?'TODOS':'DISPROTEL SALCEDO';render()};filterSaqLatBtn.onclick=()=>{activeOrigin=activeOrigin==='DISPROTEL SAQUISILÍ-LATACUNGA'?'TODOS':'DISPROTEL SAQUISILÍ-LATACUNGA';render()};emailBtn.onclick=prepareEmail;
 </script>
 </body>
