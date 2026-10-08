@@ -25,7 +25,21 @@ input[type=file]{display:none}
 .fileName{font-weight:700;word-break:break-word}.sub{margin-top:3px;color:var(--muted);font-size:9px}.status{display:inline-block;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:800;background:#eef5f9;color:#27617f}.status.ok{background:#eaf8ef;color:#237a52}.status.warn{background:#fff6df;color:#8a6100}.status.err{background:#fff0f0;color:#a33a3a}
 .namePreview{font-weight:700;color:#0c5b8e;word-break:break-word}.empty{padding:34px;text-align:center;color:#7c8c94;font-size:11px}
 .rowActions{display:flex;gap:5px}.rowActions button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 8px;cursor:pointer;font-size:9px}
-.privacy{margin-top:10px;font-size:9px;color:#72848d}.progress{height:5px;background:#dce7ec;border-radius:999px;overflow:hidden;margin-top:10px;display:none}.progress>i{display:block;height:100%;width:0;background:#176fc4;transition:.2s}
+.privacy{margin-top:10px;font-size:9px;color:#72848d}
+.confidence{display:inline-block;margin-top:5px;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:800}
+.conf-high{background:#eaf8ef;color:#237a52}
+.conf-med{background:#fff6df;color:#8a6100}
+.conf-low{background:#fff0f0;color:#a33a3a}
+.conf-manual{background:#e8f3ff;color:#0d5c97}
+.pdfModal{position:fixed;inset:0;background:rgba(9,26,36,.72);display:none;align-items:center;justify-content:center;z-index:9999;padding:18px}
+.pdfModal.open{display:flex}
+.pdfModalCard{width:min(1100px,96vw);height:min(900px,94vh);background:#fff;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.pdfModalHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.pdfModalHead b{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pdfModalActions{display:flex;gap:7px}
+.pdfModalActions button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:7px 9px;cursor:pointer;font-weight:700}
+.pdfFrame{border:0;width:100%;height:100%;background:#eef3f5}
+.progress{height:5px;background:#dce7ec;border-radius:999px;overflow:hidden;margin-top:10px;display:none}.progress>i{display:block;height:100%;width:0;background:#176fc4;transition:.2s}
 @media(max-width:700px){.wrap{padding:10px}.hero{align-items:flex-start;flex-direction:column}.drop{padding:20px 12px}}
 
   .monthlyBox{margin:16px 0;background:#fff;border:1px solid #dfe6ee;border-radius:14px;padding:16px}
@@ -107,6 +121,18 @@ input[type=file]{display:none}
   </section>
   <div class="privacy">El conversor no modifica el contenido del PDF; únicamente cambia el nombre del archivo al descargarlo.</div>
 </main>
+<div class="pdfModal" id="pdfModal" aria-hidden="true">
+  <div class="pdfModalCard">
+    <div class="pdfModalHead">
+      <b id="pdfModalTitle">VISTA PREVIA</b>
+      <div class="pdfModalActions">
+        <button id="pdfModalDownload" type="button">⬇ DESCARGAR</button>
+        <button id="pdfModalClose" type="button">✕ CERRAR</button>
+      </div>
+    </div>
+    <iframe id="pdfFrame" class="pdfFrame" title="Vista previa del comprobante PDF"></iframe>
+  </div>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script type="module">
@@ -119,7 +145,7 @@ const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim
 if(!me?.session_token){location.replace('login-general-v2.html?return='+encodeURIComponent('conversor-comprobantes.html'))}
 if(norm(me.usuario)!=='DANIEL'&&!norm(me.nombre).includes('CARLOS DANIEL MOLINA')){document.body.innerHTML='<main class="wrap"><div class="notice" style="border-color:#efc5c5;background:#fff4f4;color:#9c3434"><b>Acceso restringido.</b> Este módulo de prueba está habilitado únicamente para Daniel.</div></main>';throw new Error('Acceso restringido')}
 
-const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), mailSelect=$('mailSelect'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), progress=$('progress'), progressBar=$('progressBar');
+const $=id=>document.getElementById(id), rows=$('rows'), input=$('files'), drop=$('drop'), clearBtn=$('clearBtn'), downloadAllBtn=$('downloadAllBtn'), confirmPaymentsBtn=$('confirmPaymentsBtn'), filterAllBtn=$('filterAllBtn'), filterSalariesBtn=$('filterSalariesBtn'), filterRentsBtn=$('filterRentsBtn'), filterServicesBtn=$('filterServicesBtn'), filterSalcedoBtn=$('filterSalcedoBtn'), filterSaqLatBtn=$('filterSaqLatBtn'), emailBtn=$('emailBtn'), mailSelect=$('mailSelect'), monthlyPeriod=$('monthlyPeriod'), monthlySummary=$('monthlySummary'), monthlyGrid=$('monthlyGrid'), progress=$('progress'), progressBar=$('progressBar'), pdfModal=$('pdfModal'), pdfModalTitle=$('pdfModalTitle'), pdfModalDownload=$('pdfModalDownload'), pdfModalClose=$('pdfModalClose'), pdfFrame=$('pdfFrame');
 let items=[];let activeCategory='TODOS';let activeOrigin='TODOS';let mailGroups=new Set();
 const MONTHLY_KEY='disprotel_recurring_payments_v2';
 const RECURRING=[
@@ -1032,6 +1058,40 @@ function syncFinalClassification(it){
 function finalClassZipName(v){
   return safeName(upperText(v)).replace(/\s+/g,'_')+'.zip';
 }
+let activePreviewUrl='',activePreviewIndex=-1;
+function confidenceInfo(it){
+  if(!it)return {label:'BAJA',cls:'conf-low'};
+  if(it.manualFinalClass||it.manualBeneficiary||it.manualConcept)return {label:'MANUAL',cls:'conf-manual'};
+  let score=0;
+  if(it.beneficiario)score+=2;
+  if(it.valor)score+=1;
+  if(it.fecha)score+=1;
+  if(it.transactionId)score+=1;
+  if(it.concepto&&norm(it.concepto)!=='SIN DESCRIPCION')score+=1;
+  if(it.finalClass)score+=1;
+  if(it.originGroup&&it.originGroup!=='SIN CLASIFICAR')score+=1;
+  if(it.originMismatch||it.personalAccount||it.error)score-=2;
+  if(score>=6)return {label:'ALTA',cls:'conf-high'};
+  if(score>=4)return {label:'MEDIA',cls:'conf-med'};
+  return {label:'BAJA',cls:'conf-low'};
+}
+function openPdfPreview(i){
+  const it=items[i];if(!it?.file)return;
+  if(activePreviewUrl)URL.revokeObjectURL(activePreviewUrl);
+  activePreviewUrl=URL.createObjectURL(it.file);
+  activePreviewIndex=i;
+  pdfModalTitle.textContent=it.file.name+' · '+(it.finalClass||'SIN CLASIFICAR');
+  pdfFrame.src=activePreviewUrl;
+  pdfModal.classList.add('open');
+  pdfModal.setAttribute('aria-hidden','false');
+}
+function closePdfPreview(){
+  pdfModal.classList.remove('open');
+  pdfModal.setAttribute('aria-hidden','true');
+  pdfFrame.src='about:blank';
+  if(activePreviewUrl){URL.revokeObjectURL(activePreviewUrl);activePreviewUrl=''}
+  activePreviewIndex=-1;
+}
 function render(){
   items.forEach(normalizeFixedServiceItem);
   items.forEach(syncFinalClassification);
@@ -1060,8 +1120,11 @@ function render(){
     </td>
     <td><div class="sub"><b>${escapeHtml(it.originGroup||'SIN CLASIFICAR')}</b></div><div class="sub">${escapeHtml(it.originOwner||'')}${it.originSuffix?' · ****'+escapeHtml(it.originSuffix):''}</div>${it.personalAccount?'<div class="status err" style="margin-top:4px">REVISAR: CUENTA PERSONAL</div>':''}${it.originMismatch?'<div class="status err" style="margin-top:4px">REVISAR ORIGEN</div>':''}</td>
     <td><div class="namePreview" id="preview-${i}">${escapeHtml(filename(it))}</div></td>
-    <td><span class="status ${it.error||it.duplicate?'err':(it.salaryMissingPayment?'warn':(it.concepto||it.beneficiario?'ok':'warn'))}">${it.error?'ERROR':(it.duplicate?'DUPLICADO':(it.personalAccount?'REVISAR CUENTA':(it.originMismatch?'REVISAR ORIGEN':(it.salaryMissingPayment?(it.salaryPaymentCount+' DE '+it.salaryExpectedCount+' · FALTA PAGO'):(it.concepto||it.beneficiario?'LISTO':'REVISAR')))))}</span></td>
-    <td><div class="rowActions"><button type="button" data-download="${i}" title="Descargar">⬇</button><button type="button" data-remove="${i}" title="Quitar">✕</button></div></td>
+    <td>
+      <span class="status ${it.error||it.duplicate?'err':(it.salaryMissingPayment?'warn':(it.concepto||it.beneficiario?'ok':'warn'))}">${it.error?'ERROR':(it.duplicate?'DUPLICADO':(it.personalAccount?'REVISAR CUENTA':(it.originMismatch?'REVISAR ORIGEN':(it.salaryMissingPayment?(it.salaryPaymentCount+' DE '+it.salaryExpectedCount+' · FALTA PAGO'):(it.concepto||it.beneficiario?'LISTO':'REVISAR')))))}</span>
+      ${(()=>{const q=confidenceInfo(it);return '<div><span class="confidence '+q.cls+'">CONFIANZA '+q.label+'</span></div>'})()}
+    </td>
+    <td><div class="rowActions"><button type="button" data-preview="${i}" title="Vista previa">👁</button><button type="button" data-download="${i}" title="Descargar">⬇</button><button type="button" data-remove="${i}" title="Quitar">✕</button></div></td>
   </tr>`}).join('')||'<tr><td colspan="8"><div class="empty">No hay archivos en esta clasificación.</div></td></tr>';
   renderMonthlyControl();
   const valid=items.filter(x=>!x.error);downloadAllBtn.disabled=!valid.length;confirmPaymentsBtn.disabled=!items.some(x=>!x.error&&!x.duplicate&&recurringForItem(x));refreshEmailButton();[filterAllBtn,filterSalariesBtn,filterRentsBtn,filterServicesBtn].forEach(b=>b.classList.remove('filterOn'));({TODOS:filterAllBtn,SUELDOS:filterSalariesBtn,ARRIENDOS:filterRentsBtn,'SERVICIOS BÁSICOS':filterServicesBtn}[activeCategory]||filterAllBtn).classList.add('filterOn');[filterSalcedoBtn,filterSaqLatBtn].forEach(b=>b.classList.remove('filterOn'));if(activeOrigin==='DISPROTEL SALCEDO')filterSalcedoBtn.classList.add('filterOn');if(activeOrigin==='DISPROTEL SAQUISILÍ-LATACUNGA')filterSaqLatBtn.classList.add('filterOn');
@@ -1072,7 +1135,7 @@ async function addFiles(files){
   const pdfs=[...files].filter(f=>/\.pdf$/i.test(f.name)||f.type==='application/pdf'); if(!pdfs.length)return;
   progress.style.display='block';let done=0;
   for(const file of pdfs){
-    const it={file,concepto:'',beneficiario:'',categoria:'OTROS',servicePayment:false,valor:'',fecha:'',hora:'',pagoNumero:'',salaryPaymentCount:0,salaryExpectedCount:0,salaryMissingPayment:false,salaryAdmin:false,salaryGroup:'',salarySubgroup:'',originOwner:'',originSuffix:'',originGroup:'SIN CLASIFICAR',personalAccount:false,originMismatch:false,cntCounterpart:'',serviceContract:'',transactionId:'',manualConcept:false,manualRecurringId:'',finalClass:'',manualFinalClass:false,duplicate:false,duplicateOf:'',error:''};items.push(it);render();
+    const it={file,concepto:'',beneficiario:'',categoria:'OTROS',servicePayment:false,valor:'',fecha:'',hora:'',pagoNumero:'',salaryPaymentCount:0,salaryExpectedCount:0,salaryMissingPayment:false,salaryAdmin:false,salaryGroup:'',salarySubgroup:'',originOwner:'',originSuffix:'',originGroup:'SIN CLASIFICAR',personalAccount:false,originMismatch:false,cntCounterpart:'',serviceContract:'',transactionId:'',manualConcept:false,manualBeneficiary:false,manualRecurringId:'',finalClass:'',manualFinalClass:false,duplicate:false,duplicateOf:'',error:''};items.push(it);render();
     try{const text=await extractPdf(file),d=detect(text);it.concepto=upperText(d.concepto);it.beneficiario=upperText(d.beneficiario);it.servicePayment=!!d.servicePayment;it.valor=d.valor||'';it.fecha=d.fecha||'';it.hora=d.hora||'';it.originOwner=d.originOwner||'';it.originSuffix=d.originSuffix||'';it.originGroup=d.originGroup||'SIN CLASIFICAR';it.personalAccount=!!d.personalAccount;it.originMismatch=!!d.originMismatch;it.cntCounterpart=d.cntCounterpart||'';it.serviceContract=d.serviceContract||'';it.transactionId=d.transactionId||'';it.categoria=d.categoria||classifyPayment(it.concepto);normalizeFixedServiceItem(it);if(!text.trim())it.error='PDF sin texto extraíble'}catch(e){it.error='No se pudo leer'}
     applySalaryGroupRules();refreshDuplicateFlags();refreshSalaryPaymentNumbers();learnServiceContract(it);renderMonthlyControl();done++;progressBar.style.width=Math.round(done/pdfs.length*100)+'%';render();
   }
@@ -1227,6 +1290,7 @@ rows.addEventListener('input',e=>{
   }
 
   if(key==='beneficiario'){
+    items[i].manualBeneficiary=true;
     const s=staffMatch(v);
     if(s){
       items[i].beneficiario=s.short;
@@ -1288,7 +1352,16 @@ rows.addEventListener('change',e=>{
     return;
   }
 });
-rows.addEventListener('click',e=>{const d=e.target.closest('[data-download]'),r=e.target.closest('[data-remove]');if(d)downloadOne(Number(d.dataset.download));if(r){items.splice(Number(r.dataset.remove),1);render()}});
+rows.addEventListener('click',e=>{
+  const p=e.target.closest('[data-preview]'),d=e.target.closest('[data-download]'),r=e.target.closest('[data-remove]');
+  if(p){openPdfPreview(Number(p.dataset.preview));return}
+  if(d){downloadOne(Number(d.dataset.download));return}
+  if(r){items.splice(Number(r.dataset.remove),1);render()}
+});
+pdfModalClose.addEventListener('click',closePdfPreview);
+pdfModal.addEventListener('click',e=>{if(e.target===pdfModal)closePdfPreview()});
+pdfModalDownload.addEventListener('click',()=>{if(activePreviewIndex>=0)downloadOne(activePreviewIndex)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&pdfModal.classList.contains('open'))closePdfPreview()});
 renderMonthlyControl();
 monthlyGrid.addEventListener('click',e=>{
   const card=e.target.closest('[data-recurring-id]');
