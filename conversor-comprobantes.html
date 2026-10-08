@@ -564,8 +564,12 @@ function applySpecialRules(d){
   }
   if(salcedo){
     d.categoria='SERVICIOS BÁSICOS';
-    if(/NODO (?:PRINCIPAL|CENTRAL)/.test(c))d.concepto='PLANILLA DE ENERGÍA NODO CENTRAL SALCEDO';
-    if(suffix&&suffix!=='7051')d.originMismatch=true;
+    if(/NODO (?:PRINCIPAL|CENTRAL)/.test(c)){
+      d.concepto='PLANILLA DE ENERGÍA NODO CENTRAL SALCEDO';
+      if(suffix&&suffix!=='7051')d.originMismatch=true;
+    }else if(suffix&&suffix!=='7051'){
+      d.originMismatch=true;
+    }
   }
 
   return d;
