@@ -338,6 +338,7 @@ const RECURRING=[
   {id:'ARR_NIAGARA',label:'ARRIENDO NODO NIAGARA',match:/ARRIENDO.*NIAGARA/,cardGroup:'SERVICE'},
   {id:'ARR_LOMA',label:'ARRIENDO NODO LOMA GRANDE',match:/ARRIENDO.*LOMA GRANDE/,cardGroup:'SERVICE'},
   {id:'ARR_GALPON',label:'ARRIENDO NODO GALPON',match:/ARRIENDO.*GALPON/,cardGroup:'SERVICE'},
+  {id:'ARR_CENTRAL_SAL',label:'ARRIENDO NODO CENTRAL',match:/ARRIENDO.*NODO CENTRAL/,cardGroup:'SERVICE',valueType:'FIJO',expectedAmount:150},
   {id:'CNT_SALCEDO',label:'CNT / TELÉFONO SALCEDO',match:/PLANILLA TELEF[ÓO]NICA.*SALCEDO|FONO.*SALCEDO/,cardGroup:'SERVICE'},
   {id:'CNT_LATACUNGA',label:'CNT / TELÉFONO LATACUNGA',match:/PLANILLA TELEF[ÓO]NICA.*LATACUNGA|FONO.*LATACUNGA/,cardGroup:'SERVICE'},
   {id:'CNT_SAQUISILI',label:'CNT / TELÉFONO SAQUISILÍ',match:/PLANILLA TELEF[ÓO]NICA.*SAQUISIL[IÍ]|FONO.*SAQUISIL[IÍ]/,cardGroup:'SERVICE'},
@@ -379,7 +380,7 @@ const SALARY_RECURRING=[
   {id:'SAL_RUBI_ADMIN',label:'RUBI PAZMIÑO · ADMIN',beneficiary:'RUBI PAZMIÑO',subgroup:'ADMIN'},
   {id:'SAL_MARIA_ROL',label:'MARIA EMPERATRIZ MUÑOZ · ROL',beneficiary:'MARIA EMPERATRIZ MUÑOZ',subgroup:'ROL'},
   {id:'SAL_ALEXANDRA_ROL',label:'ALEXANDRA BARBOSA · ROL',beneficiary:'ALEXANDRA BARBOSA',subgroup:'ROL'},
-  {id:'SAL_JEMMY_ROL',label:'JEMMY · ROL',beneficiary:'JEMMY',subgroup:'ROL'}
+  {id:'SAL_JEMMY_ROL',label:'JEMMY · SUELDO FIJO $200',beneficiary:'JEMMY',subgroup:'ROL',valueType:'FIJO',expectedAmount:200}
 ];
 function controlPeriod(){
   const now=new Date();
@@ -402,6 +403,7 @@ function recurringMatch(concept,beneficiario='',valor=''){
     ['ARR_NIAGARA',/ARRIENDO.*NIAGARA/],
     ['ARR_LOMA',/ARRIENDO.*LOMA GRANDE/],
     ['ARR_GALPON',/ARRIENDO.*GALPON/],
+    ['ARR_CENTRAL_SAL',/ARRIENDO.*NODO CENTRAL/],
     ['CNT_SALCEDO',/PLANILLA TELEFONICA.*SALCEDO|FONO.*SALCEDO/],
     ['CNT_LATACUNGA',/PLANILLA TELEFONICA.*LATACUNGA|FONO.*LATACUNGA/],
     ['CNT_SAQUISILI',/PLANILLA TELEFONICA.*SAQUISILI|FONO.*SAQUISILI/],
@@ -423,7 +425,9 @@ function salaryRecurringForItem(it){
   return SALARY_RECURRING.find(r=>{
     if(!recurringIsActive(r.id))return false;
     const rb=norm(r.beneficiary);
-    return (b.includes(rb)||rb.includes(b))&&r.subgroup===subgroup;
+    if(!((b.includes(rb)||rb.includes(b))&&r.subgroup===subgroup))return false;
+    if(r.expectedAmount!=null&&Math.abs(Number(it.valor||0)-Number(r.expectedAmount))>=0.01)return false;
+    return true;
   })||null;
 }
 function cleanCustomRecurringDuplicates(){
@@ -435,6 +439,12 @@ function cleanCustomRecurringDuplicates(){
 
     // Nunca duplicar servicios/arriendos que ya tienen tarjeta automática.
     if(recurringMatch(fake.concepto,fake.beneficiario,fake.valor))return false;
+
+    // Limpiar errores históricos: CNT no es sueldo.
+    if((concept.includes('CNT')||beneficiary.includes('CNT'))&&concept.includes('SUELDO'))return false;
+
+    // El fijo de Jemmy por $200 se controla como sueldo recurrente Salcedo, no como OTRO.
+    if(beneficiary.includes('JEMMY')&&Math.abs(Number(r.expectedAmount||0)-200)<0.01)return false;
 
     // Nunca guardar en OTROS un sueldo de personal conocido.
     // Incluye también eventuales como Josue/Mateo: no deben ser recurrentes.
@@ -924,8 +934,7 @@ const SALARY_GROUP_SAQLAT=[
   'STALIN VILCA',
   'RUBI PAZMIÑO',
   'MARIA EMPERATRIZ MUÑOZ',
-  'ALEXANDRA BARBOSA',
-  'JEMMY'
+  'ALEXANDRA BARBOSA'
 ];
 const SALARY_AUX_SALCEDO=[
   'MATEO BARBOSA',
@@ -939,6 +948,8 @@ function beneficiaryMatchesAny(v,list){
   });
 }
 function salaryCityGroup(it){
+  const b=norm(it?.beneficiario),amount=Number(it?.valor||0);
+  if(b.includes('JEMMY')&&Math.abs(amount-200)<0.01)return 'SALCEDO';
   if(beneficiaryMatchesAny(it?.beneficiario,SALARY_AUX_SALCEDO))return 'PAGOS AUX SALCEDO';
   if(beneficiaryMatchesAny(it?.beneficiario,SALARY_GROUP_SALCEDO))return 'SALCEDO';
   if(beneficiaryMatchesAny(it?.beneficiario,SALARY_GROUP_SAQLAT))return 'SAQUISILÍ-LATACUNGA';
@@ -1172,6 +1183,15 @@ function applySpecialRules(d){
   return d;
 }
 function applySalaryGroupRules(){
+  items.forEach(it=>{
+    const b=norm(it?.beneficiario),amount=Number(it?.valor||0),concept=norm(it?.concepto);
+    if(b.includes('JEMMY')&&Math.abs(amount-200)<0.01&&!/DISENO|DISEÑO|PUBLICIDAD|PUBLICACION|PUBLICACIÓN|REDES/.test(concept)){
+      it.categoria='SUELDOS';
+      it.concepto='SUELDO';
+      it.salaryAdmin=false;
+    }
+  });
+
   const salaries=items.filter(x=>!x.error&&x.beneficiario);
   const byPeriod=new Map();
   for(const it of salaries){
@@ -1347,6 +1367,7 @@ function deriveFinalClass(it){
   }
   if(it.categoria==='OTROS'){
     const s=norm((it.concepto||'')+' '+(it.beneficiario||''));
+    if(/JEMMY/.test(s)&&/PUBLICIDAD|PUBLICACION|PUBLICACIÓN|REDES|DISENO|DISEÑO|ARTES/.test(s))return 'SUELDOS AUX';
     if(/PUBLICIDAD|REDES|DISENO|DISEÑO|ARTES/.test(s))return 'OTROS GASTOS PUBLICIDAD-REDES';
   }
   return '';
