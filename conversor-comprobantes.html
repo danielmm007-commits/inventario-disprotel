@@ -474,6 +474,13 @@ function applySpecialRules(d){
     d.concepto='ARRIENDO NODO GALPON';
   }
 
+  // Servicios básicos conocidos por beneficiario.
+  if(b.includes('ALFREDO')&&b.includes('ALBAN')){
+    d.categoria='SERVICIOS BÁSICOS';
+    d.concepto='PLANILLA DE ENERGÍA OFICINA SALCEDO';
+    if(suffix&&suffix!=='7051')d.originMismatch=true;
+  }
+
   // Servicios básicos esperados por cuenta/origen.
   const saqLat=/ZUMBALICA|LOMA GRANDE|OFICINA LATACUNGA/.test(c);
   const salcedo=/FONO SALCEDO|TELEFON(?:O|ÍA).*SALCEDO|OFICINA SALCEDO|NODO PRINCIPAL(?:.*SALCEDO)?|NODO CENTRAL(?:.*SALCEDO)?/.test(c);
