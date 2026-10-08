@@ -726,13 +726,11 @@ function detectOriginOwner(lines){
        n.includes('MOLINA MUÑOZ CARLOS DANIEL'))return line;
   }
 
-  // Fuera del bloque solo aceptamos titulares conocidos, nunca beneficiarios genéricos.
+  // Fuera del bloque no inferimos a Daniel como titular: puede ser el cliente/beneficiario
+  // de una planilla y producir un origen falso. Pedro se mantiene como pista histórica explícita.
   for(const raw of lines){
     const line=cleanText(raw),n=norm(line);
     if(n.includes('PEDRO')&&n.includes('MANCERO'))return line;
-    if((n.includes('DANIEL')&&n.includes('MOLINA'))||
-       n.includes('CARLOS MOLINA MUÑOZ')||
-       n.includes('MOLINA MUÑOZ CARLOS DANIEL'))return line;
   }
   return '';
 }
@@ -827,7 +825,36 @@ function detect(text,fileName=''){
 
   if(servicePayment&&isOwn(beneficiario))beneficiario='';
   beneficiario=cleanText(beneficiario).replace(/^(beneficiario|destinatario|receptor|nombre(?: del beneficiario| del destinatario)?)\s*:?\s*/i,'');
-  let conceptoFinal=upperText(normalizeAdministrativeConcept(cleanText(concepto)));conceptoFinal=upperText(normalizeByProvider(conceptoFinal,provider));let beneficiarioFinal=upperText(beneficiario);let staff=staffMatch(beneficiarioFinal);if(!staff&&fileName){staff=staffMatch(fileName)}if(!staff){for(const line of lines){const s=staffMatch(line);if(s){staff=s;break}}}if(staff){beneficiarioFinal=staff.short;conceptoFinal='SUELDO';}const valor=detectAmount(lines);const tx=detectTransactionMeta(lines);return applyKnownServiceContract(applyCntCounterpartRule(applySpecialRules({concepto:conceptoFinal,beneficiario:beneficiarioFinal,categoria:staff?'SUELDOS':(servicePayment&&classifyPayment(conceptoFinal)==='OTROS'?'SERVICIOS BÁSICOS':classifyPayment(conceptoFinal)),servicePayment,provider:upperText(provider),valor,staff:!!staff,fecha:tx.fecha,hora:tx.hora,originOwner:upperText(originOwner),originSuffix,originGroup:originGroupBySuffix(originSuffix)||originGroup(originOwner),personalAccount:originSuffix==='2000',originMismatch:false,cntCounterpart:'',transactionId,serviceContract}),cntCounterpart));
+  let conceptoFinal=upperText(normalizeAdministrativeConcept(cleanText(concepto)));
+  conceptoFinal=upperText(normalizeByProvider(conceptoFinal,provider));
+  let beneficiarioFinal=upperText(beneficiario);
+  let staff=staffMatch(beneficiarioFinal);
+  if(!staff&&fileName){staff=staffMatch(fileName)}
+  if(!staff){for(const line of lines){const s=staffMatch(line);if(s){staff=s;break}}}
+  if(staff){beneficiarioFinal=staff.short;conceptoFinal='SUELDO';}
+  const valor=detectAmount(lines);
+  const tx=detectTransactionMeta(lines);
+
+  // Caso fijo: arriendo del Nodo Central, $150 desde Pedro/7051 hacia Daniel.
+  const rawAll=norm(lines.join(' '));
+  const centralRent=originSuffix==='7051'&&Math.abs(Number(valor||0)-150)<0.01&&
+    (rawAll.includes(norm('MOLINA MUÑOZ CARLOS DANIEL'))||rawAll.includes(norm('CARLOS DANIEL MOLINA')));
+  if(centralRent){
+    conceptoFinal='ARRIENDO NODO CENTRAL';
+    beneficiarioFinal='DANIEL MOLINA';
+    staff=null;
+  }
+
+  let d={
+    concepto:conceptoFinal,
+    beneficiario:beneficiarioFinal,
+    categoria:centralRent?'ARRIENDOS':(staff?'SUELDOS':(servicePayment&&classifyPayment(conceptoFinal)==='OTROS'?'SERVICIOS BÁSICOS':classifyPayment(conceptoFinal))),
+    servicePayment,provider:upperText(provider),valor,staff:!!staff,fecha:tx.fecha,hora:tx.hora,
+    originOwner:upperText(originOwner),originSuffix,
+    originGroup:centralRent?'DISPROTEL SALCEDO':(originGroupBySuffix(originSuffix)||originGroup(originOwner)),
+    personalAccount:originSuffix==='2000',originMismatch:false,cntCounterpart:'',transactionId,serviceContract
+  };
+  return applyKnownServiceContract(applyCntCounterpartRule(applySpecialRules(d),cntCounterpart));
 }
 function upperText(v){return cleanText(v).toLocaleUpperCase('es-EC')}
 const STAFF=[
@@ -1140,6 +1167,11 @@ function canonicalEnergyConcept(v){
 const FIXED_SERVICE_CONTRACTS={
   '200035857461':{
     concepto:'PLANILLA DE ENERGÍA OFICINA SALCEDO',
+    categoria:'SERVICIOS BÁSICOS',
+    originGroup:'DISPROTEL SALCEDO'
+  },
+  '201017003801':{
+    concepto:'PLANILLA DE ENERGÍA NODO CENTRAL SALCEDO',
     categoria:'SERVICIOS BÁSICOS',
     originGroup:'DISPROTEL SALCEDO'
   }
