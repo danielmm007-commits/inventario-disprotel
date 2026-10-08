@@ -187,7 +187,8 @@ function needsManualRecurringAssociation(it){
   if(it?.manualRecurringId)return true;
   const s=norm(it?.concepto);
   const generic=[
-    'PAGO','TRANSFERENCIA','COMPROBANTE','OTROS','SIN CONCEPTO',
+    'PAGO','TRANSFERENCIA','COMPROBANTE','OTROS',
+    'SIN CONCEPTO','SIN DESCRIPCION','SIN DESCRIPCIÓN',
     'PAGO SERVICIO','PAGO VARIOS','PAGO PROVEEDOR'
   ];
 
