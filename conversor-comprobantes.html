@@ -678,7 +678,7 @@ function refreshSalaryPaymentNumbers(){
       if(x.it.salaryGroup==='PAGOS AUX SALCEDO'){
         x.it.salarySubgroup='AUX';
       }else if(x.it.salaryGroup){
-        x.it.salarySubgroup=i===0?'ROL':(i===1?'COM':'ADICIONAL');
+        x.it.salarySubgroup=i===0?'ROL':'COM';
       }else{
         x.it.salarySubgroup='SIN GRUPO';
       }
@@ -1011,9 +1011,9 @@ function deriveFinalClass(it){
     if(it.salarySubgroup==='ADMIN'||it.salaryAdmin)return 'SUELDOS ADMIN';
     if(it.salaryGroup==='PAGOS AUX SALCEDO')return 'SUELDOS AUX';
     if(it.salaryGroup==='SALCEDO'&&it.salarySubgroup==='ROL')return 'SUELDO ROL DISPROTEL SALCEDO';
-    if(it.salaryGroup==='SALCEDO'&&it.salarySubgroup==='COM')return 'SUELDO COM DISPROTEL SALCEDO';
+    if(it.salaryGroup==='SALCEDO'&&it.salarySubgroup&&it.salarySubgroup!=='ROL'&&it.salarySubgroup!=='ADMIN'&&it.salarySubgroup!=='AUX')return 'SUELDO COM DISPROTEL SALCEDO';
     if(it.salaryGroup==='SAQUISILÍ-LATACUNGA'&&it.salarySubgroup==='ROL')return 'SUELDO ROL DISPROTEL SAQUISILÍ-LATACUNGA';
-    if(it.salaryGroup==='SAQUISILÍ-LATACUNGA'&&it.salarySubgroup==='COM')return 'SUELDO COM DISPROTEL SAQUISILÍ-LATACUNGA';
+    if(it.salaryGroup==='SAQUISILÍ-LATACUNGA'&&it.salarySubgroup&&it.salarySubgroup!=='ROL'&&it.salarySubgroup!=='ADMIN'&&it.salarySubgroup!=='AUX')return 'SUELDO COM DISPROTEL SAQUISILÍ-LATACUNGA';
   }
   if(it.categoria==='SERVICIOS BÁSICOS'||it.categoria==='ARRIENDOS'){
     if(it.originGroup==='DISPROTEL SALCEDO')return 'SERVICIOS BÁSICOS Y ARRIENDOS DISPROTEL SALCEDO';
