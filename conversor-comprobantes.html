@@ -107,7 +107,7 @@ const RECURRING=[
   {id:'ENE_LOMA',label:'ENERGÍA LOMA GRANDE',match:/ENERG[IÍ]A.*LOMA GRANDE/},
   {id:'ENE_OF_LAT',label:'ENERGÍA OFICINA LATACUNGA',match:/ENERG[IÍ]A.*OFICINA.*LATACUNGA/},
   {id:'ENE_OF_SAL',label:'ENERGÍA OFICINA SALCEDO',match:/ENERG[IÍ]A.*OFICINA.*SALCEDO/},
-  {id:'ENE_CENTRAL_SAL',label:'ENERGÍA NODO CENTRAL SALCEDO',match:/ENERG[IÍ]A.*(?:NODO )?(?:PRINCIPAL|CENTRAL).*SALCEDO/}
+  {id:'ENE_CENTRAL_SAL',label:'ENERGÍA NODO CENTRAL SALCEDO',match:/ENERG[IÍ]A.*(?:NODO )?(?:PRINCIPAL|CENTRAL)(?:.*SALCEDO)?/}
 ];
 function controlPeriod(){
   const now=new Date();
@@ -431,7 +431,7 @@ function applySpecialRules(d){
 
   // Servicios básicos esperados por cuenta/origen.
   const saqLat=/ZUMBALICA|LOMA GRANDE|OFICINA LATACUNGA/.test(c);
-  const salcedo=/FONO SALCEDO|TELEFON(?:O|ÍA).*SALCEDO|OFICINA SALCEDO|NODO PRINCIPAL.*SALCEDO|NODO CENTRAL.*SALCEDO/.test(c);
+  const salcedo=/FONO SALCEDO|TELEFON(?:O|ÍA).*SALCEDO|OFICINA SALCEDO|NODO PRINCIPAL(?:.*SALCEDO)?|NODO CENTRAL(?:.*SALCEDO)?/.test(c);
 
   if(saqLat){
     d.categoria='SERVICIOS BÁSICOS';
@@ -439,6 +439,7 @@ function applySpecialRules(d){
   }
   if(salcedo){
     d.categoria='SERVICIOS BÁSICOS';
+    if(/NODO (?:PRINCIPAL|CENTRAL)/.test(c))d.concepto='PLANILLA DE ENERGÍA NODO CENTRAL SALCEDO';
     if(suffix&&suffix!=='7051')d.originMismatch=true;
   }
 
