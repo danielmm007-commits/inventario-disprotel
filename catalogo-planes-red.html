@@ -30,7 +30,7 @@ const URL='https://ajnbswrwnjpjypjiorye.supabase.co/rest/v1/rpc/catalogo_planes_
 const KEY='sb_publishable_PUj8G-mCFGniennS16O7UQ_eIeL482Y';
 const SESSION_KEY='disprotel_login_general_v2';
 let DATA={planes:[],routers:[],can_edit:false},EDIT=null;
-const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id),qs=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function session(){try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'{}')}catch{return{}}}
 async function rpc(action,payload={}){
  const s=session();const r=await fetch(URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY},body:JSON.stringify({p_session_token:s.session_token||'',p_action:action,p_payload:payload})});
@@ -58,7 +58,7 @@ function openEditor(p=null){
 }
 $('saveBtn').onclick=async()=>{
  try{
-  const routers=DATA.routers.filter(r=>$('[data-rid="'+r.id+'"]').checked).map(r=>({router_id:r.id,download_mbps_override:$('[data-down="'+r.id+'"]').value,upload_mbps_override:$('[data-up="'+r.id+'"]').value,comparticion_override:$('[data-comp="'+r.id+'"]').value}));
+  const routers=DATA.routers.filter(r=>qs('[data-rid="'+r.id+'"]').checked).map(r=>({router_id:r.id,download_mbps_override:qs('[data-down="'+r.id+'"]').value,upload_mbps_override:qs('[data-up="'+r.id+'"]').value,comparticion_override:qs('[data-comp="'+r.id+'"]').value}));
   const payload={id:EDIT?.id||'',codigo:$('codigo').value.trim(),descripcion:$('descripcion').value.trim(),tecnologia:$('tecnologia').value,comparticion:$('comparticion').value.trim(),download_mbps:$('down').value,upload_mbps:$('up').value,observacion:$('observacion').value.trim(),activo:true,routers};
   if(!payload.codigo||!payload.descripcion||!payload.download_mbps||!payload.upload_mbps)throw Error('Código, descripción y velocidades son obligatorios.');
   $('saveBtn').disabled=true;await rpc('save',payload);$('modal').classList.remove('show');await load();
