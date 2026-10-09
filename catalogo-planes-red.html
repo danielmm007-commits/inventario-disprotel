@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Catálogo de planes de red · DISPROTEL</title>
+<style>
+:root{--n:#071a38;--b:#176eb7;--bg:#eef4f7;--line:#d7e4eb;--ink:#17313d;--mut:#667b86;--ok:#18764b;--warn:#9a6500}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:var(--ink)}
+.wrap{max-width:1450px;margin:auto;padding:14px}.top{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:15px;padding:13px 15px;position:sticky;top:8px;z-index:10}.top h1{font-size:19px;margin:0}.top small{display:block;color:var(--mut);margin-top:3px}.top button{margin-left:auto}
+button{border:0;border-radius:9px;padding:9px 12px;background:var(--n);color:#fff;font-weight:800;cursor:pointer}.secondary{background:#fff;color:var(--n);border:1px solid var(--line)}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.toolbar input,.toolbar select{padding:9px;border:1px solid var(--line);border-radius:8px;background:#fff}.toolbar input{min-width:280px;flex:1}
+.tableWrap{overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:10px}table{border-collapse:collapse;width:100%;min-width:1100px;font-size:11px}th{position:sticky;top:0;background:#edf3f6;padding:8px;text-align:left}td{padding:8px;border-top:1px solid #e6edf1;vertical-align:top}.badge{display:inline-block;padding:4px 6px;border-radius:999px;font-size:9px;font-weight:800;background:#edf2f4;margin:2px}.badge.ok{background:#e7f7ed;color:var(--ok)}.badge.warn{background:#fff3cd;color:var(--warn)}.muted{color:var(--mut);font-size:10px}.hidden{display:none!important}
+.modal{position:fixed;inset:0;background:#071a3888;display:none;align-items:center;justify-content:center;padding:16px;z-index:40}.modal.show{display:flex}.dialog{width:min(980px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:16px;padding:16px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.grid label{font-size:10px;font-weight:800;color:#566e7a}.grid input,.grid select,.grid textarea{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;margin-top:4px}.grid textarea{min-height:70px}.routers{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}.router{border:1px solid var(--line);border-radius:9px;padding:9px}.routerHead{display:flex;gap:8px;align-items:center;font-size:11px;font-weight:800}.overrides{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:7px}.overrides input{width:100%;padding:7px;border:1px solid var(--line);border-radius:7px}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.msg{margin-top:10px;padding:9px;border-radius:8px;background:#eef6fb;font-size:11px}.msg.err{background:#fdecec;color:#9c2d3d}.msg.ok{background:#e7f7ed;color:#176b45}
+@media(max-width:760px){.grid,.routers{grid-template-columns:1fr}.top small{display:none}.toolbar input{min-width:100%}.overrides{grid-template-columns:1fr}}
+</style>
+</head><body><div class="wrap">
+<div class="top"><div><h1>DISPROTEL · Catálogo de planes de red</h1><small>Fuente técnica para Consulta de clientes y Conciliación · velocidades, tecnología y routers aplicables</small></div><button class="secondary" onclick="history.length>1?history.back():location.href='principal.html'">← Atrás</button></div>
+<section class="card"><div class="toolbar"><input id="q" placeholder="Buscar código o descripción"><select id="routerFilter"><option value="">Todos los routers</option></select><select id="techFilter"><option value="">Todas las tecnologías</option><option>FIBRA</option><option>RADIO</option></select><button id="newBtn">+ Nuevo plan</button></div><div id="summary" class="msg">Cargando catálogo…</div></section>
+<section class="card"><div class="tableWrap"><table><thead><tr><th>Código</th><th>Descripción</th><th>Tecnología</th><th>Down / Up base</th><th>Compartición</th><th>Routers aplicables</th><th>Observación</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></section>
+</div>
+<div class="modal" id="modal"><div class="dialog"><h2 id="dlgTitle">Editar plan</h2><div class="grid">
+<label>Código<input id="codigo"></label><label>Descripción<input id="descripcion"></label>
+<label>Tecnología<select id="tecnologia"><option>FIBRA</option><option>RADIO</option><option>OTRO</option></select></label>
+<label>Compartición<input id="comparticion" placeholder="Ej. 1:1 o 2:1"></label>
+<label>Download base (Mbps)<input id="down" type="number" min="0"></label><label>Upload base (Mbps)<input id="up" type="number" min="0"></label>
+<label style="grid-column:1/-1">Observación<textarea id="observacion"></textarea></label>
+</div><h3>Routers donde aplica</h3><div class="muted">Marca los routers. Si un plan usa otra velocidad en un router concreto, escribe el override; si queda vacío usa la velocidad base.</div><div id="routerChecks" class="routers"></div><div class="actions"><button class="secondary" id="cancelBtn">Cancelar</button><button id="saveBtn">Guardar</button></div><div id="dlgMsg"></div></div></div>
+<script>
+const URL='https://ajnbswrwnjpjypjiorye.supabase.co/rest/v1/rpc/catalogo_planes_api';
+const KEY='sb_publishable_PUj8G-mCFGniennS16O7UQ_eIeL482Y';
+const SESSION_KEY='disprotel_login_general_v2';
+let DATA={planes:[],routers:[],can_edit:false},EDIT=null;
+const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function session(){try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'{}')}catch{return{}}}
+async function rpc(action,payload={}){
+ const s=session();const r=await fetch(URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY},body:JSON.stringify({p_session_token:s.session_token||'',p_action:action,p_payload:payload})});
+ const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.message||d.error||'Error del catálogo');return d;
+}
+function routerMap(p){const m=new Map();(p.routers||[]).forEach(x=>m.set(x.router_id,x));return m}
+function render(){
+ const q=$('q').value.trim().toUpperCase(),rf=$('routerFilter').value,tf=$('techFilter').value;
+ let a=DATA.planes.filter(p=>(!q||(String(p.codigo).toUpperCase().includes(q)||String(p.descripcion).toUpperCase().includes(q)))&&(!tf||p.tecnologia===tf)&&(!rf||(p.routers||[]).some(x=>x.router_id===rf)));
+ $('summary').textContent=a.length+' planes visibles · '+DATA.planes.length+' en catálogo';
+ $('rows').innerHTML=a.map(p=>{
+   const rs=(p.routers||[]).map(x=>{const dd=x.download_mbps_override??p.download_mbps,uu=x.upload_mbps_override??p.upload_mbps;return '<span class="badge '+((x.download_mbps_override!=null||x.upload_mbps_override!=null)?'warn':'')+'">'+esc(String(x.router_nombre||'').replace('ROUTER ',''))+' '+esc(dd)+'/'+esc(uu)+'</span>'}).join('');
+   return '<tr><td><b>'+esc(p.codigo)+'</b></td><td>'+esc(p.descripcion)+'</td><td>'+esc(p.tecnologia)+'</td><td><b>'+esc(p.download_mbps)+' / '+esc(p.upload_mbps)+' Mbps</b></td><td>'+esc(p.comparticion||'—')+'</td><td>'+rs+'</td><td class="muted">'+esc(p.observacion||'')+'</td><td>'+(DATA.can_edit?'<button onclick="editPlan(\''+p.id+'\')">Editar</button>':'')+'</td></tr>'
+ }).join('')||'<tr><td colspan="8">Sin resultados.</td></tr>';
+}
+async function load(){
+ try{DATA=await rpc('list');$('newBtn').classList.toggle('hidden',!DATA.can_edit);$('routerFilter').innerHTML='<option value="">Todos los routers</option>'+DATA.routers.map(r=>'<option value="'+r.id+'">'+esc(r.nombre.replace('ROUTER ',''))+'</option>').join('');render()}catch(e){$('summary').className='msg err';$('summary').textContent=e.message}
+}
+window.editPlan=id=>openEditor(DATA.planes.find(x=>x.id===id));
+function openEditor(p=null){
+ EDIT=p||null;$('dlgTitle').textContent=p?'Editar '+p.codigo:'Nuevo plan';$('codigo').value=p?.codigo||'';$('descripcion').value=p?.descripcion||'';$('tecnologia').value=p?.tecnologia||'FIBRA';$('comparticion').value=p?.comparticion||'';$('down').value=p?.download_mbps??'';$('up').value=p?.upload_mbps??'';$('observacion').value=p?.observacion||'';
+ const rm=p?routerMap(p):new Map();
+ $('routerChecks').innerHTML=DATA.routers.map(r=>{const x=rm.get(r.id);return '<div class="router"><div class="routerHead"><input type="checkbox" data-rid="'+r.id+'" '+(x?'checked':'')+'> '+esc(r.nombre.replace('ROUTER ',''))+'</div><div class="overrides"><input data-down="'+r.id+'" type="number" placeholder="Down override" value="'+esc(x?.download_mbps_override??'')+'"><input data-up="'+r.id+'" type="number" placeholder="Up override" value="'+esc(x?.upload_mbps_override??'')+'"><input data-comp="'+r.id+'" placeholder="Comp. override" value="'+esc(x?.comparticion_override??'')+'"></div></div>'}).join('');
+ $('dlgMsg').textContent='';$('modal').classList.add('show');
+}
+$('saveBtn').onclick=async()=>{
+ try{
+  const routers=DATA.routers.filter(r=>$('[data-rid="'+r.id+'"]').checked).map(r=>({router_id:r.id,download_mbps_override:$('[data-down="'+r.id+'"]').value,upload_mbps_override:$('[data-up="'+r.id+'"]').value,comparticion_override:$('[data-comp="'+r.id+'"]').value}));
+  const payload={id:EDIT?.id||'',codigo:$('codigo').value.trim(),descripcion:$('descripcion').value.trim(),tecnologia:$('tecnologia').value,comparticion:$('comparticion').value.trim(),download_mbps:$('down').value,upload_mbps:$('up').value,observacion:$('observacion').value.trim(),activo:true,routers};
+  if(!payload.codigo||!payload.descripcion||!payload.download_mbps||!payload.upload_mbps)throw Error('Código, descripción y velocidades son obligatorios.');
+  $('saveBtn').disabled=true;await rpc('save',payload);$('modal').classList.remove('show');await load();
+ }catch(e){$('dlgMsg').className='msg err';$('dlgMsg').textContent=e.message}finally{$('saveBtn').disabled=false}
+};
+$('newBtn').onclick=()=>openEditor();$('cancelBtn').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};
+$('q').oninput=render;$('routerFilter').onchange=render;$('techFilter').onchange=render;
+load();
+</script></body></html>
