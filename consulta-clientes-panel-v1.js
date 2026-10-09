@@ -8,8 +8,10 @@ function aplicar(){
  if([...mods.querySelectorAll('.module h3')].some(h=>norm(h.textContent)==='CONSULTA DE CLIENTES'))return;
  const card=document.createElement('article');card.className='module';card.dataset.consultaClientes='1';
  card.innerHTML='<div class="mhead"><div class="ico">🔎</div><h3>Consulta de clientes</h3></div><p>Ficha técnica del servicio con MikroTik, SmartOLT/ONT, acceso remoto, equipos registrados y últimos trabajos.</p><a class="btn" href="consulta-clientes.html">Abrir consulta →</a>';
+ const planes=document.createElement('article');planes.className='module';planes.dataset.catalogoPlanes='1';
+ planes.innerHTML='<div class="mhead"><div class="ico">📶</div><h3>Planes de red</h3></div><p>Catálogo técnico de velocidades, compartición y routers donde aplica cada plan. Fuente para consultas y conciliaciones.</p><a class="btn" href="catalogo-planes-red.html">Abrir catálogo →</a>';
  const area=[...mods.querySelectorAll('.module')].find(x=>norm(x.querySelector('h3')?.textContent)==='AREA TECNICA');
- if(area?.nextSibling)mods.insertBefore(card,area.nextSibling);else mods.prepend(card);
+ if(area?.nextSibling){mods.insertBefore(card,area.nextSibling);mods.insertBefore(planes,card.nextSibling)}else{mods.prepend(planes);mods.prepend(card)}
 }
 document.addEventListener('DOMContentLoaded',()=>{aplicar();setTimeout(aplicar,700);setTimeout(aplicar,1800)});
 window.addEventListener('disprotel:permissions-ready',aplicar);
