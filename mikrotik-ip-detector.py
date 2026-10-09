@@ -10,8 +10,10 @@ POLL_SECONDS=max(5,int(os.environ.get('POLL_SECONDS','15')))
 TZ=ZoneInfo(os.environ.get('MIKROTIK_TIMEZONE','America/Guayaquil'))
 SMARTOLT_AUTO_SYNC=os.environ.get('SMARTOLT_AUTO_SYNC','0').strip()=='1'
 SMARTOLT_SYNC_SECONDS=max(600,int(os.environ.get('SMARTOLT_SYNC_SECONDS','600')))
+GLOBAL_SNAPSHOT_SECONDS=max(30,int(os.environ.get('GLOBAL_SNAPSHOT_SECONDS','60')))
 _last_smartolt_sync=0
 _smartolt_sync_running=False
+_last_global_snapshot={}
 
 # Puede trabajar con uno o varios RB.
 raw=os.environ.get('MIKROTIK_ROUTERS_JSON','').strip()
@@ -94,21 +96,47 @@ def parse_router_time(value):
     except Exception: return None
 
 
-def mikrotik_permitidos(router):
+def _es_lista_cliente(nombre):
+    n=' '.join(str(nombre or '').upper().replace('_',' ').split())
+    return n.startswith('PERMITIDOS') or n.startswith('MOROSOS')
+
+
+def mikrotik_clientes_snapshot(router):
+    """Lectura completa de clientes para conciliación: PERMITIDOS* + MOROSOS*."""
     pool=routeros_api.RouterOsApiPool(str(router['host']),username=str(router['user']),password=str(router['password']),port=int(router.get('port',8728)),plaintext_login=True,use_ssl=False)
     try:
         resource=pool.get_api().get_resource('/ip/firewall/address-list')
-        rows=resource.get(list='PERMITIDOS')
+        rows=resource.get()
         out=[]
         for x in rows:
-            if str(x.get('list','')).upper()!='PERMITIDOS': continue
+            lista=str(x.get('list','')).strip()
+            if not _es_lista_cliente(lista): continue
             if str(x.get('disabled','false')).lower()=='true': continue
             addr=x.get('address')
             if not addr: continue
-            out.append({'list':'PERMITIDOS','address':addr,'comment':x.get('comment',''),'creation_time':parse_router_time(x.get('creation-time'))})
+            out.append({'list':lista,'address':addr,'comment':x.get('comment',''),'creation_time':parse_router_time(x.get('creation-time'))})
         return out
     finally:
         pool.disconnect()
+
+
+def mikrotik_permitidos(router):
+    """Compatibilidad con el flujo histórico de asignación de IP."""
+    return [x for x in mikrotik_clientes_snapshot(router) if str(x.get('list','')).upper()=='PERMITIDOS']
+
+
+def actualizar_snapshot_global_si_corresponde(router):
+    rid=str(router.get('router_id') or '')
+    if not rid:
+        return
+    now=time.time()
+    last=float(_last_global_snapshot.get(rid,0) or 0)
+    if now-last<GLOBAL_SNAPSHOT_SECONDS:
+        return
+    rows=mikrotik_clientes_snapshot(router)
+    result=detector_api('detector-global-snapshot',{'router_id':rid,'registros':rows})
+    _last_global_snapshot[rid]=now
+    print(datetime.now().strftime('%H:%M:%S'),'SNAPSHOT CLIENTES ->',router.get('name',rid),':',len(rows),'registros PERMITIDOS*/MOROSOS*',result or '')
 
 
 def _ip_base(value):
@@ -190,7 +218,7 @@ def atender_consultas_en_vivo(router):
 
 def main():
     by_id={str(r['router_id']):r for r in ROUTERS if r.get('router_id') and r.get('password')}
-    print(f'DISPROTEL detector IP iniciado · cada {POLL_SECONDS}s · RB configurados: {len(by_id)} · SmartOLT auto-sync: {"ACTIVO" if SMARTOLT_AUTO_SYNC else "DESACTIVADO"}')
+    print(f'DISPROTEL detector IP iniciado · cada {POLL_SECONDS}s · RB configurados: {len(by_id)} · snapshot clientes cada {GLOBAL_SNAPSHOT_SECONDS}s · SmartOLT auto-sync: {"ACTIVO" if SMARTOLT_AUTO_SYNC else "DESACTIVADO"}')
     while True:
         try:
             lanzar_smartolt_sync_si_corresponde()
@@ -203,6 +231,10 @@ def main():
             if not pendientes: print(datetime.now().strftime('%H:%M:%S'),'Sin solicitudes de IP. Esperando consultas LIVE.')
             for rid,router in by_id.items():
                 sols=agrupadas.get(rid,[])
+                try:
+                    actualizar_snapshot_global_si_corresponde(router)
+                except Exception as e:
+                    print('Error snapshot global',router.get('name',rid),':',e)
                 try:
                     atender_consultas_en_vivo(router)
                 except Exception as e:
