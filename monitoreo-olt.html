@@ -130,6 +130,7 @@ th.sortable.desc:after{content:"↓";color:#0c5d8b}td{padding:8px;border-bottom:
 
 <script>
 const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-monitoreo-olt';
+const CLIENT_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-clientes';
 const KEY='disprotel_login_general_v2';
 let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
 if(!me?.usuario){location.href='login-general-v2.html'}
@@ -139,6 +140,10 @@ const headers=()=>({'Content-Type':'application/json','x-user':me.usuario||'','x
 async function call(body){
   const r=await fetch(API,{method:'POST',headers:headers(),body:JSON.stringify(body)});
   const d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw new Error(d.error||'No se pudo consultar');return d;
+}
+async function clientCall(action,payload={}){
+  const r=await fetch(CLIENT_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_token:me.session_token||'',action,...payload})});
+  const d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw new Error(d.error||'No se pudo consultar en vivo');return d;
 }
 function esc(v){return String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))}
 function fmtDate(v){if(!v)return '—';const s=String(v).trim();const m=s.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);if(m)return m[3]+'/'+m[2]+'/'+m[1];const d=new Date(s);return Number.isNaN(d.getTime())?s:d.toLocaleString('es-EC',{dateStyle:'short',timeStyle:'short'})}
@@ -271,8 +276,34 @@ async function openDetail(id){
   $('modal').classList.add('show');$('detailBody').innerHTML='<div class="loading">Consultando detalle…</div>';
   try{
     const d=await call({action:'detail',onu_external_id:id}),o=d.onu||{},s=d.servicio||{},v=d.vinculo||{};
-    const items=[['Estado',o.estado],['Cliente',o.nombre],['Señal ONU',o.senal_onu_dbm==null?'—':Number(o.senal_onu_dbm).toFixed(2)+' dBm'],['Señal OLT',o.senal_olt_dbm==null?'—':Number(o.senal_olt_dbm).toFixed(2)+' dBm'],['TX ONU',o.tx_onu_dbm==null?'—':Number(o.tx_onu_dbm).toFixed(2)+' dBm'],['Distancia',o.distancia_m==null?'—':o.distancia_m+' m'],['SN',o.sn],['OLT',o.olt],['GPON',o.gpon||[o.tarjeta,o.puerto,o.onu_asignada].filter(x=>x!=null&&x!=='').join('/')],['Zona / NAP',o.nap||o.zona],['IP detectada',o.ip_detectada],['Fecha autorización',fmtDate(o.fecha_autorizacion)],['Temperatura',o.temperatura_c==null?'—':o.temperatura_c+' °C'],['Voltaje',o.voltaje_v==null?'—':o.voltaje_v+' V'],['Caché Huawei',fmtDate(o.ultima_lectura_at||o.updated_at)],['Lectura óptica',fmtDate(o.optica_leida_at)]];
-    $('detailBody').innerHTML='<div class="detailGrid">'+items.map(x=>'<div class="detail"><b>'+esc(x[0])+'</b><span>'+esc(x[1]??'—')+'</span></div>').join('')+'</div>'+(o.direccion_comentario?'<div class="serviceBox"><h3>Description Huawei</h3><p>'+esc(o.direccion_comentario)+'</p></div>':'')+(s.id?'<div class="serviceBox"><h3>Servicio DISPROTEL vinculado</h3><p><b>Cliente:</b> '+esc(s.cliente?.nombre_completo||o.nombre||'—')+'</p><p><b>Servicio:</b> '+esc(s.codigo_servicio_legacy||'—')+' · <b>Plan:</b> '+esc(s.plan_codigo||'—')+'</p><p><b>IP:</b> '+esc(s.ip_cliente||'—')+' · <b>Dirección:</b> '+esc(s.direccion||'—')+'</p><p><b>Coincidencia:</b> '+esc(v.metodo_coincidencia||'—')+' · <b>Confianza:</b> '+esc(v.confianza??'—')+'</p></div>':'<div class="serviceBox"><h3>Sin servicio vinculado</h3><p>La ONU existe en el cache, pero todavía no tiene una relación confirmada con un servicio DISPROTEL.</p></div>');
+    const render=(live=null,status='ÚLTIMO DATO ALMACENADO',msg='Mostrando la última lectura disponible.')=>{
+      const x=live||o;
+      const items=[['Estado',x.run_state||x.estado],['Cliente',o.nombre],['Señal ONU',x.rx_optical_dbm==null?(o.senal_onu_dbm==null?'—':Number(o.senal_onu_dbm).toFixed(2)+' dBm'):Number(x.rx_optical_dbm).toFixed(2)+' dBm'],['Señal OLT',x.olt_rx_ont_dbm==null?(o.senal_olt_dbm==null?'—':Number(o.senal_olt_dbm).toFixed(2)+' dBm'):Number(x.olt_rx_ont_dbm).toFixed(2)+' dBm'],['TX ONU',x.tx_optical_dbm==null?(o.tx_onu_dbm==null?'—':Number(o.tx_onu_dbm).toFixed(2)+' dBm'):Number(x.tx_optical_dbm).toFixed(2)+' dBm'],['Distancia',x.distancia_m==null?(o.distancia_m==null?'—':o.distancia_m+' m'):x.distancia_m+' m'],['SN',o.sn],['OLT',x.olt_nombre||x.olt_codigo||o.olt],['GPON',x.pon||o.gpon||[o.tarjeta,o.puerto,o.onu_asignada].filter(x=>x!=null&&x!=='').join('/')],['Zona / NAP',o.nap||o.zona],['IP detectada',o.ip_detectada],['Fecha autorización',fmtDate(o.fecha_autorizacion)],['Temperatura',x.temperatura_c==null?(o.temperatura_c==null?'—':o.temperatura_c+' °C'):x.temperatura_c+' °C'],['Voltaje',x.voltaje_v==null?(o.voltaje_v==null?'—':o.voltaje_v+' V'):x.voltaje_v+' V'],['Caché Huawei',fmtDate(o.ultima_lectura_at||o.updated_at)],['Lectura óptica',fmtDate(x.optica_leida_at||o.optica_leida_at)]];
+      $('detailBody').innerHTML='<div class="serviceBox"><h3>'+esc(status)+'</h3><p>'+esc(msg)+'</p>'+(s.id?'<button id="retryOnuLive" class="viewBtn">🔄 REINTENTAR CONSULTA EN VIVO</button>':'')+'</div><div class="detailGrid">'+items.map(x=>'<div class="detail"><b>'+esc(x[0])+'</b><span>'+esc(x[1]??'—')+'</span></div>').join('')+'</div>'+(o.direccion_comentario?'<div class="serviceBox"><h3>Description Huawei</h3><p>'+esc(o.direccion_comentario)+'</p></div>':'')+(s.id?'<div class="serviceBox"><h3>Servicio DISPROTEL vinculado</h3><p><b>Cliente:</b> '+esc(s.cliente?.nombre_completo||o.nombre||'—')+'</p><p><b>Servicio:</b> '+esc(s.codigo_servicio_legacy||'—')+' · <b>Plan:</b> '+esc(s.plan_codigo||'—')+'</p><p><b>IP:</b> '+esc(s.ip_cliente||'—')+' · <b>Dirección:</b> '+esc(s.direccion||'—')+'</p><p><b>Coincidencia:</b> '+esc(v.metodo_coincidencia||'—')+' · <b>Confianza:</b> '+esc(v.confianza??'—')+'</p></div>':'<div class="serviceBox"><h3>Sin servicio vinculado</h3><p>La ONU existe en el cache, pero todavía no tiene una relación confirmada con un servicio DISPROTEL.</p></div>');
+      const b=$('retryOnuLive');if(b)b.onclick=()=>startLive();
+    };
+    let timer=null,requestId='';
+    const poll=async(attempt=0)=>{
+      try{
+        const d2=await clientCall('live-status',{servicio_id:s.id,solicitud_id:requestId}),r=d2.solicitud||{};
+        if(r.olt_estado==='OK'){render(r.olt_resultado,'EN VIVO','Lectura puntual Huawei recibida correctamente.');return}
+        if(['ERROR','NO_APLICA'].includes(r.olt_estado)){render(null,'ÚLTIMO DATO ALMACENADO','Lectura en vivo Huawei no disponible. Se mantiene el último dato almacenado.');return}
+        if(attempt>=30){render(null,'ÚLTIMO DATO ALMACENADO','La consulta en vivo no respondió a tiempo. Se mantiene el último dato almacenado.');return}
+        timer=setTimeout(()=>poll(attempt+1),2000);
+      }catch(e){render(null,'ÚLTIMO DATO ALMACENADO','No se pudo completar la consulta en vivo. Se mantiene el último dato almacenado.')}
+    };
+    const startLive=async()=>{
+      if(!s.id){render(null,'ÚLTIMO DATO ALMACENADO','No existe un servicio vinculado para solicitar lectura en vivo.');return}
+      if(timer){clearTimeout(timer);timer=null}
+      render(null,'CONSULTANDO EN VIVO','Solicitando lectura puntual a MikroTik y Huawei…');
+      try{
+        const q=await clientCall('live-request',{servicio_id:s.id,optico_live:true});
+        requestId=q.solicitud?.id||'';if(!requestId)throw new Error('No se creó la solicitud');
+        poll(0);
+      }catch(e){render(null,'ÚLTIMO DATO ALMACENADO','No se pudo iniciar la consulta en vivo. Se mantiene el último dato almacenado.')}
+    };
+    render();
+    if(s.id)startLive();
   }catch(e){$('detailBody').innerHTML='<div class="loading">No se pudo cargar: '+esc(e.message)+'</div>'}
 }
 function showModuleView(view,openNew=false){
