@@ -106,7 +106,8 @@ function renderOntCombined(){
  const dist=x?.distancia_m!=null?x.distancia_m:a?.distancia_m;
  const temp=x?.temperatura_c!=null?x.temperatura_c:a?.temperatura_c;
  const volt=x?.voltaje_v!=null?x.voltaje_v:a?.voltaje_v;
- const at=x?.optica_leida_at||x?.read_at||a?.optica_leida_at||a?.ultima_lectura_at||v?.verificado_at;
+ const cacheAt=x?.ultima_lectura_at||x?.updated_at||a?.ultima_lectura_at||a?.updated_at||x?.read_at||v?.verificado_at;
+ const opticaAt=x?.optica_leida_at||a?.optica_leida_at||null;
  let html='<div class="row"><b>SN:</b> <span class="mono">'+esc(sn)+'</span></div>'
   +'<div class="row"><b>Estado Huawei:</b> '+esc(up(state))+'</div>'
   +'<div class="row"><b>OLT:</b> '+esc(up(x?.olt||x?.olt_codigo||a?.olt_nombre||a?.olt_codigo||'SIN DATO'))+'</div>'
@@ -119,7 +120,8 @@ function renderOntCombined(){
   +'<div class="row"><b>Temperatura:</b> '+esc(temp!=null?temp+' °C':'SIN DATO')+'</div>'
   +'<div class="row"><b>Voltaje:</b> '+esc(volt!=null?volt+' V':'SIN DATO')+'</div>'
   +'<div class="row"><b>Descripción Huawei:</b> '+esc(x?.descripcion||a?.descripcion||'SIN DATO')+'</div>'
-  +'<div class="row"><b>Leído:</b> '+esc(ago(at))+'</div>';
+  +'<div class="row"><b>Caché Huawei actualizada:</b> '+esc(ago(cacheAt))+'</div>'
+  +(opticaAt&&opticaAt!==cacheAt?'<div class="row"><b>Lectura óptica:</b> '+esc(ago(opticaAt))+'</div>':'');
  $('ont').innerHTML=html;
 }
 function renderOltLive(x,at){CURRENT_HUAWEI_LIVE={...(x||{}),_responded_at:at};renderOntCombined()}
