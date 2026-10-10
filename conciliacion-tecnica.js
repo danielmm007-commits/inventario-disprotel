@@ -56,8 +56,8 @@ async function readFile(f){
  const b=await f.arrayBuffer(),wb=XLSX.read(b,{type:'array'});
  const detected=rowsFromWorkbook(wb);
  if(!detected)throw Error('No encontré la fila de encabezados del reporte. Busco columnas como Cod. Servicio, Cliente, Router, Tipo Conexión e IP Cliente.');
- rows=detected.rows;lote=null;sourceSheet=detected.sheetName;currentGroup=detectGroupFromRows(rows);
- stats();preview();save.disabled=!rows.length;reconcile.disabled=true;
+ rows=detected.rows;lote=null;erpRows=[];erpSelected.clear();sourceSheet=detected.sheetName;currentGroup=detectGroupFromRows(rows);
+ stats();preview();save.disabled=!rows.length;reconcile.disabled=true;compareBase.disabled=true;
  const gd=document.getElementById('groupDetected');
  gd.innerHTML='<div class="groupDetected">Grupo detectado: '+e(currentGroup.nombre)+' · Hoja: '+e(sourceSheet)+' · Encabezados en fila '+detected.headerRow+' · Routers: '+e(currentGroup.routers.join(' · '))+'</div>';
  msg('Archivo listo: '+rows.length+' servicios reconocidos.','ok');
