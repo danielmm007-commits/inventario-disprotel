@@ -17,30 +17,59 @@ h2{font-size:20px;margin:0}.count{color:var(--muted);font-size:13px}.grid{displa
 .empty{color:var(--muted);font-size:13px;margin-top:17px}.note{background:#fff;border:1px dashed #c6d9e6;border-radius:12px;padding:15px;line-height:1.6;color:#496578;font-size:13px;margin-top:24px}
 #error{display:none;background:#fff1ee;border:1px solid #ffb7a6;color:#9d3425;padding:15px;border-radius:10px;margin-bottom:15px}
 #status{font-size:13px;color:var(--muted)}@media(max-width:700px){.grid{grid-template-columns:1fr}header{padding:12px}main{padding:16px 12px 40px}.head{align-items:flex-start;flex-direction:column}}
-</style></head><body>
+ .editpanel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;margin:20px 0}.formrow{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}.field label{display:block;color:var(--muted);font-size:12px;font-weight:800;margin-bottom:6px}.field select{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:white}.btn.primary{background:var(--blue);color:#fff}.hint{color:var(--muted);font-size:12px;line-height:1.5}.audit{margin-top:12px;font-size:12px;color:var(--muted)}@media(max-width:700px){.formrow{grid-template-columns:1fr}} </style></head><body>
 <header><div class="brand">DISPROTEL<small>Administración de grupos y minibodegas · Datos reales</small></div><a href="principal.html">← Centro de Control</a></header>
 <main><section class="hero"><h1>Grupos y minibodegas</h1><p>Información operativa vigente, consultada directamente desde Supabase. Los grupos técnicos y las ubicaciones de inventario se muestran por separado.</p></section>
 <div id="error" role="alert"></div><div class="head"><span id="status">Conectando con Supabase…</span><button class="btn" id="refresh" type="button">↻ Actualizar</button></div>
-<section><div class="head"><h2>Grupos técnicos oficiales</h2><span class="count" id="gcount"></span></div><div id="groups" class="grid"></div></section>
+<section id="editpanel" class="editpanel" hidden><h2>Administrar integrantes</h2><p class="hint">Solo Daniel y Diego, como Administradores Supremos, pueden trasladar a un técnico de grupo. El cambio no mueve materiales ni modifica órdenes anteriores.</p><div class="formrow"><div class="field"><label for="who">Técnico / ayudante</label><select id="who"></select></div><div class="field"><label for="to">Nuevo grupo</label><select id="to"></select></div><button class="btn primary" type="button" id="move">Guardar cambio</button></div><p class="hint" id="current"></p><div class="audit" id="audit"></div></section><section><div class="head"><h2>Grupos técnicos oficiales</h2><span class="count" id="gcount"></span></div><div id="groups" class="grid"></div></section>
 <section><div class="head"><h2>Bodegas y minibodegas</h2><span class="count" id="lcount"></span></div><div id="locations" class="grid"></div></section>
 <div class="note"><b>Seguridad del historial:</b> esta pantalla solo consulta la configuración vigente; no modifica asignaciones ni mueve materiales. Cambiar técnicos de grupo y cambiar responsables de minibodegas son operaciones diferentes. Los movimientos anteriores deben conservar el responsable y ubicación registrados cuando ocurrieron.</div></main>
 <script>
 (()=>{'use strict';
 const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-operacion-config';
-const $=id=>document.getElementById(id);
+const $=id=>document.getElementById(id);let editData=null;
 function node(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=String(txt);return e}
 function card(item,names,kind){const c=node('article','card');const top=node('div','cardtop');const left=node('div');left.append(node('h3','',item.name||'Sin nombre'));left.append(node('div','meta',kind==='group'?'Grupo operativo · Asignación habitual':(item.kind||'Ubicación operativa')));top.append(left,node('span','badge','ACTIVA'));c.append(top);const people=node('div','people');if(names.length)names.forEach(name=>people.append(node('span','person','👤 '+name)));else c.append(node('p','empty','Sin responsables asignados'));c.append(people);if(kind==='location'&&item.group_uid)c.append(node('p','meta','Vinculada a grupo operativo'));return c}
+function setupEditor(d){
+ editData=d;
+ const names=new Map((d.member_options||[]).map(x=>[x.id,x.nombre]));
+ const groups=new Map((d.group_options||[]).map(x=>[x.id,x.nombre]));
+ const memberGroup=new Map((d.memberships||[]).map(x=>[x.responsable_id,x.grupo_id]));
+ const who=$('who'),to=$('to');who.replaceChildren();to.replaceChildren();
+ (d.member_options||[]).forEach(m=>{const op=node('option','',m.nombre);op.value=m.id;who.append(op)});
+ (d.group_options||[]).forEach(g=>{const op=node('option','',g.nombre);op.value=g.id;to.append(op)});
+ function showCurrent(){const id=who.value,old=memberGroup.get(id);$('current').textContent='Asignación actual: '+(groups.get(old)||'Sin grupo habitual');if(old)to.value=old}
+ who.onchange=showCurrent;showCurrent();
+ $('audit').replaceChildren(node('b','','Últimos cambios registrados:'));
+ (d.group_audit||[]).slice(0,8).forEach(a=>{const line=node('div','',new Date(a.created_at).toLocaleString('es-EC')+' · '+(names.get(a.responsable_id)||'Técnico')+' · '+(groups.get(a.grupo_anterior_id)||'Sin grupo')+' → '+(groups.get(a.grupo_nuevo_id)||'Grupo')+' · autorizado por '+(names.get(a.actor_id)||'Administrador Supremo'));$('audit').append(line)});
+ $('editpanel').hidden=false;
+}
+async function move(){
+ if(!editData)return;
+ const id=$('who').value,dest=$('to').value,mg=new Map((editData.memberships||[]).map(x=>[x.responsable_id,x.grupo_id])),old=mg.get(id)||null;
+ const person=(editData.member_options||[]).find(x=>x.id===id),group=(editData.group_options||[]).find(x=>x.id===dest);
+ if(!id||!dest)return;
+ if(old===dest){alert('Este técnico ya pertenece al grupo seleccionado.');return}
+ const previous=(editData.group_options||[]).find(x=>x.id===old);
+ if(!confirm('Confirmar cambio de grupo para '+person.nombre+'\\nDe: '+(previous?.nombre||'Sin grupo')+'\\nA: '+group.nombre+'\\nNo se trasladará inventario.'))return;
+ const btn=$('move');btn.disabled=true;
+ try{const ss=JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'null');const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-session':ss?.session_token||''},body:JSON.stringify({action:'move-member',responsable_id:id,grupo_destino_id:dest,grupo_esperado_id:old})});
+ const d=await res.json().catch(()=>({}));if(!res.ok||!d.ok)throw new Error(d.error||'No se pudo guardar');
+ alert('Asignación guardada. Se actualizarán los grupos desde Supabase.');await load();
+ }catch(e){alert('No se realizó el cambio: '+e.message);await load()}finally{btn.disabled=false}
+}
+$('move').addEventListener('click',move);
 async function load(){const err=$('error'),status=$('status'),btn=$('refresh');err.style.display='none';btn.disabled=true;status.textContent='Consultando datos reales…';try{
 const session=JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'null');
 if(!session?.session_token)throw new Error('No hay sesión vigente. Ingresa desde el Centro de Control y vuelve a abrir este panel.');
-const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-session':session.session_token},body:JSON.stringify({action:'list'})});
+const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-session':session.session_token},body:JSON.stringify({action:'group-management'})});
 const d=await res.json().catch(()=>({}));if(!res.ok||!d.ok)throw new Error(d.error||'No se pudo consultar la configuración');
-const directory=new Map((d.people_directory||[]).map(p=>[String(p.id),p.name]));
+setupEditor(d);const directory=new Map((d.people_directory||[]).map(p=>[String(p.id),p.name]));
 const persons=ids=>(ids||[]).map(id=>directory.get(String(id))||'Usuario sin nombre').sort((a,b)=>a.localeCompare(b));
 $('groups').replaceChildren(...(d.groups||[]).map(g=>card(g,persons(g.people),'group')));
 $('locations').replaceChildren(...(d.locations||[]).map(l=>card(l,persons(l.people),'location')));
 $('gcount').textContent=(d.groups||[]).length+' grupos activos';$('lcount').textContent=(d.locations||[]).length+' ubicaciones activas';status.textContent='Datos actualizados desde Supabase · Consulta de solo lectura';
-}catch(e){err.textContent=e.message||'Error al cargar';err.style.display='block';status.textContent='No se pudo cargar la información';$('groups').replaceChildren();$('locations').replaceChildren();$('gcount').textContent='';$('lcount').textContent=''}finally{btn.disabled=false}}
+}catch(e){$('editpanel').hidden=true;err.textContent=e.message||'Error al cargar';err.style.display='block';status.textContent='No se pudo cargar la información';$('groups').replaceChildren();$('locations').replaceChildren();$('gcount').textContent='';$('lcount').textContent=''}finally{btn.disabled=false}}
 $('refresh').addEventListener('click',load);load();
 })();
 </script></body></html>
