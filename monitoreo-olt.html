@@ -10,7 +10,7 @@
 button,input,select{font:inherit}.wrap{padding:12px;max-width:1600px;margin:auto}.hero{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(105deg,#073f52,#0a6f75);color:#fff;border-radius:10px;padding:12px 14px;box-shadow:var(--shadow)}
 .hero small{font-size:9px;font-weight:800;letter-spacing:.08em;color:#bfe8ea}.hero h1{margin:2px 0;font-size:22px}.hero p{margin:0;color:#d8eff0;font-size:11px}.heroActions{display:flex;gap:8px;align-items:center}.autoLine{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:#ffffff12;border:1px solid #ffffff3d;white-space:nowrap}.autoText{font-size:8px;font-weight:900;color:#d9f0f1;letter-spacing:.02em}.autoLive{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:#0fa05a;color:#fff;font-size:8px;font-weight:900;box-shadow:0 0 0 0 rgba(30,205,112,.65),0 0 16px rgba(30,205,112,.28);animation:autoPulse 1.7s infinite}.autoDot{width:7px;height:7px;border-radius:50%;background:#d8ffe9;box-shadow:0 0 10px rgba(216,255,233,.95)}@keyframes autoPulse{0%{box-shadow:0 0 0 0 rgba(30,205,112,.55),0 0 10px rgba(30,205,112,.18)}60%{box-shadow:0 0 0 7px rgba(30,205,112,0),0 0 18px rgba(30,205,112,.35)}100%{box-shadow:0 0 0 0 rgba(30,205,112,0),0 0 10px rgba(30,205,112,.18)}}
 .moduleTabs{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:9px}.moduleTabs button{border:1px solid #cbdde6;background:#fff;color:#315767;border-radius:8px;padding:8px 11px;font-size:9px;font-weight:900;cursor:pointer}.moduleTabs button.on{background:#0c5d8b;color:#fff;border-color:#0c5d8b}.moduleTabs .push{margin-left:auto}.moduleTabs .addOlt{background:#12865a;color:#fff;border-color:#12865a}
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:9px}
+.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-top:9px}
 .metric{padding:14px 14px 12px 50px;min-height:104px}
 .metric .metricIcon{left:13px;top:17px;width:30px;height:30px;font-size:18px}
 .metric strong{font-size:34px}
@@ -21,6 +21,7 @@ button,input,select{font:inherit}.wrap{padding:12px;max-width:1600px;margin:auto
 .metric.ok{background:linear-gradient(180deg,#f1fbf5,#fff)}
 .metric.bad{background:linear-gradient(180deg,#fff4f4,#fff)}
 .metric.warn{background:linear-gradient(180deg,#fff8eb,#fff)}
+.metric.crit{background:linear-gradient(180deg,#fff1f1,#fff)}
 .configArea{display:none;margin-top:9px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);min-height:72vh}.configArea.show{display:block}.configFrame{display:block;width:100%;height:78vh;border:0;background:#eef4f7}
 .dashboardArea.hidden{display:none}
 
@@ -95,9 +96,13 @@ th.sortable.desc:after{content:"↓";color:#0c5d8b}td{padding:8px;border-bottom:
       <div class="metricIcon">✕</div><strong id="mOffline">—</strong><span class="metricMainLabel">DESCONECTADAS</span>
       <span class="metricFoot"><span>PowerFail: <b id="mPowerFail">—</b></span><span>LOS: <b id="mLos">—</b></span><span>Otros: <b id="mOtherOff">—</b></span></span>
     </div>
-    <div class="metric warn" data-filter="low" tabindex="0" role="button">
-      <div class="metricIcon">!</div><strong id="mLow">—</strong><span class="metricMainLabel">SEÑALES BAJAS</span>
-      <span class="metricFoot"><span>Advertencia: <b id="mWarn">—</b></span><span>Crítico: <b id="mCritical">—</b></span></span>
+    <div class="metric warn" data-filter="warning" tabindex="0" role="button">
+      <div class="metricIcon">!</div><strong id="mWarn">—</strong><span class="metricMainLabel">ADVERTENCIAS</span>
+      <span class="metricFoot"><span>Señal óptica en rango de advertencia</span></span>
+    </div>
+    <div class="metric crit" data-filter="critical" tabindex="0" role="button">
+      <div class="metricIcon">⚠</div><strong id="mCritical">—</strong><span class="metricMainLabel">CRÍTICAS</span>
+      <span class="metricFoot"><span>Señal óptica en rango crítico</span></span>
     </div>
   </section>
 
@@ -165,7 +170,6 @@ async function loadSummary(){
   $('mWarn').textContent=s.warning??0;
   $('mCritical').textContent=s.critical??0;
   $('mPending').textContent=s.pending_autofind??0;
-  $('mLow').textContent=(Number(s.warning||0)+Number(s.critical||0));
   $('mPowerFail').textContent=s.power_fail??0;
   $('mLos').textContent=s.los??0;
   $('mOtherOff').textContent=Math.max(0,Number(s.offline||0)-Number(s.power_fail||0)-Number(s.los||0));
@@ -352,7 +356,7 @@ function setMetricFilter(filter){
     $('pendingBox').scrollIntoView({behavior:'smooth',block:'center'});
     return;
   }
-  const map={all:'',online:'online',offline:'offline',low:'signal-low',warning:'warning',critical:'critical'};
+  const map={all:'',online:'online',offline:'offline',warning:'warning',critical:'critical'};
   $('estado').value=map[state.quickFilter]??'';
   state.offset=0;
   loadList(true).then(()=>$('tbody').closest('.tablePanel')?.scrollIntoView({behavior:'smooth',block:'start'})).catch(e=>alert(e.message));
