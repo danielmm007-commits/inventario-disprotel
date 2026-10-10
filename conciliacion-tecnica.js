@@ -1,9 +1,10 @@
-const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-conciliacion-tecnica',KEY='disprotel_login_general_v2';
+const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-conciliacion-tecnica',ERP_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-erp-actualizacion',KEY='disprotel_login_general_v2';
 let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
 const H=()=>({'Content-Type':'application/json','x-user':me.usuario||'','x-pin':me.pin||'','x-session':me.session_token||''});
 const n=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase(),e=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-let rows=[],lote=null,meta=null,currentGroup={codigo:'AUTO',nombre:'Por detectar'},sourceSheet='',lastResultRows=[],lastLote=null,previewFilter='',resultFilter='';
+let rows=[],lote=null,meta=null,currentGroup={codigo:'AUTO',nombre:'Por detectar'},sourceSheet='',lastResultRows=[],lastLote=null,previewFilter='',resultFilter='',erpRows=[],erpFilter='ISSUES',erpSelected=new Set();
 async function call(b){const r=await fetch(API,{method:'POST',headers:H(),body:JSON.stringify(b)}),d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw Error(d.error||'Error');return d}
+async function erpCall(b){const r=await fetch(ERP_API,{method:'POST',headers:{'Content-Type':'application/json','x-session':me.session_token||''},body:JSON.stringify(b)}),d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw Error(d.error||'Error');return d}
 function msg(t,k=''){const x=document.getElementById('msg');x.textContent=t;x.className='status '+k}
 function map(o){const m={};for(const k of Object.keys(o||{}))m[n(k).replace(/[^A-Z0-9]/g,'')]=k;return m}
 function pick(o,m,ks){for(const k of ks){const z=m[k];if(z!=null&&String(o[z]??'').trim())return o[z]}return ''}
@@ -63,9 +64,9 @@ async function readFile(f){
 }
 file.onchange=()=>file.files[0]&&readFile(file.files[0]).catch(x=>msg(x.message,'err'));
 ['dragenter','dragover'].forEach(v=>drop.addEventListener(v,x=>{x.preventDefault();drop.classList.add('drag')}));['dragleave','drop'].forEach(v=>drop.addEventListener(v,x=>{x.preventDefault();drop.classList.remove('drag')}));drop.ondrop=x=>{const f=x.dataTransfer.files[0];if(f)readFile(f).catch(y=>msg(y.message,'err'))};
-save.onclick=async()=>{try{save.disabled=true;save.textContent='Guardando…';const d=await call({action:'upload',archivo_nombre:meta?.name||'archivo.xlsx',archivo_tipo:meta?.type||'',grupo_codigo:currentGroup.codigo,grupo_nombre:currentGroup.nombre,rows});lote=d.lote_id;reconcile.disabled=false;msg('Lote guardado. Ya puedes conciliar.','ok');await history()}catch(x){msg(x.message,'err')}finally{save.disabled=false;save.textContent='Guardar lote'}};
+save.onclick=async()=>{try{save.disabled=true;save.textContent='Guardando…';const d=await call({action:'upload',archivo_nombre:meta?.name||'archivo.xlsx',archivo_tipo:meta?.type||'',grupo_codigo:currentGroup.codigo,grupo_nombre:currentGroup.nombre,rows});lote=d.lote_id;reconcile.disabled=false;compareBase.disabled=false;msg('Lote guardado. Ya puedes conciliar o comparar ERP vs base.','ok');await history()}catch(x){msg(x.message,'err')}finally{save.disabled=false;save.textContent='Guardar lote'}};
 reconcile.onclick=async()=>{try{if(!lote)throw Error('Primero guarda el lote');reconcile.disabled=true;reconcile.textContent='Conciliando…';await call({action:'reconcile',lote_id:lote});await openLote(lote);show('result');msg('Conciliación terminada.','ok');await history()}catch(x){msg(x.message,'err')}finally{reconcile.disabled=false;reconcile.textContent='Ejecutar conciliación'}};
-clear.onclick=()=>{rows=[];lote=null;lastResultRows=[];lastLote=null;previewFilter='';resultFilter='';file.value='';currentGroup={codigo:'AUTO',nombre:'Por detectar'};sourceSheet='';stats();preview();save.disabled=true;reconcile.disabled=true;exportIssues.disabled=true;exportIssuesPdf.disabled=true;exportResultExcel.disabled=true;exportResultPdf.disabled=true;document.getElementById('groupDetected').innerHTML='';msg('Sin archivo cargado.')};
+clear.onclick=()=>{rows=[];lote=null;lastResultRows=[];lastLote=null;previewFilter='';resultFilter='';erpRows=[];erpSelected.clear();file.value='';currentGroup={codigo:'AUTO',nombre:'Por detectar'};sourceSheet='';stats();preview();save.disabled=true;reconcile.disabled=true;compareBase.disabled=true;exportIssues.disabled=true;exportIssuesPdf.disabled=true;exportResultExcel.disabled=true;exportResultPdf.disabled=true;erpApplySelected.disabled=true;erpApplyAll.disabled=true;erpBaseRows.innerHTML='<tr><td colspan="6">Aún no se ha comparado este lote con la base.</td></tr>';erpBaseCards.innerHTML='';document.getElementById('groupDetected').innerHTML='';msg('Sin archivo cargado.')};
 [['cTotal',''],['cFibra','FIBRA'],['cRadio','RADIO'],['cRouters','ROUTER']].forEach(([id,filter])=>{
   const card=document.getElementById(id)?.closest('.card');
   if(card){
@@ -85,7 +86,7 @@ function render(a,l){
   resultSub.textContent=l?(l.archivo_nombre+' · '+(l.grupo_nombre||'')+' · '+visible.length+' de '+lastResultRows.length+' servicios'+(resultFilter?' · FILTRO: '+resultFilter.replaceAll('_',' '):'')):'';
   results.innerHTML=visible.length?visible.map(x=>'<tr><td><span class="badge '+cls(x.resultado||'')+'">'+e(x.resultado||'—')+'</span></td><td>'+e(x.codigo_servicio)+'</td><td>'+e(x.cliente)+'</td><td>'+e(x.tipo_conexion)+'</td><td>'+e(x.ip_cliente)+'</td><td>'+e(x.rb_encontrado?((x.rb_comentario||'Encontrado')+' · '+(x.rb_lista||'')):'NO')+'</td><td>'+e(x.huawei_encontrado?((x.huawei_olt_codigo||'')+' · '+(x.huawei_fsp||'')+' · '+(x.huawei_onu_sn||'')):'NO')+'</td><td>'+e(x.detalle||'')+'</td></tr>').join(''):'<tr><td colspan="8">Sin resultados para este filtro.</td></tr>';
 }
-async function openLote(id){const d=await call({action:'detail',lote_id:id});lote=id;render(d.rows,d.lote);reconcile.disabled=false}
+async function openLote(id){const d=await call({action:'detail',lote_id:id});lote=id;render(d.rows,d.lote);reconcile.disabled=false;compareBase.disabled=false}
 async function history(){const d=await call({action:'list-lotes'});document.getElementById('history').innerHTML=(d.lotes||[]).length?d.lotes.map(x=>'<div class="histItem"><div><b>'+e(x.archivo_nombre)+'</b><small>'+e(x.grupo_nombre||'Sin grupo')+' · '+e(x.cargado_por_nombre||'')+' · '+new Date(x.created_at).toLocaleString('es-EC')+' · '+x.filas_total+' servicios · '+e(x.estado)+'</small></div><button class="btn alt" onclick="openLote(\''+x.id+'\').then(()=>show(\'result\')).catch(x=>msg(x.message,\'err\'))">Abrir</button></div>').join(''):'<div class="status">Aún no hay cargas.</div>'}
 function exportInconsistencias(){
  const bad=(lastResultRows||[]).filter(x=>!/^OK_/.test(String(x.resultado||'')));
@@ -166,8 +167,85 @@ document.getElementById('exportResultExcel').onclick=()=>exportRows(lastResultRo
 document.getElementById('exportResultPdf').onclick=()=>{try{exportPdf(lastResultRows,'RESULTADO_CONCILIACION')}catch(x){msg(x.message,'err')}};
 document.getElementById('exportIssuesPdf').onclick=()=>{try{exportPdf(lastResultRows.filter(x=>!/^OK_/.test(String(x.resultado||''))),'INCONSISTENCIAS')}catch(x){msg(x.message,'err')}};
 
-function show(v){previewView.style.display=v==='preview'?'block':'none';resultView.style.display=v==='result'?'block':'none';document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.view===v))}
-document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>show(b.dataset.view));history().catch(x=>history.innerHTML='<div class="status err">'+e(x.message)+'</div>');
+
+function diffText(d){
+  if(!d||typeof d!=='object')return '—';
+  const labels={tipo_conexion:'Tipo',plan_codigo:'Plan',ip_cliente:'IP',router:'Router',router_legacy:'Router',direccion:'Dirección',servicio:'Servicio'};
+  const parts=[];
+  for(const [k,v] of Object.entries(d)){
+    if(!v||typeof v!=='object')continue;
+    const lab=labels[k]||k;
+    if(k==='servicio')parts.push(lab+': no existe en la base');
+    else parts.push(lab+': '+String(v.base??'—')+' → '+String(v.erp??'—')+(v.valido===false?' · REVISAR':''));
+  }
+  return parts.join(' | ')||'Sin diferencias';
+}
+function erpVisible(){
+  if(erpFilter==='ALL')return erpRows;
+  return erpRows.filter(x=>x.base_estado!=='IGUAL');
+}
+function renderErpBase(){
+  const counts={IGUAL:0,CAMBIO:0,NUEVO_EN_ERP:0,REVISAR:0,APLICADO:0};
+  erpRows.forEach(x=>counts[x.base_estado]=(counts[x.base_estado]||0)+1);
+  erpBaseCards.innerHTML=Object.entries(counts).filter(([,v])=>v>0).map(([k,v])=>'<div class="card"><strong>'+v+'</strong><span>'+e(k.replaceAll('_',' '))+'</span></div>').join('');
+  const data=erpVisible();
+  erpBaseSub.textContent=erpRows.length?(data.length+' visibles de '+erpRows.length+' servicios. Solo CAMBIO puede aplicarse; NUEVO/REVISAR requieren revisión.'):'Aún no se ha comparado este lote con la base.';
+  erpBaseRows.innerHTML=data.length?data.map(x=>{
+    const can=x.base_estado==='CAMBIO';
+    const checked=erpSelected.has(x.id)?' checked':'';
+    return '<tr><td>'+(can?'<input type="checkbox" class="erpSel" data-id="'+x.id+'"'+checked+'>':'')+'</td><td><span class="badge '+(x.base_estado==='CAMBIO'?'warn':x.base_estado==='IGUAL'||x.base_estado==='APLICADO'?'ok':'')+'">'+e(x.base_estado||'—')+'</span></td><td>'+e(x.codigo_servicio||'')+'</td><td>'+e(x.cliente||'')+'</td><td>'+e(diffText(x.base_diff))+'</td><td>'+(can?'<button class="btn alt erpApplyOne" data-id="'+x.id+'">Aplicar</button>':'—')+'</td></tr>';
+  }).join(''):'<tr><td colspan="6">No hay filas para este filtro.</td></tr>';
+  document.querySelectorAll('.erpSel').forEach(ch=>ch.onchange=()=>{const id=Number(ch.dataset.id);if(ch.checked)erpSelected.add(id);else erpSelected.delete(id);erpApplySelected.disabled=!erpSelected.size});
+  document.querySelectorAll('.erpApplyOne').forEach(b=>b.onclick=()=>applyErp([Number(b.dataset.id)]));
+  erpApplySelected.disabled=!erpSelected.size;
+  erpApplyAll.disabled=!erpRows.some(x=>x.base_estado==='CAMBIO');
+}
+async function loadErpDetail(){
+  if(!lote)return;
+  const d=await erpCall({action:'detail',lote_id:lote});
+  erpRows=d.rows||[];
+  const valid=new Set(erpRows.filter(x=>x.base_estado==='CAMBIO').map(x=>x.id));
+  erpSelected=new Set([...erpSelected].filter(id=>valid.has(id)));
+  renderErpBase();
+}
+async function compareErpBase(){
+  if(!lote)throw Error('Primero guarda el lote');
+  compareBase.disabled=true;compareBase.textContent='Comparando…';
+  try{
+    const d=await erpCall({action:'compare',lote_id:lote});
+    await loadErpDetail();
+    show('erpbase');
+    const r=d.resumen||{};
+    msg('ERP vs base: '+(r.CAMBIO||0)+' cambios · '+(r.NUEVO_EN_ERP||0)+' nuevos · '+(r.REVISAR||0)+' por revisar.','ok');
+  }finally{compareBase.disabled=false;compareBase.textContent='Comparar ERP vs base'}
+}
+async function applyErp(ids){
+  const all=!ids||!ids.length;
+  const cant=all?erpRows.filter(x=>x.base_estado==='CAMBIO').length:ids.length;
+  if(!cant)return;
+  const ok=confirm(all?'Se aplicarán TODOS los cambios válidos detectados ('+cant+'). ¿Continuar?':'Se aplicará '+cant+' cambio seleccionado. ¿Continuar?');
+  if(!ok)return;
+  erpApplySelected.disabled=true;erpApplyAll.disabled=true;
+  try{
+    const d=await erpCall({action:'apply',lote_id:lote,row_ids:all?[]:ids});
+    erpSelected.clear();
+    await loadErpDetail();
+    msg('Actualización ERP aplicada: '+(d.aplicados||0)+' servicio(s). Omitidos: '+(d.omitidos||0)+'.','ok');
+  }catch(x){msg(x.message,'err')}
+}
+compareBase.onclick=()=>compareErpBase().catch(x=>msg(x.message,'err'));
+erpFilterIssues.onclick=()=>{erpFilter='ISSUES';renderErpBase()};
+erpFilterAll.onclick=()=>{erpFilter='ALL';renderErpBase()};
+erpApplySelected.onclick=()=>applyErp([...erpSelected]);
+erpApplyAll.onclick=()=>applyErp([]);
+function show(v){
+  previewView.style.display=v==='preview'?'block':'none';
+  resultView.style.display=v==='result'?'block':'none';
+  erpBaseView.style.display=v==='erpbase'?'block':'none';
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
+}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=async()=>{show(b.dataset.view);if(b.dataset.view==='erpbase'&&lote){try{await loadErpDetail()}catch(x){msg(x.message,'err')}}});
+history().catch(x=>history.innerHTML='<div class="status err">'+e(x.message)+'</div>');
 
 /* ===== Conciliación manual ERP ↔ SmartOLT (solo FIBRA) ===== */
 let smartErpRows=[],smartRows=[],smartAllRows=[],smartResult=[],smartFilter='';
