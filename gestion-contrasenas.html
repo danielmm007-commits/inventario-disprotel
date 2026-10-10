@@ -5,7 +5,7 @@
 const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-password-admin';
 const session=(()=>{try{return JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'null')}catch{return null}})();
 let users=[],audit=[];const el=id=>document.getElementById(id),grid=el('grid'),msg=el('msg');
-function headers(){return {'Content-Type':'application/json','x-user':session?.usuario||'','x-pin':session?.pin||'','x-session':session?.session_token||''}}
+function headers(){return {'Content-Type':'application/json','x-session':session?.session_token||''}}
 async function call(body){const r=await fetch(API,{method:'POST',headers:headers(),body:JSON.stringify(body)}),d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok||d?.error)throw new Error(d?.error||'No se pudo completar la acción');return d}
 function show(t,type='ok'){msg.className='msg show '+type;msg.textContent=t;setTimeout(()=>msg.className='msg',5500)}
 function initials(n){return String(n||'').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('')}
