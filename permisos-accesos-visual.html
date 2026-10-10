@@ -71,7 +71,7 @@
     const session=(()=>{try{return JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'null')}catch{return null}})();
     let profiles=[],users=[],mode='profile',active='all',selected='',values={},inheritedValues={},dirty=false,ready=false;
     const flat=()=>catalog.flatMap(g=>g.items.map(i=>({group:g,...Object.fromEntries(['key','name','desc'].map((k,n)=>[k,i[n]]))})));
-    function headers(){return {'Content-Type':'application/json','x-user':session?.usuario||'','x-session':session?.session_token||''}}
+    function headers(){return {'Content-Type':'application/json','x-session':session?.session_token||''}}
     async function call(body){const response=await fetch(API,{method:'POST',headers:headers(),body:JSON.stringify(body)});const data=await response.json().catch(()=>({error:'Respuesta inválida'}));if(!response.ok||data?.error)throw new Error(data?.error||'No se pudo conectar');return data}
     function message(text,type='info'){notice.textContent=text;notice.style.display='block';notice.style.background=type==='ok'?'#e8f7ef':type==='error'?'#fff0ed':'#fff8e8';notice.style.borderColor=type==='ok'?'#b8dfca':type==='error'?'#edc1b8':'#efd89e';notice.style.color=type==='ok'?'#1d7655':type==='error'?'#a44939':'#805e20'}
     function nav(){navEl.innerHTML=`<button class="${active==='all'?'on':''}" data-id="all">Todos <span class="count">${flat().length}</span></button>`+catalog.map(g=>`<button class="${active===g.id?'on':''}" data-id="${g.id}"><span>${g.icon} ${g.name}</span><span class="count">${g.items.length}</span></button>`).join('');navEl.querySelectorAll('button').forEach(b=>b.onclick=()=>{active=b.dataset.id;render()})}
