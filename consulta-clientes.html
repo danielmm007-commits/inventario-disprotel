@@ -120,6 +120,10 @@ function renderOntCombined(){
   +'<div class="row"><b>Distancia:</b> '+esc(dist!=null?dist+' m':'SIN DATO')+'</div>'
   +'<div class="row"><b>Temperatura:</b> '+esc(temp!=null?temp+' °C':'SIN DATO')+'</div>'
   +'<div class="row"><b>Voltaje:</b> '+esc(volt!=null?volt+' V':'SIN DATO')+'</div>'
+  +'<div class="row"><b>Nombre Huawei:</b> '+esc(x?.nombre_cliente_huawei||a?.nombre_cliente_huawei||'SIN DATO')+'</div>'
+  +'<div class="row"><b>Zona Huawei:</b> '+esc(x?.zona_huawei||a?.zona_huawei||'SIN DATO')+'</div>'
+  +'<div class="row"><b>NAP Huawei:</b> '+esc(x?.nap_huawei||a?.nap_huawei||'SIN DATO')+'</div>'
+  +'<div class="row"><b>IP en descripción:</b> '+esc(x?.ip_descripcion||a?.ip_descripcion||'SIN DATO')+'</div>'
   +'<div class="row"><b>Descripción Huawei:</b> '+esc(x?.descripcion||a?.descripcion||'SIN DATO')+'</div>'
   +'<div class="row"><b>Caché Huawei actualizada:</b> '+esc(ago(cacheAt))+'</div>'
   +(opticaAt&&opticaAt!==cacheAt?'<div class="row"><b>Lectura óptica:</b> '+esc(ago(opticaAt))+'</div>':'');
