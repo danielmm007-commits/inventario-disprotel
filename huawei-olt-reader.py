@@ -525,19 +525,32 @@ def parse_ont_info_by_sn(text, requested_sn):
     fsp = _field(text, r"F/S/P\s*:\s*(.+)")
     run_state = _field(text, r"Run state\s*:\s*(.+)")
     sn = _field(text, r"SN\s*:\s*(.+)")
+    desc = _field(text, r"Description\s*:\s*(.+)")
+    if desc == "-":
+        desc = None
+
+    ip_descripcion = None
+    if desc:
+        ipm = re.search(r"(?<!\d)(?:\d{1,3}\.){3}\d{1,3}(?!\d)", desc)
+        if ipm:
+            ip_descripcion = ipm.group(0)
+
     found = (not not_found) and (
         ont_id != "-" or fsp != "-" or run_state != "-" or sn != "-"
     )
-    return {
+    result = {
         "found": found,
         "onu_sn": requested_sn.upper(),
         "ont_id": None if ont_id == "-" else ont_id,
         "pon": None if fsp == "-" else fsp,
         "run_state": None if run_state == "-" else run_state,
         "reported_sn": None if sn == "-" else sn,
-        "descripcion": "ONU configurada en OLT" if found else "ONU no encontrada en configuración OLT",
+        "descripcion": desc if found and desc else ("ONU configurada en OLT" if found else "ONU no encontrada en configuración OLT"),
+        "ip_descripcion": ip_descripcion,
     }
-
+    if desc:
+        result.update(parse_huawei_description(desc))
+    return result
 
 async def read_ont_by_sn(sn):
     if not USER or not PASSWORD:
