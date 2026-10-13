@@ -5,18 +5,12 @@ import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
 // deliberado de secretos del servidor, aparte del bloqueo local de Huawei V3.
 const AUTH_TOKEN=String(Deno.env.get('DETECTOR_TOKEN')||'');
 const WRITE_ENABLED=Deno.env.get('HUAWEI_ONU_WRITES_ENABLED')==='true';
-// Scope obligatorio para la primera activación: no habilitar todas las ONU de la OLT.
-const TEST_SERIAL=String(Deno.env.get('HUAWEI_ONU_TEST_SERIAL')||'').trim().toUpperCase();
-const TEST_OLT=String(Deno.env.get('HUAWEI_ONU_TEST_OLT')||'').trim().toUpperCase();
-/* Excepción LIMITADA al piloto aprobado por Fernando. No habilita escrituras globales.
-   El PC aún requiere OLT_ONU_WRITES_ENABLED=1, serial permitido y confirmación local. */
-function pilotAllowed(row:any){
- return row && code(row.olt_codigo)==='SALCEDO'
-   && code(row.onu_sn)==='48575443C8BFCE42'
-   && String(row.onu_pon||'')==='0/1/12'
-   && model(row.onu_modelo)==='HG8310M'
-   && !!row.aprobado_por_id && !!row.aprobado_at;
-}
+// Bloqueo triple: servidor, OLT permitida y perfil por modelo habilitado.
+const ALLOWED_OLTS=new Set(
+ String(Deno.env.get('HUAWEI_ONU_ALLOWED_OLTS')||'').split(',')
+ .map(x=>x.trim().toUpperCase()).filter(x=>/^[A-Z0-9_-]{2,32}$/.test(x))
+);
+function writeAllowed(olt:string){return WRITE_ENABLED&&ALLOWED_OLTS.has(code(olt));}
 
 const headers={
   'Access-Control-Allow-Origin':'https://danielmm007-commits.github.io',
@@ -36,16 +30,14 @@ function db(){
  return createClient(Deno.env.get('SUPABASE_URL')!,key,{auth:{persistSession:false,autoRefreshToken:false}});
 }
 function validParams(p:any){
- return p&&[
-   p.vlan_servicio,p.line_profile_id,p.service_profile_id,p.gemport,
-   p.traffic_in_id,p.traffic_out_id
- ].every(v=>Number.isSafeInteger(v)&&v>=0)
-   &&p.vlan_servicio>=1&&p.vlan_servicio<=4094
-   &&p.gemport>=0&&p.gemport<=4095
-   &&p.line_profile_id<=4095&&p.service_profile_id<=4095;
+ if(!p||p.tag_transform!=='translate')return false;
+ if(!['vlan_servicio','vlan_usuario'].every(k=>Number.isSafeInteger(p[k])&&p[k]>=1&&p[k]<=4094))return false;
+ if(!['line_profile_id','service_profile_id','gemport','traffic_in_id','traffic_out_id']
+   .every(k=>Number.isSafeInteger(p[k])&&p[k]>=0&&p[k]<=4095))return false;
+ return true;
 }
 async function validate(s:any,row:any){
- if(code(row.olt_codigo)!=='SALCEDO'||code(row.onu_sn)!=='48575443C8BFCE42'||String(row.onu_pon||'')!=='0/1/12'||model(row.onu_modelo)!=='HG8310M')return {ok:false,reason:'Primera prueba limitada a la HG8310M aprobada de Salcedo'};
+ if(!/^[A-Z0-9_-]{2,32}$/.test(code(row.olt_codigo)))return {ok:false,reason:'OLT inválida'};
  if(!isSn(row.onu_sn)||!isPon(row.onu_pon))return {ok:false,reason:'Serial o PON inválidos'};
  const cfg=await s.from('olt_configuraciones').select('id,codigo,activo').eq('codigo',row.olt_codigo).eq('activo',true).maybeSingle();
  if(cfg.error||!cfg.data)return {ok:false,reason:'OLT no configurada o desactivada'};
@@ -62,11 +54,6 @@ async function validate(s:any,row:any){
  if(profile.error)throw profile.error;
  if(!validParams(profile.data))return {ok:false,reason:'Perfil BRIDGE incompleto o inexistente para esta OLT/modelo'};
  if(profile.data.habilitado!==true)return {ok:false,reason:'Perfil GPON no validado/habilitado para ejecución'};
- if(!(profile.data.line_profile_id===5&&profile.data.service_profile_id===24
-    &&profile.data.vlan_servicio===100&&profile.data.vlan_usuario===100
-    &&profile.data.gemport===1&&profile.data.traffic_in_id===9
-    &&profile.data.traffic_out_id===8&&profile.data.tag_transform==='translate'))
-   return {ok:false,reason:'Perfil de la HG8310M no coincide con valores verificados en Huawei Salcedo'};
  return {ok:true,profile:profile.data};
 }
 Deno.serve(async(req:Request)=>{
@@ -79,22 +66,23 @@ Deno.serve(async(req:Request)=>{
   if(!/^[A-Z0-9_-]{2,32}$/.test(olt_codigo))return reply({error:'OLT inválida'},400);
   const s=db();
   if(action==='scanner-pending'){
-   // Consultar solo al iniciar el agente o tras una aprobación explícita.
-   const q=await s.from('onu_autorizaciones_manuales').select('id,orden_id,olt_codigo,onu_sn,onu_pon,onu_modelo,nombre,nap,zona,estado,aprobado_at').eq('olt_codigo',olt_codigo).in('estado',['APROBADA_PENDIENTE_EJECUCION','APROBADA_PENDIENTE_PERFIL']).order('aprobado_at',{ascending:true}).limit(5);
+   // Consultar solicitudes aprobadas, sin efectuar escrituras.
+   const q=await s.from('onu_autorizaciones_manuales').select('id,orden_id,olt_codigo,onu_sn,onu_pon,onu_modelo,nombre,nap,zona,estado,aprobado_at').eq('olt_codigo',olt_codigo).eq('estado','APROBADA_PENDIENTE_EJECUCION').order('aprobado_at',{ascending:true}).limit(20);
    if(q.error)throw q.error;
    const jobs=[];
    for(const job of q.data||[]){
-     const check=job.estado==='APROBADA_PENDIENTE_PERFIL'
-       ? {ok:false,reason:'Perfil ya puede estar habilitado, pero falta pulsar Enviar a agente Huawei en DISPROTEL'}
-       : await validate(s,job);
+     const check=await validate(s,job);
+   const habilitada=writeAllowed(olt_codigo);
+   const lista=check.ok&&habilitada;
      jobs.push({id:job.id,orden_id:job.orden_id,olt_codigo,onu_sn:job.onu_sn,onu_pon:job.onu_pon,onu_modelo:job.onu_modelo,
        nombre:job.nombre,nap:job.nap,zona:job.zona,aprobado_at:job.aprobado_at,
-       listo:check.ok,motivo:check.ok?null:check.reason,perfil:check.ok?check.profile:null});
+       listo:lista,motivo:!check.ok?check.reason:habilitada?null:'OLT o servidor no habilitados para escritura',
+    perfil:check.ok?check.profile:null});
    }
-   const pilotReady=jobs.some(j=>j.listo&&j.onu_sn==='48575443C8BFCE42');
+   const habilitada=writeAllowed(olt_codigo);
    return reply({ok:true,solo_preparacion:true,
-     escrituras_habilitadas:WRITE_ENABLED||pilotReady,
-     bloqueo_servidor:(WRITE_ENABLED||pilotReady)?null:'Escritura Huawei no habilitada para ninguna solicitud válida',
+     escrituras_habilitadas:habilitada,
+     bloqueo_servidor:habilitada?null:'Servidor u OLT sin autorización de escritura',
      jobs});
   }
   if(action==='scanner-claim'||action==='scanner-result'){
@@ -103,9 +91,10 @@ Deno.serve(async(req:Request)=>{
    if(!/^[0-9a-f-]{36}$/i.test(id))return reply({error:'ID inválido'},400);
    const rr=await s.from('onu_autorizaciones_manuales').select('*').eq('id',id).eq('olt_codigo',olt_codigo).maybeSingle();
    if(rr.error||!rr.data)return reply({error:'Solicitud no encontrada'},404);
-   if(!pilotAllowed(rr.data)
-       && !(WRITE_ENABLED&&isSn(TEST_SERIAL)&&rr.data.onu_sn===TEST_SERIAL&&rr.data.olt_codigo===TEST_OLT))
-     return reply({error:'Escritura Huawei restringida a la ONU piloto aprobada'},403);
+   // Los resultados ya iniciados se admiten aun después de desactivar escrituras.
+   // Solo tomar un NUEVO trabajo requiere servidor y OLT habilitados.
+   if(action==='scanner-claim'&&!writeAllowed(olt_codigo))
+     return reply({error:'Escritura Huawei deshabilitada para esta OLT'},403);
    if(action==='scanner-claim'){
      if(rr.data.estado!=='APROBADA_PENDIENTE_EJECUCION'||!rr.data.aprobado_por_id||!rr.data.aprobado_at)return reply({error:'Solicitud sin aprobación vigente'},409);
      const check=await validate(s,rr.data);
@@ -123,8 +112,9 @@ Deno.serve(async(req:Request)=>{
    // Registrar estado PENDIENTE_GUARDAR cuando la configuración está online
    // pero todavía no se confirmó el guardado persistente Huawei.
    if(success&&(!isSn(result.serial_verificado)||code(result.serial_verificado)!==rr.data.onu_sn
-     ||result.verified_online!==true||result.native_vlan_verificada!==true||result.config_match!==true))
-     return reply({error:'Falta verificar serial, VLAN nativa ETH1, ONLINE y estados NORMAL/MATCH'},409);
+     ||result.verified_online!==true||result.native_vlan_verificada!==true||result.config_match!==true
+     ||result.service_port_up!==true||!Number.isSafeInteger(result.service_port_id)))
+     return reply({error:'Falta verificar serial, VLAN nativa ETH1, ONLINE, NORMAL/MATCH o service-port UP/ID'},409);
    // No se acepta que el agente declare guardado persistente de toda la OLT
    // sin un proceso de revisión/guardado supervisado independiente.
    if(success&&result.guardado_permanente===true)
@@ -132,7 +122,9 @@ Deno.serve(async(req:Request)=>{
    const finalState=success?'PENDIENTE_GUARDAR':'ERROR';
    const upd=await s.from('onu_autorizaciones_manuales').update({estado:finalState,ejecutado_at:new Date().toISOString(),resultado_huawei:{
      verified_online:result.verified_online===true,native_vlan_verificada:result.native_vlan_verificada===true,
-     config_match:result.config_match===true,guardado_permanente:false,serial_verificado:result.serial_verificado||null,
+     config_match:result.config_match===true,service_port_up:result.service_port_up===true,
+     service_port_id:Number.isSafeInteger(result.service_port_id)?result.service_port_id:null,
+     guardado_permanente:false,serial_verificado:result.serial_verificado||null,
      ont_id:Number.isSafeInteger(result.ont_id)?result.ont_id:null,
      motivo:String(result.motivo||'').slice(0,300)
    },updated_at:new Date().toISOString()}).eq('id',id).eq('estado','EJECUTANDO').select('id,estado').maybeSingle();
