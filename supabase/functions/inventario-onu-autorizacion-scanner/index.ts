@@ -5,6 +5,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
 // deliberado de secretos del servidor, aparte del bloqueo local de Huawei V3.
 const AUTH_TOKEN=String(Deno.env.get('DETECTOR_TOKEN')||'');
 const WRITE_ENABLED=Deno.env.get('HUAWEI_ONU_WRITES_ENABLED')==='true';
+// Scope obligatorio para la primera activación: no habilitar todas las ONU de la OLT.
+const TEST_SERIAL=String(Deno.env.get('HUAWEI_ONU_TEST_SERIAL')||'').trim().toUpperCase();
+const TEST_OLT=String(Deno.env.get('HUAWEI_ONU_TEST_OLT')||'').trim().toUpperCase();
 const headers={
   'Access-Control-Allow-Origin':'https://danielmm007-commits.github.io',
   'Access-Control-Allow-Headers':'authorization,content-type',
@@ -78,6 +81,8 @@ Deno.serve(async(req:Request)=>{
    if(!/^[0-9a-f-]{36}$/i.test(id))return reply({error:'ID inválido'},400);
    const rr=await s.from('onu_autorizaciones_manuales').select('*').eq('id',id).eq('olt_codigo',olt_codigo).maybeSingle();
    if(rr.error||!rr.data)return reply({error:'Solicitud no encontrada'},404);
+   if(!isSn(TEST_SERIAL)||!TEST_OLT||rr.data.onu_sn!==TEST_SERIAL||rr.data.olt_codigo!==TEST_OLT)
+     return reply({error:'Autorización fuera del alcance de la prueba controlada'},403);
    if(action==='scanner-claim'){
      if(rr.data.estado!=='APROBADA_PENDIENTE_EJECUCION'||!rr.data.aprobado_por_id||!rr.data.aprobado_at)return reply({error:'Solicitud sin aprobación vigente'},409);
      const check=await validate(s,rr.data);
