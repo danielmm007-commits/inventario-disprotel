@@ -15,6 +15,62 @@
 .modal{position:fixed;inset:0;background:#06172e99;display:none;align-items:center;justify-content:center;padding:16px;z-index:60}.modal.show{display:flex}.dialog{width:min(720px,100%);max-height:94vh;overflow:auto;background:#f8fbfc;border-radius:14px;border:1px solid #d9e5eb;box-shadow:0 28px 80px #071a3860}.dialogHead{position:sticky;top:0;background:#fff;padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.dialogHead h2{margin:0;font-size:16px}.close{width:34px;height:34px;border:1px solid #cddce4;background:#fff;border-radius:8px;cursor:pointer}.form{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:13px}.field{display:grid;gap:4px}.field.full{grid-column:1/-1}.field label{font-size:8px;font-weight:900;color:#617985;text-transform:uppercase}.field input,.field select{width:100%;border:1px solid #cbdce4;border-radius:8px;padding:9px;background:#fff;font-size:10px}.hint{font-size:8px;color:#80919a}.formActions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:7px;margin-top:3px}.save{background:#0d6387;color:#fff}.notice{grid-column:1/-1;padding:8px;border-radius:8px;background:#eef7fa;border:1px solid #cfe2e9;color:#54707b;font-size:9px;line-height:1.45}
 .toast{position:fixed;right:18px;bottom:18px;max-width:420px;background:#fff;border:1px solid #cfe0e7;border-radius:14px;padding:13px 15px;box-shadow:0 18px 50px #071a3840;display:none;font-size:10px;z-index:120}.toast.show{display:block;animation:toastIn .22s ease}.toast.success{display:flex;align-items:center;gap:12px;border:1px solid #8bd0a9;background:linear-gradient(135deg,#effcf4,#ffffff);color:#145f38;box-shadow:0 18px 55px rgba(18,126,71,.22)}.toast.success:before{content:'✓';width:34px;height:34px;flex:0 0 34px;border-radius:50%;display:grid;place-items:center;background:#1b9858;color:#fff;font-size:20px;font-weight:1000;box-shadow:0 0 0 7px rgba(27,152,88,.10)}.toast.success strong{display:block;font-size:12px;color:#0f6237}.toast.success span{display:block;margin-top:3px;color:#587565;font-size:9px}.toast.info{border-color:#b8d9ee;background:#f3faff;color:#1c5d87}.toast.error{border-color:#edbcbc;background:#fff5f5;color:#9a2f2f}@keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}.cardActions button.busy{pointer-events:none;opacity:.72}
 @media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.hero{align-items:flex-start;flex-direction:column}.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.form{grid-template-columns:1fr}.field.full,.formActions,.notice{grid-column:auto}}
+
+/* ONU DETECTION V2: visual-only redesign; backend permissions unchanged */
+#onuPerfilSection{padding:16px;overflow:hidden}
+#onuPerfilSection>.head{align-items:center;gap:12px}
+#onuPerfilSection>.head .title b{font-size:17px!important;line-height:1.35}
+#onuPerfilSection>.head .title small{display:block;font-size:11px;margin-top:4px;line-height:1.5}
+#onuPerfilSection .field>label{font-size:10px;letter-spacing:.045em}
+#onuPerfilSection .field input,#onuPerfilSection .field select{font-size:12px;padding:11px 12px}
+#onuPerfilSection .hint{font-size:11px}
+.onuDetect{display:block;background:#f7fafc;border:1px solid #d8e5ed;border-radius:14px;padding:16px;margin:2px 0 8px;min-width:0}
+.onuDetectTop{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.onuDetectIcon{flex:0 0 43px;width:43px;height:43px;border-radius:12px;display:grid;place-items:center;background:#e0f3f1;color:#087976;font-size:22px}
+.onuDetectHeading{flex:1;min-width:190px}
+.onuDetectEyebrow{font-size:10px;font-weight:850;letter-spacing:.12em;color:#127985;text-transform:uppercase}
+.onuDetectHeading h3{font-size:18px;line-height:1.2;margin:3px 0 5px;color:#133a54}
+.onuDetectHeading p{font-size:12px;color:#66808f;line-height:1.5;margin:0}
+.onuReadOnly{font-size:10px;font-weight:800;background:#e8f5f0;color:#176c4e;border:1px solid #c8e9da;border-radius:999px;padding:7px 11px;white-space:nowrap}
+.onuDetectBar{display:flex;gap:9px;align-items:end;margin-top:16px}
+.onuDetectSearch{display:grid;gap:6px;flex:1;min-width:0}
+.onuDetectSearch label{font-size:10px;font-weight:850;color:#456779}
+.onuDetectSearch input{font-size:12px!important;background:#fff;border:1px solid #cbdfe9;border-radius:9px;width:100%;padding:10px 12px}
+#pDetectRefresh{font-size:12px;font-weight:800;background:#0a677b;color:#fff;border:1px solid #0a677b;border-radius:9px;padding:11px 13px;cursor:pointer;white-space:nowrap;min-height:41px}
+#pDetectRefresh:hover{background:#074f61}
+#pDetectRefresh:disabled{opacity:.6;cursor:wait}
+.onuDetectStats{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:13px 0 11px}
+.onuCounter{font-size:12px;font-weight:850;color:#1b526e;white-space:nowrap}
+.onuDetectStatus{flex:1;min-width:180px;color:#718795;font-size:11px;line-height:1.5}
+.onuCards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-height:315px;overflow-y:auto;padding:2px 3px 3px 1px}
+.onuCard{position:relative;text-align:left;background:#fff;border:1px solid #d9e5eb;border-radius:12px;padding:13px;cursor:pointer;transition:border-color .14s,box-shadow .14s,background .14s;width:100%;font:inherit;color:inherit;min-width:0}
+.onuCard:hover{border-color:#78b4c9;box-shadow:0 4px 15px #164b6317}
+.onuCard:focus-visible{outline:3px solid #48b7c8;outline-offset:2px}
+.onuCard.selected{border:2px solid #08798c;background:#f0fbfc;box-shadow:0 4px 14px #06708518;padding:12px}
+.onuCardHeader{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:11px}
+.onuCardName{font-size:14px;font-weight:850;color:#173b55;overflow-wrap:anywhere}
+.onuCardState{font-size:10px;font-weight:850;color:#357589;background:#eaf4f7;border-radius:999px;padding:4px 8px;white-space:nowrap}
+.onuCard.selected .onuCardState{background:#d6f2e8;color:#0d8066}
+.onuCardMeta{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.onuCardMetaItem{min-width:0}
+.onuCardMetaItem b{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#79919d;margin-bottom:4px}
+.onuCardMetaItem span{font-size:12px;font-weight:750;color:#33566a;overflow-wrap:anywhere}
+.onuEmpty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:125px;padding:16px;text-align:center;background:#fff;border:1px dashed #c6dbe4;border-radius:12px}
+.onuEmpty strong{font-size:13px;color:#2e5970}
+.onuEmpty span{font-size:11px;color:#7a929f;margin-top:6px;line-height:1.5}
+.onuChosen{margin-top:12px;border-radius:10px;background:#e6f7f0;border:1px solid #bde4d2;padding:11px 13px;display:flex;gap:10px;align-items:center}
+.onuChosen[hidden]{display:none}
+.onuChosen strong{font-size:12px;color:#116f4a}
+.onuChosen span{font-size:11px;line-height:1.4;color:#3d7665}
+.onuProfilesTitle{display:flex;align-items:center;gap:8px;margin:13px 0 0;padding:2px 0 0}
+.onuProfilesTitle strong{font-size:13px;color:#1d5069}
+.onuProfilesTitle span{font-size:11px;color:#7b929e}
+#onuPerfilSection #onuPerfilForm{margin-top:4px}
+#onuPerfilSection #pAdvanced{border:1px solid #d7e4eb;border-radius:10px;padding:11px 13px;background:#fbfdfe}
+#onuPerfilSection #pAdvanced summary{font-size:12px!important;font-weight:800}
+#onuPerfilSection #pRows{font-size:11px}
+@media(max-width:680px){#onuPerfilSection{padding:12px}.onuCards{grid-template-columns:1fr;max-height:340px}.onuDetect{padding:12px}.onuDetectBar{flex-wrap:wrap}.onuDetectSearch{flex:1 1 100%}#pDetectRefresh{width:100%}.onuReadOnly{margin-left:0}}
+
 </style>
 </head>
 <body>
@@ -37,14 +93,30 @@
 <form id="onuPerfilForm" class="form" style="margin-top:10px">
 <div class="field"><label>OLT</label><select id="pOlt" required></select></div>
 <div class="field"><label>Tipo ONU</label><select id="pTipo"><option value="BRIDGE">Bridge</option><option value="WIFI">WiFi</option><option value="CATV">CATV</option></select></div>
-<div class="field full">
-<label>ONU detectadas por Huawei (automático)</label>
-<div style="display:flex;gap:8px;align-items:center">
-<select id="pDetected" style="flex:1;min-width:0"><option value="">Consultando detección Huawei…</option></select>
-<button type="button" class="btn" id="pDetectRefresh" style="background:#e5f2fa;border:1px solid #bcdbe8;color:#135779;white-space:nowrap">↻ Detectar</button>
+<div class="field full onuDetect">
+<div class="onuDetectTop">
+ <div class="onuDetectIcon" aria-hidden="true">📡</div>
+ <div class="onuDetectHeading"><span class="onuDetectEyebrow">Detector Huawei</span><h3>ONU encontradas</h3><p>Equipos pendientes detectados en la OLT seleccionada. Elige una ONU para consultar su modelo y perfil.</p></div>
+ <span class="onuReadOnly">● Solo lectura</span>
 </div>
-<span class="hint" id="pDetectStatus">El modelo se completa automáticamente cuando seleccionas una ONU detectada. Solo se consulta la caché de Huawei.</span>
+<div class="onuDetectBar">
+ <div class="onuDetectSearch"><label for="pSearchOnu">Buscar por modelo, serial o PON</label><input id="pSearchOnu" type="search" autocomplete="off" placeholder="Ej. H8010, HWTC, 0/2/0 o serial"></div>
+ <button type="button" id="pDetectRefresh">↻ Actualizar lista</button>
 </div>
+<div class="onuDetectStats">
+ <strong id="pDetectedCount" class="onuCounter">Consultando ONU…</strong>
+ <span id="pDetectStatus" class="onuDetectStatus" role="status" aria-live="polite">Leyendo la última detección disponible.</span>
+</div>
+<div id="pOnuCards" class="onuCards" role="group" aria-label="ONU pendientes de autorización">
+ <div class="onuEmpty"><strong>Cargando detecciones</strong><span>Consultando datos guardados por el lector Huawei.</span></div>
+</div>
+<div id="pSelectedOnu" class="onuChosen" hidden>
+ <span aria-hidden="true" style="font-size:20px">✓</span>
+ <div><strong>ONU seleccionada</strong><span id="pSelectedText" style="display:block;margin-top:2px"></span></div>
+</div>
+<select id="pDetected" hidden aria-hidden="true"><option value="">Sin selección</option></select>
+</div>
+<div class="field full"><div class="onuProfilesTitle"><strong>Configuración de perfil GPON</strong><span>La autorización final es manual en Mesa Técnica</span></div></div>
 <div class="field"><label>Modelo o familia (detectado o editable)</label><input id="pModelo" required maxlength="64" placeholder="Detectar desde Huawei"></div>
 <details class="field full" id="pAdvanced" style="border:1px solid #d6e2e8;border-radius:8px;padding:10px;background:#f9fcfd">
 <summary style="font-size:12px;font-weight:800;cursor:pointer;color:#115b7c">Parámetros técnicos avanzados · VLAN, perfiles, GEM y tráfico</summary>
