@@ -1384,6 +1384,176 @@ async def multi_olt_service_loop():
 
 
 
+
+# ================================================================
+# PROVISIONAMIENTO BRIDGE (INACTIVO EN PRODUCCION)
+#
+# Requiere simultaneamente:
+#   1. Aprobacion de supervisor y perfil completo/validado en Supabase
+#   2. HUAWEI_ONU_WRITES_ENABLED=true en el servidor
+#   3. OLT_ONU_WRITES_ENABLED=1 en PC Scanner
+# Se trabaja en una sesion Telnet independiente al inventario de V3.
+# NUNCA configurar IP administrativa dentro de la ONU.
+# ================================================================
+def _onu_bridge_profile(job):
+    if not isinstance(job,dict) or not isinstance(job.get("perfil"),dict):
+        raise ValueError("Falta perfil GPON aprobado")
+    p=job["perfil"]
+    serial=str(job.get("onu_sn") or "").strip().upper()
+    fsp=str(job.get("onu_pon") or "").strip()
+    match=re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{1,2})",fsp)
+    if not re.fullmatch(r"[0-9A-F]{16}",serial) or not match:
+        raise ValueError("Serial o puerto PON Huawei no validos")
+    frame,slot,port=map(int,match.groups())
+    if frame>31 or slot>31 or port>31:
+        raise ValueError("PON fuera de rango")
+    if str(p.get("tipo_onu") or "").upper()!="BRIDGE":
+        raise ValueError("Autorizacion no permitida para WIFI o CATV")
+    if str(p.get("modelo_clave") or "").upper()!=str(job.get("onu_modelo") or "").upper():
+        raise ValueError("Modelo de ONU no coincide con su perfil")
+    if p.get("habilitado") is not True:
+        raise ValueError("El perfil aun no esta habilitado por revision tecnica")
+    integer={}
+    fields={"vlan_servicio":(1,4094),"vlan_usuario":(1,4094),
+            "line_profile_id":(0,4095),"service_profile_id":(0,4095),
+            "gemport":(0,4095),"traffic_in_id":(0,2147483647),
+            "traffic_out_id":(0,2147483647)}
+    for key,(lo,hi) in fields.items():
+        val=p.get(key)
+        if not isinstance(val,int) or isinstance(val,bool) or not lo<=val<=hi:
+            raise ValueError("Perfil incompleto o invalido: "+key)
+        integer[key]=val
+    tag=str(p.get("tag_transform") or "").lower()
+    if tag!="translate":
+        raise ValueError("Se requiere confirmar tag-transform translate en Huawei antes de habilitar otros modos")
+    for key in ("nombre","nap","zona"):
+        if any(c in str(job.get(key) or "") for c in ("\r","\n","\"","'",";","\x1b")):
+            raise ValueError("Caracteres peligrosos en descripcion administrativa")
+    # El texto es exclusivamente nombre/sector/NAP. La IP nunca se envía a Huawei.
+    clean=lambda x: re.sub(r"[^A-Za-z0-9_-]","_",str(x or "").strip()).strip("_")[:32]
+    name=clean(job.get("nombre"))
+    zone=clean(job.get("zona"))
+    nap=clean(job.get("nap"))
+    if not name or not (nap or zone):
+        raise ValueError("Se requiere nombre y NAP o zona")
+    desc=(name+("_zone_"+zone if zone else "")+("_NAP_"+nap if nap else ""))[:75]
+    add=f'ont add {port} sn-auth "{serial}" omci ont-lineprofile-id {integer["line_profile_id"]} ont-srvprofile-id {integer["service_profile_id"]} desc "{desc}"'
+    return {"frame":frame,"slot":slot,"port":port,"fsp":fsp,
+            "serial":serial,"profile":integer,"description":desc,
+            "ont_add_command":add,"tag":tag}
+
+
+def _onu_parse_added_id(response):
+    raw=str(response or "")
+    if _bridge_invalid(raw) or re.search(r"(?i)(^\s*%.*(?:error|invalid)|too many parameters|unknown command|already exists)",raw,re.M):
+        raise RuntimeError("Huawei rechazo el registro de la ONU")
+    if not re.search(r"(?i)(success\s*:\s*1\b|added?\s+successfully|successfully\s+added)",raw):
+        raise RuntimeError("No se confirmo exito del ont add; verificar manualmente antes de reintentar")
+    m=re.search(r"(?im)^\s*(?:ONT\s*-?\s*ID|ONTID)\s*:\s*(\d+)\s*$",raw)
+    if not m:
+        raise RuntimeError("ONT agregado posiblemente, pero Huawei no devolvio ONT-ID; requiere verificacion manual")
+    return int(m.group(1))
+
+
+def _onu_service_command(params,ont_id):
+    if not isinstance(ont_id,int) or not (0<=ont_id<=1023):
+        raise ValueError("ONT-ID no valido")
+    p=params["profile"]
+    return (f'service-port vlan {p["vlan_servicio"]} gpon {params["fsp"]} '
+            f'ont {ont_id} gemport {p["gemport"]} multi-service '
+            f'user-vlan {p["vlan_usuario"]} tag-transform {params["tag"]} '
+            f'inbound traffic-table index {p["traffic_in_id"]} '
+            f'outbound traffic-table index {p["traffic_out_id"]}')
+
+
+def onu_bridge_dry_run(job,ont_id_ejemplo=0):
+    """Genera comandos para revision tecnica. NO se conecta ni ejecuta Huawei."""
+    params=_onu_bridge_profile(job)
+    return {"solo_previsualizacion":True,"escrituras_ejecutadas":0,
+            "ip_incluida":False,"tipo":"BRIDGE",
+            "comandos":[f'interface gpon {params["frame"]}/{params["slot"]}',
+                        params["ont_add_command"],"quit",
+                        _onu_service_command(params,ont_id_ejemplo)],
+            "advertencia":"ONT-ID del service-port es provisional: Huawei debe devolver el ONT-ID real."}
+
+
+async def onu_bridge_apply_controlled(cfg,job):
+    """Solo después de doble habilitacion; nunca se llama desde lectura normal."""
+    if os.environ.get("OLT_ONU_WRITES_ENABLED","0")!="1":
+        raise PermissionError("Escrituras ONU deshabilitadas localmente")
+    params=_onu_bridge_profile(job)
+    if str(cfg.get("codigo") or "").upper()!=str(job.get("olt_codigo") or "").upper():
+        raise ValueError("OLT de la orden no coincide con el agente")
+    reader=writer=None
+    steps=[]
+    ont_added=None
+    try:
+        reader,writer=await open_configured_olt(cfg)
+        async def issue(command,timeout=50):
+            result=await _session_command(reader,writer,command,timeout=timeout)
+            if _bridge_invalid(result) or re.search(r"(?i)(^\s*%.*(?:error|invalid)|too many parameters|unknown command|parameter error)",result,re.M):
+                raise RuntimeError("Huawei rechazo un comando de provisioning")
+            if not result.rstrip().endswith("#"):
+                raise RuntimeError("Prompt Huawei no confirmado; requiere revision manual")
+            return result
+        await issue("config",20)
+        autofind=await issue("display ont autofind all",70)
+        matches=[x for x in parse_autofind(autofind)
+                 if str(x.get("sn") or "").upper()==params["serial"]
+                 and re.sub(r"\s+","",str(x.get("fsp") or ""))==params["fsp"]]
+        if len(matches)!=1:
+            raise RuntimeError("La ONU ya no figura exactamente una vez en autofind")
+        await issue(f'interface gpon {params["frame"]}/{params["slot"]}',20)
+        inv=await issue(f'display ont info {params["port"]} all',65)
+        existing=parse_inventory_status(inv)
+        if any(x.get("sn")==params["serial"] for x in existing):
+            raise RuntimeError("ONU ya registrada en PON; evitar duplicado")
+        # Primer comando de escritura: si la respuesta es incierta no hay reintento automatico.
+        add_resp=await issue(params["ont_add_command"],70)
+        ont_added=_onu_parse_added_id(add_resp)
+        steps.append("ont_add")
+        await issue("quit",20)
+        # Segundo comando de escritura: se usa el ONT-ID devuelto por Huawei.
+        service_cmd=_onu_service_command(params,ont_added)
+        sv_resp=await issue(service_cmd,70)
+        if not re.search(r"(?i)(success|service-port|^\s*%?\s*command)",sv_resp):
+            raise RuntimeError("Service-port no confirmado; revisar manualmente")
+        steps.append("service_port")
+        # La verificacion se hace en vivo y en la misma sesion independiente.
+        svc=await issue(f'display service-port port {params["fsp"]} ont {ont_added}',45)
+        matched=[row for row in svc.splitlines()
+                 if re.search(r"(?i)\bgpon\b",row) and
+                 re.search(r"\b"+str(p["vlan_servicio"])+r"\b",row)
+                 for p in [params["profile"]]]
+        if not matched:
+            raise RuntimeError("Falta comprobar service-port VLAN en Huawei")
+        await issue(f'interface gpon {params["frame"]}/{params["slot"]}',20)
+        verified=False
+        for i in range(12):
+            info=await issue(f'display ont info {params["port"]} {ont_added}',35)
+            snm=re.search(r"(?im)^\s*SN\s*:\s*([A-Fa-f0-9]{16})\b",info)
+            online=bool(re.search(r"(?im)^\s*Run state\s*:\s*online\b",info))
+            if snm and snm.group(1).upper()!=params["serial"]:
+                raise RuntimeError("Huawei devolvio otro serial: requiere investigacion")
+            if snm and online:
+                verified=True
+                break
+            await asyncio.sleep(10)
+        if not verified:
+            raise RuntimeError("ONU creada, pero aun no figura ONLINE; requiere revision manual")
+        # NO se hace save por defecto, pues puede pedir confirmación interactiva.
+        return {"verified_online":True,"serial_verificado":params["serial"],"ont_id":ont_added,
+                "guardado_permanente":False,"motivo":"Provisionamiento verificado en running-config; guardar persistencia Huawei en ventana aprobada"}
+    except Exception as exc:
+        # Jamás borrar/crear ONT automáticamente para recuperarse de fallo parcial.
+        raise RuntimeError("Autorizacion incompleta; sin reintento automatico; pasos="+",".join(steps)+
+                           ("; ONT-ID="+str(ont_added) if ont_added is not None else "")+
+                           "; detalle="+str(exc)) from exc
+    finally:
+        if writer is not None:
+            try: writer.close()
+            except Exception: pass
+
 # ================================================================
 # AUTORIZACIONES MANUALES: LECTURA DE COLA, SIN ESCRITURA HUAWEI
 # No se mezcla con CONFIRMADO (evidencia SmartOLT).
