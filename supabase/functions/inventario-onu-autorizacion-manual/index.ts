@@ -13,6 +13,38 @@ Deno.serve(async req=>{
  if(req.method!=='POST')return reply({error:'Método no permitido'},405);
  try{
   const data=await req.json();const db=database();const me=await supervisor(db,String(req.headers.get('x-session')||data.session_token||''));const action=String(data.action||'');
+  if(action==='pending-list'){
+   // Consulta puntual del supervisor. No se llama por sondeo ni habilita provisioning.
+   const olt=normalize(data.olt_codigo||'');
+   let q=db.from('olt_onu_autofind_cache').select('olt_codigo,olt_nombre,onu_sn,onu_sn_display,pon,vendor,modelo,version,software,detectada_at,ultima_lectura_at').eq('presente',true).order('ultima_lectura_at',{ascending:false}).limit(150);
+   if(olt)q=q.eq('olt_codigo',olt);
+   const pending=await q;if(pending.error)throw pending.error;
+   const found=pending.data||[],sns=[...new Set(found.map((r:any)=>r.onu_sn).filter(Boolean))];
+   if(!sns.length)return reply({ok:true,items:[],updated_at:new Date().toISOString()});
+   const assoc=await db.from('orden_onu_solicitudes').select('orden_id,olt_codigo,onu_sn,onu_pon,estado').in('onu_sn',sns).neq('estado','CONFIRMADO').limit(300);
+   if(assoc.error)throw assoc.error;
+   const ordIds=[...new Set((assoc.data||[]).map((o:any)=>o.orden_id).filter(Boolean))];
+   let orders:any[]=[],saved:any[]=[];
+   if(ordIds.length){
+    const ord=await db.from('ordenes_trabajo').select('id,id_orden,estado').in('id',ordIds).limit(300);if(ord.error)throw ord.error;orders=ord.data||[];
+    const reg=await db.from('onu_autorizaciones_manuales').select('orden_id,olt_codigo,onu_sn,nombre,nap,zona,ip_administrativa,estado').in('orden_id',ordIds).limit(300);
+    if(reg.error)throw reg.error;saved=reg.data||[];
+   }
+   const alive=new Map(orders.filter((o:any)=>!['COMPLETADA','CANCELADA'].includes(normalize(o.estado))).map((o:any)=>[o.id,o]));
+   const items=found.map((r:any)=>{
+    const linked=(assoc.data||[]).filter((a:any)=>a.olt_codigo===r.olt_codigo&&a.onu_sn===r.onu_sn&&a.onu_pon===r.pon&&alive.has(a.orden_id));
+    // Si dos OT reclaman el mismo serial, no autorizar por ambigüedad.
+    const selected=linked.length===1?linked[0]:null;
+    const ot=selected?alive.get(selected.orden_id):null;
+    const registered=selected?saved.find((a:any)=>a.orden_id===selected.orden_id&&a.olt_codigo===r.olt_codigo&&a.onu_sn===r.onu_sn):null;
+    return {olt_codigo:r.olt_codigo,olt_nombre:r.olt_nombre,onu_sn:r.onu_sn,onu_sn_display:r.onu_sn_display,pon:r.pon,
+      modelo:r.modelo,vendor:r.vendor,version:r.version,software:r.software,detectada_at:r.detectada_at,
+      ultima_lectura_at:r.ultima_lectura_at,orden_id:ot?.id||null,orden_numero:ot?.id_orden||null,
+      conflicto_ot:linked.length>1,estado_aprobacion:registered?.estado||null,nombre:registered?.nombre||null,
+      nap:registered?.nap||null,zona:registered?.zona||null,ip_administrativa:registered?.ip_administrativa||null};
+   });
+   return reply({ok:true,items,updated_at:new Date().toISOString()});
+  }
   const orden_id=String(data.orden_id||'').trim();
   if(!/^[0-9a-f-]{36}$/i.test(orden_id))return reply({error:'OT obligatoria'},400);
   const ord=await db.from('ordenes_trabajo').select('id,id_orden,estado').eq('id',orden_id).maybeSingle();if(ord.error||!ord.data)return reply({error:'OT inexistente'},404);
