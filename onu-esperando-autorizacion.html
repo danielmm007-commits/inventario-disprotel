@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ONU esperando autorización · DISPROTEL</title>
+<style>
+:root{--bg:#eef3f7;--surface:#fff;--ink:#163548;--muted:#6e8291;--line:#dce6ed;--blue:#1268ac;--teal:#0e795f;--amber:#a96d17;--shadow:0 8px 30px #183c5610}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:13px}
+button,input,select{font:inherit}button{cursor:pointer}.shell{max-width:1520px;padding:17px;margin:auto}
+.hero{display:flex;align-items:center;justify-content:space-between;gap:18px;background:linear-gradient(110deg,#0a4357,#086f78);border-radius:14px;padding:22px 24px;color:white;box-shadow:var(--shadow)}
+.hero .eyebrow{font-size:10px;font-weight:800;letter-spacing:1.4px;color:#abebec}.hero h1{font-size:26px;margin:5px 0 8px;line-height:1.2}.hero p{font-size:12px;line-height:1.5;margin:0;color:#d6eff0}
+.hero button{border:1px solid #a4f0dc;background:#e6fff6;color:#065f4b;padding:12px 18px;border-radius:9px;font-weight:800;white-space:nowrap}
+.summary{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:white;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:14px 0;box-shadow:var(--shadow)}
+.count{min-width:44px;text-align:center;font-size:27px;font-weight:900;color:#0863aa}.summary strong{font-size:13px}.summary p{color:var(--muted);font-size:11px;margin:4px 0}
+.filters{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.filters input,.filters select{background:#fff;border:1px solid #cfdee7;border-radius:8px;padding:10px 11px;min-width:190px;max-width:100%;font-size:12px}
+.block{background:white;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin-bottom:13px;overflow:hidden}
+.blockHeader{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:16px;border-bottom:1px solid var(--line)}
+.blockHeader h2{font-size:16px;margin:0}.blockHeader span{color:#6c8490;font-size:11px}.tableWrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:880px}th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#607784;padding:12px;background:#f0f5f8}
+td{font-size:12px;padding:13px 12px;border-bottom:1px solid #e9eff2;white-space:nowrap}tr:last-child td{border-bottom:0}tbody tr:hover{background:#f7fbfd}.serial{font-weight:850;color:#224a61}.model{font-weight:800;color:#2e5264}
+.status{display:inline-flex;padding:6px 9px;border-radius:7px;background:#fff2de;color:#996314;font-size:10px;font-weight:850}.status.done{background:#e1f4eb;color:#137550}.action{border:1px solid #b4d9e6;background:#eaf6fc;color:#08678e;font-weight:800;font-size:12px;padding:9px 12px;border-radius:8px;cursor:pointer}
+.action:hover{background:#d7eef9}.action:disabled{opacity:.6;cursor:not-allowed}
+.empty{padding:55px 20px;text-align:center;color:#758b9b;line-height:1.75}.empty strong{display:block;font-size:15px;color:#35566a;margin-bottom:3px}
+.notice{font-size:11px;line-height:1.6;color:#6b7e8a;padding:6px 2px 20px}
+.modal{display:none;position:fixed;inset:0;background:#082131b5;z-index:50;align-items:center;justify-content:center;padding:20px;overflow:auto}
+.modal.show{display:flex}.dialog{background:white;border-radius:15px;width:min(650px,100%);max-height:94vh;overflow:auto;box-shadow:0 23px 80px #0005;padding:20px}
+.dialogTop{display:flex;align-items:center;justify-content:space-between;gap:12px}.dialogTop h2{margin:0;font-size:20px}
+.details{padding:13px 14px;border:1px solid #d4e5ec;background:#f1f8fb;border-radius:9px;margin:14px 0;line-height:1.9;font-size:12px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:13px}.fields label{display:grid;gap:6px;color:#456477;font-size:11px;font-weight:800}.fields label.full{grid-column:1/-1}.fields input{padding:11px;border:1px solid #cbdde7;border-radius:8px;font-size:13px}
+.dialogActions{grid-column:1/-1;display:flex;gap:9px;flex-wrap:wrap}.primary{background:#0d795d;border:0;border-radius:8px;padding:12px 16px;color:white;font-weight:850}
+.primary:disabled{background:#b3c5cd;cursor:not-allowed}.secondary{border:1px solid #bdd8e3;border-radius:8px;background:#f1f7fa;padding:12px 16px;color:#0b6789;font-weight:850}.secondary:disabled{opacity:.5;cursor:not-allowed}
+.help{font-size:11px;color:#6c8290;line-height:1.6}.msg{font-size:12px;font-weight:750;line-height:1.6}
+@media(max-width:700px){.hero{flex-direction:column;align-items:stretch}.hero h1{font-size:21px}.filters{margin-left:0;width:100%}.filters input,.filters select{flex:1;min-width:120px}.fields{grid-template-columns:1fr}.fields label.full{grid-column:auto}.dialogActions{grid-column:auto}}
+</style>
+</head>
+<body>
+<main class="shell">
+<header class="hero">
+ <div><div class="eyebrow">RED GPON · DETECCIÓN HUAWEI</div><h1>ONU esperando autorización</h1><p>La detección es automática. La autorización requiere una acción manual del supervisor.</p></div>
+ <button type="button" id="refresh">↻ Actualizar detección</button>
+</header>
+<div class="summary">
+ <div class="count" id="count">—</div><div><strong>Equipos pendientes</strong><p id="updated">Consultando la información del lector Huawei…</p></div>
+ <div class="filters"><input id="search" type="search" placeholder="Buscar serial, modelo o puerto" aria-label="Buscar ONU"><select id="oltFilter" aria-label="Filtrar OLT"><option value="">Todas las OLT</option></select></div>
+</div>
+<div id="groups"><div class="empty"><strong>Consultando detecciones…</strong>Huawei V3 no se modifica durante esta consulta.</div></div>
+<p class="notice">Las ONU se muestran por OLT y PON. El nombre, la NAP o zona y la IP son datos administrativos. Para aprobar se requiere una OT vinculada y un perfil GPON validado; no se ejecutan comandos en Huawei desde esta página.</p>
+</main>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+ <section class="dialog"><div class="dialogTop"><h2 id="modalTitle">Autorización manual</h2><button type="button" class="secondary" id="close">Cerrar</button></div>
+ <div class="details" id="details"></div>
+ <form class="fields" id="form">
+  <label class="full">Nombre / descripción de la ONU *<input id="nombre" maxlength="120" required autocomplete="off" placeholder="Cliente o nombre de referencia"></label>
+  <label>NAP<input id="nap" maxlength="80" placeholder="Identificación de NAP"></label>
+  <label>Zona<input id="zona" maxlength="80" placeholder="Sector o comunidad"></label>
+  <label class="full">IP administrativa (opcional)<input id="ip" inputmode="decimal" placeholder="172.x.x.x; no configura la ONU"></label>
+  <div class="dialogActions"><button type="submit" class="primary" id="save">Guardar datos</button><button type="button" class="secondary" id="approve" disabled>Aprobar manualmente</button></div>
+ </form>
+ <p class="help">Debes indicar NAP o zona. El serial, modelo, OLT y PON provienen de Huawei y no son editables. La aprobación no activa todavía la ONU en Huawei.</p>
+ <p class="msg" id="message" role="status"></p></section>
+</div>
+<script>
+(()=>{
+const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-onu-autorizacion-manual';
+const KEY='disprotel_login_general_v2';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
+if(!me.session_token){$('updated').textContent='Sesión no disponible. Ingresa a DISPROTEL desde el panel principal.';return}
+let items=[],selected=null,busy=false;
+async function call(action,payload={}){
+ const r=await fetch(API,{method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain;charset=UTF-8'},
+ body:JSON.stringify({action,session_token:me.session_token,...payload})});
+ const d=await r.json().catch(()=>({}));
+ if(!r.ok||d.error)throw Error(d.error||('Error HTTP '+r.status));
+ return d;
+}
+function date(v){if(!v)return 'Sin fecha';const d=new Date(v);return Number.isNaN(d.getTime())?'Sin fecha':d.toLocaleString('es-EC',{dateStyle:'short',timeStyle:'short'})}
+function render(){
+ const filter=$('oltFilter').value,search=$('search').value.trim().toUpperCase();
+ const rows=items.filter(x=>(!filter||x.olt_codigo===filter)&&(!search||[x.olt_codigo,x.modelo,x.pon,x.onu_sn,x.onu_sn_display,x.vendor].some(v=>String(v||'').toUpperCase().includes(search))));
+ $('count').textContent=rows.length;
+ if(!rows.length){$('groups').innerHTML='<div class="block"><div class="empty"><strong>No se encontraron ONU pendientes</strong>Espera la próxima lectura Huawei y vuelve a actualizar.</div></div>';return}
+ const names=[...new Set(rows.map(x=>x.olt_codigo))].sort();
+ $('groups').innerHTML=names.map(olt=>{
+ const arr=rows.filter(x=>x.olt_codigo===olt);
+ return '<section class="block"><header class="blockHeader"><h2>📡 '+esc(arr[0].olt_nombre||olt)+'</h2><span>'+arr.length+' equipo(s) · última lectura '+esc(date(arr[0].ultima_lectura_at))+'</span></header>'+
+ '<div class="tableWrap"><table><thead><tr><th>Tipo PON</th><th>Tarjeta</th><th>Puerto</th><th>Serial</th><th>Modelo</th><th>Detectada</th><th>Estado</th><th>Acción</th></tr></thead><tbody>'+
+ arr.map(x=>{
+  const pon=String(x.pon||'').split('/');const index=items.indexOf(x);
+  const status=x.conflicto_ot?'OT duplicada':x.estado_aprobacion==='APROBADA_PENDIENTE_EJECUCION'?'Aprobada, sin ejecutar':x.estado_aprobacion==='DATOS_REGISTRADOS'?'Datos registrados':x.orden_id?'Pendiente':'Sin OT vinculada';
+  return '<tr><td>GPON</td><td>'+esc(pon[1]||'—')+'</td><td>'+esc(pon[2]||'—')+'</td><td class="serial">'+esc(x.onu_sn_display||x.onu_sn)+'</td>'+
+  '<td class="model">'+esc(x.modelo||'—')+'</td><td>'+esc(date(x.detectada_at||x.ultima_lectura_at))+'</td><td><span class="status">'+esc(status)+'</span></td>'+
+  '<td><button class="action" type="button" data-index="'+index+'">'+(x.orden_id&&!x.conflicto_ot?'Autorizar':'Ver detalle')+'</button></td></tr>';
+ }).join('')+'</tbody></table></div></section>';
+ }).join('');
+}
+async function load(){
+ if(busy)return;busy=true;$('refresh').disabled=true;$('updated').textContent='Actualizando lista…';
+ try{
+  const d=await call('pending-list');items=Array.isArray(d.items)?d.items:[];
+  const prev=$('oltFilter').value,codes=[...new Set(items.map(x=>x.olt_codigo))].sort();
+  $('oltFilter').innerHTML='<option value="">Todas las OLT</option>'+codes.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
+  if(codes.includes(prev))$('oltFilter').value=prev;
+  $('updated').textContent='Última consulta: '+date(d.updated_at)+'. Datos informados por el lector Huawei.';
+  render();
+ }catch(e){$('groups').innerHTML='<div class="block"><div class="empty"><strong>No se pudo consultar Huawei</strong>'+esc(e.message)+'</div></div>';$('updated').textContent='Error de consulta';}
+ finally{busy=false;$('refresh').disabled=false}
+}
+async function open(index){
+ const x=items[index];if(!x)return;selected=x;$('modal').classList.add('show');
+ $('details').innerHTML='<strong>OLT:</strong> '+esc(x.olt_nombre||x.olt_codigo)+' · <strong>PON:</strong> '+esc(x.pon||'—')+
+ '<div><strong>Modelo:</strong> '+esc(x.modelo||'—')+' · <strong>SN:</strong> '+esc(x.onu_sn||'—')+'</div>'+
+ '<div><strong>Orden:</strong> '+esc(x.orden_numero||'No asociada a OT')+'</div>';
+ $('nombre').value=x.nombre||'';$('nap').value=x.nap||'';$('zona').value=x.zona||'';$('ip').value=x.ip_administrativa||'';
+ let state=x.estado_aprobacion||'';
+ const editable=Boolean(x.orden_id&&!x.conflicto_ot&&!['APROBADA_PENDIENTE_EJECUCION','EJECUTANDO','PENDIENTE_GUARDAR','AUTORIZADA'].includes(state));
+ $('form').querySelectorAll('input').forEach(input=>input.disabled=!editable);
+ $('save').disabled=!editable;$('approve').disabled=!editable||state!=='DATOS_REGISTRADOS';
+ $('message').textContent=x.conflicto_ot?'El serial está vinculado a más de una OT. Corrige la asociación.':!x.orden_id?'El técnico debe identificar esta ONU en una OT antes de autorizarla.':
+ state==='APROBADA_PENDIENTE_EJECUCION'?'Aprobación registrada. Esperando ejecución Huawei.':editable?'Completa los datos administrativos; guarda y confirma la aprobación.':'No editable en su estado actual.';
+}
+function close(){$('modal').classList.remove('show');selected=null}
+$('groups').addEventListener('click',e=>{const b=e.target.closest('button[data-index]');if(b)open(Number(b.dataset.index))});
+$('refresh').onclick=load;$('oltFilter').onchange=render;$('search').oninput=render;
+$('close').onclick=close;$('modal').addEventListener('click',e=>{if(e.target===$('modal'))close()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+$('form').onsubmit=async e=>{
+ e.preventDefault();if(!selected?.orden_id)return;const x=selected;
+ $('save').disabled=true;$('approve').disabled=true;
+ try{
+  await call('register',{orden_id:x.orden_id,nombre:$('nombre').value,nap:$('nap').value,zona:$('zona').value,ip_administrativa:$('ip').value});
+  x.estado_aprobacion='DATOS_REGISTRADOS';x.nombre=$('nombre').value;x.nap=$('nap').value;x.zona=$('zona').value;x.ip_administrativa=$('ip').value;
+  $('message').textContent='✓ Datos guardados. Puedes aprobar manualmente.';
+  $('approve').disabled=false;render();
+ }catch(err){$('message').textContent='Error: '+err.message}
+ finally{$('save').disabled=false}
+};
+$('approve').onclick=async()=>{
+ const x=selected;if(!x?.orden_id)return;
+ if(!confirm('¿Confirmas la aprobación manual de la ONU '+x.onu_sn+'? La OLT no será modificada todavía.'))return;
+ $('approve').disabled=true;$('save').disabled=true;
+ try{
+  await call('approve',{orden_id:x.orden_id});
+  x.estado_aprobacion='APROBADA_PENDIENTE_EJECUCION';
+  $('message').textContent='✓ Aprobación guardada. Pendiente de ejecución Huawei.';
+  render();
+ }catch(err){$('message').textContent='Error: '+err.message;$('approve').disabled=false;$('save').disabled=false}
+};
+load();
+})();
+</script>
+</body>
+</html>
