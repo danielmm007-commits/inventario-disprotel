@@ -353,7 +353,7 @@ function setMetricFilter(filter){
   state.quickFilter=filter||'all';
   document.querySelectorAll('.metric[data-filter]').forEach(el=>el.classList.toggle('active',el.dataset.filter===state.quickFilter));
   if(state.quickFilter==='pending'){
-    $('pendingBox').scrollIntoView({behavior:'smooth',block:'center'});
+    location.href='onu-esperando-autorizacion.html?v=20261013-pendientes';
     return;
   }
   const map={all:'',online:'online',offline:'offline',warning:'warning',critical:'critical'};
