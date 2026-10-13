@@ -65,16 +65,18 @@ Deno.serve(async(req:Request)=>{
   const s=db();
   if(action==='scanner-pending'){
    // Consultar solo al iniciar el agente o tras una aprobación explícita.
-   const q=await s.from('onu_autorizaciones_manuales').select('id,orden_id,olt_codigo,onu_sn,onu_pon,onu_modelo,nombre,nap,zona,estado,aprobado_at').eq('olt_codigo',olt_codigo).eq('estado','APROBADA_PENDIENTE_EJECUCION').order('aprobado_at',{ascending:true}).limit(5);
+   const q=await s.from('onu_autorizaciones_manuales').select('id,orden_id,olt_codigo,onu_sn,onu_pon,onu_modelo,nombre,nap,zona,estado,aprobado_at').eq('olt_codigo',olt_codigo).in('estado',['APROBADA_PENDIENTE_EJECUCION','APROBADA_PENDIENTE_PERFIL']).order('aprobado_at',{ascending:true}).limit(5);
    if(q.error)throw q.error;
    const jobs=[];
    for(const job of q.data||[]){
-     const check=await validate(s,job);
+     const check=job.estado==='APROBADA_PENDIENTE_PERFIL'
+       ? {ok:false,reason:'Aprobación registrada, pero perfil GPON deshabilitado en DISPROTEL'}
+       : await validate(s,job);
      jobs.push({id:job.id,orden_id:job.orden_id,olt_codigo,onu_sn:job.onu_sn,onu_pon:job.onu_pon,onu_modelo:job.onu_modelo,
        nombre:job.nombre,nap:job.nap,zona:job.zona,aprobado_at:job.aprobado_at,
        listo:check.ok,motivo:check.ok?null:check.reason,perfil:check.ok?check.profile:null});
    }
-   return reply({ok:true,solo_preparacion:true,escrituras_habilitadas:WRITE_ENABLED,jobs});
+   return reply({ok:true,solo_preparacion:true,escrituras_habilitadas:WRITE_ENABLED,bloqueo_servidor:WRITE_ENABLED?null:'Escritura Huawei no habilitada en servidor',jobs});
   }
   if(action==='scanner-claim'||action==='scanner-result'){
    if(!WRITE_ENABLED)return reply({error:'Escritura Huawei bloqueada por servidor'},409);
