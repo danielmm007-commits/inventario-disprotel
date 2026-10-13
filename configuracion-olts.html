@@ -252,45 +252,90 @@ function applySavedProfile(model){
  for(const [id,val] of Object.entries(fields))$(id).value=val??'';
  $('pDetectStatus').textContent='Perfil '+model+' recuperado para esta OLT ('+tipo+'). No habilita escritura Huawei.';
 }
+function renderDetectedCards(){
+ const container=$('pOnuCards');
+ const term=String($('pSearchOnu').value||'').trim().toUpperCase();
+ const selected=$('pDetected').value;
+ const indexed=ONU_DETECTED.map((onu,index)=>({onu,index}));
+ const shown=indexed.filter(({onu})=>[onu.modelo,onu.pon,onu.vendor,onu.onu_sn,onu.onu_sn_display].some(v=>String(v||'').toUpperCase().includes(term)));
+ $('pDetectedCount').textContent=ONU_DETECTED.length+' ONU '+(ONU_DETECTED.length===1?'detectada':'detectadas')+(term?' · '+shown.length+' coinciden':'');
+ if(!shown.length){
+  container.innerHTML='<div class="onuEmpty"><strong>'+(term?'Sin coincidencias':'No hay ONU pendientes')+'</strong><span>'+(term?'Prueba con otro serial, modelo o PON.':'Si conectaste una ONU nueva, espera la próxima lectura del scanner y actualiza esta lista.')+'</span></div>';
+ }else{
+  container.innerHTML=shown.map(({onu,index})=>{
+   const active=String(index)===selected;
+   const modelo=onu.modelo&&onu.modelo!=='-'?onu.modelo:'Modelo no informado';
+   const serial=String(onu.onu_sn_display||onu.onu_sn||'—');
+   const sn=String(onu.onu_sn||'');
+   const vendor=String(onu.vendor||'—');
+   return '<button type="button" class="onuCard'+(active?' selected':'')+'" data-onu-index="'+index+'" aria-pressed="'+(active?'true':'false')+'">'+
+    '<span class="onuCardHeader"><span class="onuCardName">'+esc(modelo)+'</span><span class="onuCardState">'+(active?'✓ Seleccionada':'Pendiente')+'</span></span>'+
+    '<span class="onuCardMeta">'+
+      '<span class="onuCardMetaItem"><b>Puerto PON</b><span>'+esc(onu.pon||'—')+'</span></span>'+
+      '<span class="onuCardMetaItem"><b>Fabricante</b><span>'+esc(vendor)+'</span></span>'+
+      '<span class="onuCardMetaItem" style="grid-column:1/-1"><b>Número de serie</b><span title="'+esc(sn)+'">'+esc(serial)+'</span></span>'+
+    '</span></button>';
+  }).join('');
+ }
+ const chosen=selected!==''?ONU_DETECTED[Number(selected)]:null;
+ $('pSelectedOnu').hidden=!chosen;
+ if(chosen)$('pSelectedText').textContent=(chosen.modelo||'Modelo sin identificar')+' · PON '+(chosen.pon||'—')+' · '+(chosen.onu_sn||'');
+}
 function setDetectedSelection(){
- const selected=ONU_DETECTED[Number($('pDetected').value)];
- if(!selected)return;
- const modelo=String(selected.modelo||'').trim().toUpperCase();
- if(!modelo){$('pDetectStatus').textContent='Huawei no reportó el modelo de esta ONU. Verifícalo antes de asignar perfiles.';return;}
- $('pModelo').value=modelo;
- applySavedProfile(modelo);
+ const value=$('pDetected').value;
+ if(value===''){renderDetectedCards();return;}
+ const chosen=ONU_DETECTED[Number(value)];
+ if(!chosen){$('pDetected').value='';renderDetectedCards();return;}
+ const modelo=String(chosen.modelo||'').trim().toUpperCase();
+ if(!modelo||modelo==='-'||modelo==='UNKNOWN'){
+  $('pModelo').value='';
+  resetTechnicalFields();
+  $('pDetectStatus').textContent='Huawei no informó el modelo de esta ONU. Confírmalo antes de configurar su perfil.';
+ }else{
+  $('pModelo').value=modelo;
+  applySavedProfile(modelo);
+ }
+ renderDetectedCards();
 }
 async function refreshDetected(){
- const seq=++ONU_DETECT_SEQ,olt=rows.find(x=>x.id===$('pOlt').value);
- const btn=$('pDetectRefresh');btn.disabled=true;
- $('pDetected').innerHTML='<option value="">Consultando detección…</option>';
- $('pDetectStatus').textContent='Leyendo únicamente la caché del detector, sin comandos nuevos en la OLT.';
+ const seq=++ONU_DETECT_SEQ,olt=rows.find(x=>x.id===$('pOlt').value),btn=$('pDetectRefresh');
+ btn.disabled=true;
+ $('pDetected').innerHTML='<option value="">Sin selección</option>';
+ $('pSelectedOnu').hidden=true;
+ $('pDetectedCount').textContent='Consultando ONU…';
+ $('pDetectStatus').textContent='Leyendo la última información del scanner Huawei.';
+ $('pOnuCards').innerHTML='<div class="onuEmpty"><strong>Buscando ONU pendientes…</strong><span>Consultando caché del lector Huawei, sin modificar equipos.</span></div>';
  ONU_DETECTED=[];
  try{
   if(!olt)throw Error('Selecciona una OLT');
-  // Petición única por carga o selección de OLT; no añade sondeo periódico.
-  const r=await fetch(ONU_DETECTOR_API,{method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain;charset=UTF-8'},
-   body:JSON.stringify({session_token:me.session_token||'',action:'autofind-read',olt_codigo:olt.codigo})});
+  // Una consulta por carga/cambio de OLT o botón, sin sondeo periódico.
+  const r=await fetch(ONU_DETECTOR_API,{
+   method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain;charset=UTF-8'},
+   body:JSON.stringify({session_token:me.session_token||'',action:'autofind-read',olt_codigo:olt.codigo})
+  });
   const d=await r.json().catch(()=>({}));
-  if(!r.ok||d.error)throw Error(d.error||'Consulta detector HTTP '+r.status);
+  if(!r.ok||d.error)throw Error(d.error||'Error HTTP '+r.status);
   if(seq!==ONU_DETECT_SEQ)return;
   ONU_DETECTED=Array.isArray(d.items)?d.items:[];
-  $('pDetected').innerHTML='<option value="">Seleccionar ONU detectada…</option>'+ONU_DETECTED.map((x,i)=>
-   '<option value="'+i+'">'+esc(x.modelo||'Modelo no informado')+' · '+esc(x.pon||'PON desconocida')+' · SN …'+esc(String(x.onu_sn||'').slice(-6))+'</option>').join('');
-  const age=d.age_seconds==null?'sin lectura':Math.round(d.age_seconds/60)+' min desde la lectura';
-  $('pDetectStatus').textContent=ONU_DETECTED.length+' ONU pendientes detectadas en '+olt.codigo+' · '+age+
-   (d.stale?' · información antigua: confirma la detección antes de usarla':'')+
-   '. Selecciona una ONU para completar modelo y perfiles conocidos.';
-  if(ONU_DETECTED.length===1){
-   $('pDetected').value='0';setDetectedSelection();
-  }
+  $('pDetected').innerHTML='<option value="">Sin selección</option>'+ONU_DETECTED.map((x,i)=>
+   '<option value="'+i+'">'+esc(x.modelo||'ONU')+' · '+esc(x.onu_sn||'')+'</option>').join('');
+  renderDetectedCards();
+  const age=d.age_seconds==null?'sin hora de lectura':d.age_seconds<60?'lectura de hace menos de 1 min':'última lectura hace '+Math.floor(d.age_seconds/60)+' min';
+  $('pDetectStatus').textContent=(d.stale?'⚠ Lectura antigua':'✓ Datos del scanner')+' · '+age+'. Selecciona una tarjeta para cargar su modelo.';
  }catch(e){
   if(seq!==ONU_DETECT_SEQ)return;
-  $('pDetected').innerHTML='<option value="">Detección no disponible</option>';
-  $('pDetectStatus').textContent='No se pudo consultar la detección: '+String(e.message||e)+'. Puedes ingresar el modelo manualmente.';
+  $('pDetectedCount').textContent='Detección no disponible';
+  $('pDetectStatus').textContent='No se pudo consultar Huawei: '+String(e.message||e);
+  $('pOnuCards').innerHTML='<div class="onuEmpty"><strong>No se pudo cargar la lista</strong><span>Intenta actualizar. Puedes registrar el modelo manualmente en el campo inferior.</span></div>';
  }finally{if(seq===ONU_DETECT_SEQ)btn.disabled=false}
 }
-$('pDetected').onchange=setDetectedSelection;
+$('pOnuCards').addEventListener('click',e=>{
+ const target=e.target.closest('[data-onu-index]');
+ if(!target)return;
+ $('pDetected').value=target.dataset.onuIndex;
+ setDetectedSelection();
+});
+$('pSearchOnu').addEventListener('input',renderDetectedCards);
 $('pDetectRefresh').onclick=refreshDetected;
 $('pTipo').onchange=()=>{if($('pModelo').value)applySavedProfile($('pModelo').value)};
 $('pModelo').onchange=()=>{if($('pModelo').value)applySavedProfile($('pModelo').value)};
