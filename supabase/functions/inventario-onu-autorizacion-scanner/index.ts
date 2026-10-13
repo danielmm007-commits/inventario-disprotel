@@ -35,6 +35,7 @@ function validParams(p:any){
    &&p.line_profile_id<=4095&&p.service_profile_id<=4095;
 }
 async function validate(s:any,row:any){
+ if(code(row.olt_codigo)!=='SALCEDO'||code(row.onu_sn)!=='48575443C8BFCE42'||String(row.onu_pon||'')!=='0/1/12'||model(row.onu_modelo)!=='HG8310M')return {ok:false,reason:'Primera prueba limitada a la HG8310M aprobada de Salcedo'};
  if(!isSn(row.onu_sn)||!isPon(row.onu_pon))return {ok:false,reason:'Serial o PON inválidos'};
  const cfg=await s.from('olt_configuraciones').select('id,codigo,activo').eq('codigo',row.olt_codigo).eq('activo',true).maybeSingle();
  if(cfg.error||!cfg.data)return {ok:false,reason:'OLT no configurada o desactivada'};
