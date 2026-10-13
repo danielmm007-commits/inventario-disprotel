@@ -150,7 +150,7 @@ $('eyeBtn').onclick=()=>{const i=$('credSecret');i.type=i.type==='password'?'tex
 
 const PROFILE_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-onu-perfiles-olt';
 let PROFILE_ROWS=[];
-async function profileCall(body){const r=await fetch(PROFILE_API,{method:'POST',headers:headers(),body:JSON.stringify(body)}),d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw new Error(d.error||'Error al consultar perfiles');return d;}
+async function profileCall(body){const r=await fetch(PROFILE_API,{method:'POST',headers:{'Content-Type':'application/json','x-session':me.session_token||''},body:JSON.stringify(body)}),d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw new Error(d.error||'Error al consultar perfiles');return d;}
 const nval=id=>$(id).value===''?null:Number($(id).value);
 function renderProfileRows(){
  const val=$('pOlt').value,entries=PROFILE_ROWS.filter(x=>x.olt_id===val);
