@@ -1383,6 +1383,34 @@ async def multi_olt_service_loop():
             print(json.dumps({"ok":False,"fase":"LIVE","codigo":codigo,"error":str(exc)},ensure_ascii=False),flush=True)
 
 
+
+# ================================================================
+# AUTORIZACIONES MANUALES: LECTURA DE COLA, SIN ESCRITURA HUAWEI
+# No se mezcla con CONFIRMADO (evidencia SmartOLT).
+# Aun cuando una ONU este aprobada, NO se ejecuta 'ont add'.
+# ================================================================
+def leer_autorizaciones_manual_aprobadas(olt_codigo):
+    import urllib.request
+    code=str(olt_codigo or "").strip().upper()
+    if not re.fullmatch(r"[A-Z0-9_-]{2,32}",code):
+        raise ValueError("OLT no permitida")
+    token=os.environ.get("DETECTOR_TOKEN","")
+    if not token:
+        raise RuntimeError("Falta token de agente")
+    base=os.environ.get("SUPABASE_URL","https://ajnbswrwnjpjypjiorye.supabase.co").rstrip("/")
+    payload=json.dumps({"action":"scanner-pending","olt_codigo":code}).encode("utf-8")
+    req=urllib.request.Request(
+        base+"/functions/v1/inventario-onu-autorizacion-scanner",
+        data=payload,
+        headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+        method="POST"
+    )
+    with urllib.request.urlopen(req,timeout=20) as resp:
+        data=json.loads(resp.read().decode("utf-8"))
+    if data.get("ok") is not True:
+        raise RuntimeError("Error al leer cola de autorización")
+    return data
+
     async def bridge_local_worker():
         """Solicitud local opcional de lectura GPON, no genera sondeo a Supabase."""
         basedir=_Path(os.environ.get("LOCALAPPDATA",str(_Path.home()))) / "DISPROTEL" / "bridge_inspeccion"
@@ -1480,6 +1508,24 @@ async def multi_olt_service_loop():
                                 seconds=max(60,int(cfg.get('intervalo_seg') or 300))
                                 schedule[oid]=now+i*seconds/max(1,len(fresh))
                         rt_event.set()  # detectar solicitudes incluso tras reconexión
+                        # Consulta de autorizaciones acoplada al refresco 5 min existente.
+                        # No agrega sondeo cada 5 s, y jamás escribe a las OLT.
+                        if os.environ.get("OLT_MANUAL_AUTORIZACIONES_PREVIEW","0")=="1":
+                            for cfg_ap in fresh:
+                                codigo_ap=str(cfg_ap.get("codigo") or "").strip().upper()
+                                try:
+                                    cola_ap=await asyncio.to_thread(leer_autorizaciones_manual_aprobadas,codigo_ap)
+                                    items_ap=cola_ap.get("jobs") or []
+                                    resumen_ap={"fase":"ONU_APROBADAS_PREVIEW","olt":codigo_ap,
+                                                "cantidad":len(items_ap),
+                                                "listas":sum(1 for x in items_ap if x.get("listo") is True),
+                                                "bloqueadas":[{"motivo":x.get("motivo")} for x in items_ap if x.get("listo") is not True],
+                                                "ejecucion":False}
+                                    if items_ap:
+                                        print(json.dumps(resumen_ap,ensure_ascii=False),flush=True)
+                                except Exception as exc:
+                                    print(json.dumps({"fase":"ONU_APROBADAS_PREVIEW_ERROR","olt":codigo_ap,
+                                                      "error":str(exc)},ensure_ascii=False),flush=True)
                         print(json.dumps({"fase":"CONFIG_OK","olts":[x.get('codigo') for x in fresh]},ensure_ascii=False),flush=True)
                     next_cfg=asyncio.get_running_loop().time()+config_interval
                 except Exception as exc:
