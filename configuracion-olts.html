@@ -37,7 +37,18 @@
 <form id="onuPerfilForm" class="form" style="margin-top:10px">
 <div class="field"><label>OLT</label><select id="pOlt" required></select></div>
 <div class="field"><label>Tipo ONU</label><select id="pTipo"><option value="BRIDGE">Bridge</option><option value="WIFI">WiFi</option><option value="CATV">CATV</option></select></div>
-<div class="field"><label>Modelo o familia</label><input id="pModelo" required maxlength="64" placeholder="HG8012H"></div>
+<div class="field full">
+<label>ONU detectadas por Huawei (automático)</label>
+<div style="display:flex;gap:8px;align-items:center">
+<select id="pDetected" style="flex:1;min-width:0"><option value="">Consultando detección Huawei…</option></select>
+<button type="button" class="btn" id="pDetectRefresh" style="background:#e5f2fa;border:1px solid #bcdbe8;color:#135779;white-space:nowrap">↻ Detectar</button>
+</div>
+<span class="hint" id="pDetectStatus">El modelo se completa automáticamente cuando seleccionas una ONU detectada. Solo se consulta la caché de Huawei.</span>
+</div>
+<div class="field"><label>Modelo o familia (detectado o editable)</label><input id="pModelo" required maxlength="64" placeholder="Detectar desde Huawei"></div>
+<details class="field full" id="pAdvanced" style="border:1px solid #d6e2e8;border-radius:8px;padding:10px;background:#f9fcfd">
+<summary style="font-size:12px;font-weight:800;cursor:pointer;color:#115b7c">Parámetros técnicos avanzados · VLAN, perfiles, GEM y tráfico</summary>
+<div class="form" style="margin-top:12px">
 <div class="field"><label>VLAN de servicio</label><input id="pVlan" type="number" min="1" max="4094" placeholder="100"></div>
 <div class="field"><label>VLAN de usuario (si aplica)</label><input id="pVlanU" type="number" min="1" max="4094"></div>
 <div class="field"><label>Line profile ID</label><input id="pLine" type="number" min="0" max="4095"></div>
@@ -47,6 +58,7 @@
 <div class="field"><label>Traffic TX (índice)</label><input id="pTrafficOut" type="number" min="0"></div>
 <div class="field"><label>Tag transform (si aplica)</label><select id="pTag"><option value="">Por confirmar</option><option value="translate">Translate</option><option value="transparent">Transparent</option><option value="default">Default</option></select></div>
 <div class="field full"><label>Observaciones</label><input id="pObs" maxlength="700" placeholder="Configuración validada contra ONU existente"></div>
+</div></details>
 <div class="field full"><button type="submit" class="btn primary" id="pSave" style="background:#176389;color:white">Guardar perfil (sin activar autorización)</button></div>
 </form>
 <div class="notice" style="margin-top:8px">Los perfiles incompletos o sin comprobar no deben usarse para autorizar ONU. El lector Huawei V3 continúa en solo lectura.</div>
@@ -149,7 +161,68 @@ $('form').onsubmit=async e=>{e.preventDefault();try{
 $('eyeBtn').onclick=()=>{const i=$('credSecret');i.type=i.type==='password'?'text':'password';$('eyeBtn').textContent=i.type==='password'?'👁':'🙈'};$('newBtn').onclick=()=>openForm();$('reloadBtn').onclick=load;$('closeBtn').onclick=$('cancelBtn').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};
 
 const PROFILE_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-onu-perfiles-olt';
-let PROFILE_ROWS=[];
+let PROFILE_ROWS=[],ONU_DETECTED=[],ONU_DETECT_SEQ=0;
+const ONU_DETECTOR_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-onu-detector';
+function resetTechnicalFields(){
+ ['pVlan','pVlanU','pLine','pService','pGem','pTrafficIn','pTrafficOut','pObs'].forEach(id=>$(id).value='');
+ $('pTag').value='';
+}
+function applySavedProfile(model){
+ const olt=$('pOlt').value,tipo=$('pTipo').value;
+ const norm=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9_.-]/g,'');
+ const profile=PROFILE_ROWS.find(x=>x.olt_id===olt&&x.tipo_onu===tipo&&x.modelo_clave===norm(model));
+ resetTechnicalFields();
+ if(!profile){
+  $('pDetectStatus').textContent='Modelo '+(model||'desconocido')+' detectado. Aún no existe un perfil validado para esta OLT y tipo: no se rellenarán VLAN ni perfiles.';
+  return;
+ }
+ const fields={pVlan:profile.vlan_servicio,pVlanU:profile.vlan_usuario,pLine:profile.line_profile_id,pService:profile.service_profile_id,pGem:profile.gemport,pTrafficIn:profile.traffic_in_id,pTrafficOut:profile.traffic_out_id,pTag:profile.tag_transform,pObs:profile.observaciones};
+ for(const [id,val] of Object.entries(fields))$(id).value=val??'';
+ $('pDetectStatus').textContent='Perfil '+model+' recuperado para esta OLT ('+tipo+'). No habilita escritura Huawei.';
+}
+function setDetectedSelection(){
+ const selected=ONU_DETECTED[Number($('pDetected').value)];
+ if(!selected)return;
+ const modelo=String(selected.modelo||'').trim().toUpperCase();
+ if(!modelo){$('pDetectStatus').textContent='Huawei no reportó el modelo de esta ONU. Verifícalo antes de asignar perfiles.';return;}
+ $('pModelo').value=modelo;
+ applySavedProfile(modelo);
+}
+async function refreshDetected(){
+ const seq=++ONU_DETECT_SEQ,olt=rows.find(x=>x.id===$('pOlt').value);
+ const btn=$('pDetectRefresh');btn.disabled=true;
+ $('pDetected').innerHTML='<option value="">Consultando detección…</option>';
+ $('pDetectStatus').textContent='Leyendo únicamente la caché del detector, sin comandos nuevos en la OLT.';
+ ONU_DETECTED=[];
+ try{
+  if(!olt)throw Error('Selecciona una OLT');
+  // Petición única por carga o selección de OLT; no añade sondeo periódico.
+  const r=await fetch(ONU_DETECTOR_API,{method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain;charset=UTF-8'},
+   body:JSON.stringify({session_token:me.session_token||'',action:'autofind-read',olt_codigo:olt.codigo})});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||d.error)throw Error(d.error||'Consulta detector HTTP '+r.status);
+  if(seq!==ONU_DETECT_SEQ)return;
+  ONU_DETECTED=Array.isArray(d.items)?d.items:[];
+  $('pDetected').innerHTML='<option value="">Seleccionar ONU detectada…</option>'+ONU_DETECTED.map((x,i)=>
+   '<option value="'+i+'">'+esc(x.modelo||'Modelo no informado')+' · '+esc(x.pon||'PON desconocida')+' · SN …'+esc(String(x.onu_sn||'').slice(-6))+'</option>').join('');
+  const age=d.age_seconds==null?'sin lectura':Math.round(d.age_seconds/60)+' min desde la lectura';
+  $('pDetectStatus').textContent=ONU_DETECTED.length+' ONU pendientes detectadas en '+olt.codigo+' · '+age+
+   (d.stale?' · información antigua: confirma la detección antes de usarla':'')+
+   '. Selecciona una ONU para completar modelo y perfiles conocidos.';
+  if(ONU_DETECTED.length===1){
+   $('pDetected').value='0';setDetectedSelection();
+  }
+ }catch(e){
+  if(seq!==ONU_DETECT_SEQ)return;
+  $('pDetected').innerHTML='<option value="">Detección no disponible</option>';
+  $('pDetectStatus').textContent='No se pudo consultar la detección: '+String(e.message||e)+'. Puedes ingresar el modelo manualmente.';
+ }finally{if(seq===ONU_DETECT_SEQ)btn.disabled=false}
+}
+$('pDetected').onchange=setDetectedSelection;
+$('pDetectRefresh').onclick=refreshDetected;
+$('pTipo').onchange=()=>{if($('pModelo').value)applySavedProfile($('pModelo').value)};
+$('pModelo').onchange=()=>{if($('pModelo').value)applySavedProfile($('pModelo').value)};
+
 async function profileCall(body){
  // El endpoint requiere una sesion general; cuerpo JSON con media type simple
  // para evitar preflight OPTIONS bloqueado antes del runtime.
@@ -184,8 +257,9 @@ function syncProfileOlts(){
  $('pOlt').innerHTML=rows.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.nombre)+' ('+esc(x.codigo)+')</option>').join('');
  if(rows.some(x=>x.id===last))$('pOlt').value=last;
  renderProfileRows();
+ refreshDetected();
 }
-$('pOlt').onchange=renderProfileRows;
+$('pOlt').onchange=()=>{renderProfileRows();$('pModelo').value='';resetTechnicalFields();refreshDetected()};
 $('onuPerfilForm').onsubmit=async e=>{
  e.preventDefault();const btn=$('pSave');btn.disabled=true;
  try{
@@ -195,6 +269,7 @@ $('onuPerfilForm').onsubmit=async e=>{
    tag_transform:$('pTag').value,observaciones:$('pObs').value});
   toast('Perfil guardado sin activar escrituras Huawei','success','VLAN y perfiles configurados por OLT.');
   await loadProfiles();
+  if($('pModelo').value)applySavedProfile($('pModelo').value);
  }catch(err){toast(err.message,'error');alert(err.message)}
  finally{btn.disabled=false}
 };
