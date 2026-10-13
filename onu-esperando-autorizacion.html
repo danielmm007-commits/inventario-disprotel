@@ -55,10 +55,10 @@ td{font-size:12px;padding:13px 12px;border-bottom:1px solid #e9eff2;white-space:
   <label>NAP<input id="nap" maxlength="80" placeholder="Identificación de NAP"></label>
   <label>Zona<input id="zona" maxlength="80" placeholder="Sector o comunidad"></label>
   <label class="full">IP administrativa (opcional)<input id="ip" inputmode="decimal" placeholder="172.x.x.x; no configura la ONU"></label>
-  <div class="dialogActions"><button type="submit" class="primary" id="save">Guardar datos</button><button type="button" class="secondary" id="approve" disabled>Aprobar manualmente</button></div>
+  <div class="dialogActions"><button type="submit" class="primary" id="save">Guardar datos</button><button type="button" class="secondary" id="approve" disabled>Aprobar manualmente</button><button type="button" class="secondary" id="preflight" disabled>Comprobar preparación</button></div>
  </form>
  <p class="help">Debes indicar NAP o zona. El serial, modelo, OLT y PON provienen de Huawei y no son editables. La aprobación no activa todavía la ONU en Huawei.</p>
- <p class="msg" id="message" role="status"></p></section>
+ <p class="msg" id="message" role="status"></p><div id="preflightResults" role="status" aria-live="polite"></div></section>
 </div>
 <script>
 (()=>{
@@ -131,6 +131,8 @@ async function open(index){
  const editable=Boolean(!x.conflicto_ot&&!['APROBADA_PENDIENTE_PERFIL','APROBADA_PENDIENTE_EJECUCION','EJECUTANDO','PENDIENTE_GUARDAR','AUTORIZADA'].includes(state));
  $('form').querySelectorAll('input').forEach(input=>input.disabled=!editable);$('otOption').disabled=!editable;
  $('save').disabled=!editable;$('approve').disabled=!editable||state!=='DATOS_REGISTRADOS';
+ $('preflight').disabled=!['APROBADA_PENDIENTE_PERFIL','APROBADA_PENDIENTE_EJECUCION','EJECUTANDO','PENDIENTE_GUARDAR','AUTORIZADA','ERROR'].includes(state);
+ $('preflightResults').innerHTML='';
  $('message').textContent=x.conflicto_ot?'El serial aparece asociado a varias OT. Corrige antes de aprobar.':
  state==='APROBADA_PENDIENTE_PERFIL'?'✓ Fernando ya aprobó esta ONU y los datos administrativos están guardados. Falta validar el perfil Huawei (VLAN, Line Profile, Service Profile, GEM y tráfico) para '+(x.modelo||'este modelo')+' en '+(x.olt_codigo||'esta OLT')+'. No se ha activado en Huawei.':
  state==='APROBADA_PENDIENTE_EJECUCION'?'✓ Aprobación manual registrada. Pendiente de ejecución por Huawei V3; todavía no está activada.':
@@ -140,6 +142,20 @@ async function open(index){
  state==='ERROR'?'Hay un error registrado. La solicitud requiere revisión técnica antes de repetir la operación.':
  editable?'Completa los datos administrativos; guarda y confirma la aprobación.':'Solicitud no editable en su estado actual.';
 }
+$('preflight').onclick=async()=>{
+ const x=selected;if(!x)return;
+ $('preflight').disabled=true;
+ $('preflightResults').textContent='Consultando aprobación, perfil e inventario (solo lectura)…';
+ try{
+  const d=await call('preflight',{olt_codigo:x.olt_codigo,onu_sn:x.onu_sn});
+  const p=d.perfil||{};
+  const checks=Array.isArray(d.checks)?d.checks:[];
+  const status=checks.map(c=>'<div style="padding:7px 0;border-bottom:1px solid #e5edf1;color:'+(c.ok?'#1b6c50':'#a36517')+'">'+(c.ok?'✓ ':'⚠ ')+esc(c.detalle)+'</div>').join('');
+  const technical=d.perfil?'<div style="font-size:12px;padding:10px 0"><strong>Perfil DISPROTEL:</strong> Línea '+esc(p.line_profile_id)+' · Servicio '+esc(p.service_profile_id)+' · VLAN '+esc(p.vlan_servicio)+'/'+esc(p.vlan_usuario)+' · GEM '+esc(p.gemport)+' · RX '+esc(p.traffic_in_id)+' · TX '+esc(p.traffic_out_id)+' · '+esc(p.tag_transform)+'</div>':'';
+  $('preflightResults').innerHTML='<section style="border:1px solid #bed8e3;background:#f5fafc;border-radius:10px;padding:12px;margin-top:12px"><strong>Comprobación de preparación · solo lectura</strong>'+technical+status+'<p style="margin-top:10px;font-size:12px;font-weight:700;color:#9b5c12">'+esc(d.aviso||'La autorización Huawei continúa deshabilitada.')+'</p></section>';
+ }catch(e){$('preflightResults').textContent='No se pudo completar la comprobación: '+e.message}
+ finally{$('preflight').disabled=false}
+};
 function close(){$('modal').classList.remove('show');selected=null}
 $('groups').addEventListener('click',e=>{const b=e.target.closest('button[data-index]');if(b)open(Number(b.dataset.index))});
 $('refresh').onclick=load;$('oltFilter').onchange=render;$('search').oninput=render;
