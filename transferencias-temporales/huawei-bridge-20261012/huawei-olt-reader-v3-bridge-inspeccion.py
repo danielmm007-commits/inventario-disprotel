@@ -1382,6 +1382,46 @@ async def multi_olt_service_loop():
         except Exception as exc:
             print(json.dumps({"ok":False,"fase":"LIVE","codigo":codigo,"error":str(exc)},ensure_ascii=False),flush=True)
 
+
+    async def bridge_local_worker():
+        """Solicitud local opcional de lectura GPON, no genera sondeo a Supabase."""
+        basedir=_Path(os.environ.get("LOCALAPPDATA",str(_Path.home()))) / "DISPROTEL" / "bridge_inspeccion"
+        try:
+            basedir.mkdir(parents=True,exist_ok=True)
+        except Exception as exc:
+            print(json.dumps({"fase":"BRIDGE_INSPECT_SETUP","error":str(exc)}),flush=True)
+            return
+        request=basedir / "solicitud.json"
+        processing=basedir / "solicitud.procesando"
+        output=basedir / "resultado.json"
+        while not stop.is_set():
+            if request.is_file():
+                try:
+                    request.replace(processing)
+                    data=json.loads(processing.read_text(encoding="utf-8"))
+                    code=str(data.get("olt_codigo") or "").strip().upper()
+                    pon=str(data.get("pon") or "").strip()
+                    result=await asyncio.to_thread(lambda: asyncio.run(bridge_inspect(code,pon)))
+                    temp=output.with_suffix(".tmp")
+                    temp.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding="utf-8")
+                    temp.replace(output)
+                    print(json.dumps({"fase":"BRIDGE_INSPECT_OK","olt_codigo":code,"pon":pon,
+                                      "onu_revisadas":len(result.get("onu_revisadas",[]))},ensure_ascii=False),flush=True)
+                except Exception as exc:
+                    result={"ok":False,"solo_lectura":True,"error":str(exc)}
+                    try:
+                        output.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding="utf-8")
+                    except Exception:
+                        pass
+                    print(json.dumps({"fase":"BRIDGE_INSPECT_ERROR","error":str(exc)}),flush=True)
+                finally:
+                    try: processing.unlink(missing_ok=True)
+                    except Exception: pass
+            try:
+                await asyncio.wait_for(stop.wait(),timeout=2)
+            except asyncio.TimeoutError:
+                pass
+
     async def live_worker():
         # La cola LIVE permanece atendible mientras un inventario tarda minutos.
         while not stop.is_set():
@@ -1418,6 +1458,7 @@ async def multi_olt_service_loop():
 
     rt_task=asyncio.create_task(_huawei_realtime_events(rt_event,rt_state)) if rt_enabled else None
     live_task=asyncio.create_task(live_worker())
+    bridge_task=asyncio.create_task(bridge_local_worker())
     print(json.dumps({"ok":True,"multi_olt":True,"read_only":True,
         "message":"Huawei V3: LIVE independiente de inventario",
         "tick_seconds":tick,"config_refresh_seconds":config_interval,
@@ -1465,6 +1506,7 @@ async def multi_olt_service_loop():
     finally:
         stop.set()
         live_task.cancel()
+        bridge_task.cancel()
         if rt_task:rt_task.cancel()
         for task in inventory_jobs.values():task.cancel()
 
