@@ -94,11 +94,17 @@ Deno.serve(async(req:Request)=>{
    const success=body.ok===true;
    // Registrar estado PENDIENTE_GUARDAR cuando la configuración está online
    // pero todavía no se confirmó el guardado persistente Huawei.
-   if(success&&(!isSn(result.serial_verificado)||code(result.serial_verificado)!==rr.data.onu_sn||result.verified_online!==true))
-     return reply({error:'Falta verificar serial y estado online real de la ONU'},409);
-   const finalState=success?(result.guardado_permanente===true?'AUTORIZADA':'PENDIENTE_GUARDAR'):'ERROR';
+   if(success&&(!isSn(result.serial_verificado)||code(result.serial_verificado)!==rr.data.onu_sn
+     ||result.verified_online!==true||result.native_vlan_verificada!==true||result.config_match!==true))
+     return reply({error:'Falta verificar serial, VLAN nativa ETH1, ONLINE y estados NORMAL/MATCH'},409);
+   // No se acepta que el agente declare guardado persistente de toda la OLT
+   // sin un proceso de revisión/guardado supervisado independiente.
+   if(success&&result.guardado_permanente===true)
+     return reply({error:'El guardado permanente requiere validación supervisada independiente'},409);
+   const finalState=success?'PENDIENTE_GUARDAR':'ERROR';
    const upd=await s.from('onu_autorizaciones_manuales').update({estado:finalState,ejecutado_at:new Date().toISOString(),resultado_huawei:{
-     verified_online:result.verified_online===true,guardado_permanente:result.guardado_permanente===true,serial_verificado:result.serial_verificado||null,
+     verified_online:result.verified_online===true,native_vlan_verificada:result.native_vlan_verificada===true,
+     config_match:result.config_match===true,guardado_permanente:false,serial_verificado:result.serial_verificado||null,
      ont_id:Number.isSafeInteger(result.ont_id)?result.ont_id:null,
      motivo:String(result.motivo||'').slice(0,300)
    },updated_at:new Date().toISOString()}).eq('id',id).eq('estado','EJECUTANDO').select('id,estado').maybeSingle();
