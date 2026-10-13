@@ -132,7 +132,7 @@ async function open(index){
  $('form').querySelectorAll('input').forEach(input=>input.disabled=!editable);$('otOption').disabled=!editable;
  $('save').disabled=!editable;$('approve').disabled=!editable||state!=='DATOS_REGISTRADOS';
  $('preflight').disabled=!['APROBADA_PENDIENTE_PERFIL','APROBADA_PENDIENTE_EJECUCION','EJECUTANDO','PENDIENTE_GUARDAR','AUTORIZADA','ERROR'].includes(state);
- $('queueHuawei').disabled=state!=='APROBADA_PENDIENTE_EJECUCION'||x.olt_codigo!=='SALCEDO'||x.onu_sn!=='48575443C8BFCE42';
+ $('queueHuawei').disabled=!['APROBADA_PENDIENTE_PERFIL','APROBADA_PENDIENTE_EJECUCION'].includes(state)||x.olt_codigo!=='SALCEDO'||x.onu_sn!=='48575443C8BFCE42';
  $('preflightResults').innerHTML='';
  $('message').textContent=x.conflicto_ot?'El serial aparece asociado a varias OT. Corrige antes de aprobar.':
  state==='APROBADA_PENDIENTE_PERFIL'?'✓ Aprobación administrativa guardada. El perfil GPON está pendiente de habilitación técnica para ejecución; pulsa «Comprobar preparación» para ver cuáles condiciones faltan. La ONU todavía NO está activada en Huawei. El envío al agente permanece bloqueado hasta habilitar el perfil.':
