@@ -45,7 +45,7 @@ td{font-size:12px;padding:13px 12px;border-bottom:1px solid #e9eff2;white-space:
  <div class="filters"><input id="search" type="search" placeholder="Buscar serial, modelo o puerto" aria-label="Buscar ONU"><select id="oltFilter" aria-label="Filtrar OLT"><option value="">Todas las OLT</option></select></div>
 </div>
 <div id="groups"><div class="empty"><strong>Consultando detecciones…</strong>Huawei V3 no se modifica durante esta consulta.</div></div>
-<p class="notice">Las ONU se muestran por OLT y PON. El nombre, la NAP o zona y la IP son datos administrativos. La OT es opcional. Para ejecutar la autorización en Huawei sí se requiere un perfil GPON validado; esta página solo registra la aprobación manual.</p>
+<p class="notice">Las ONU se muestran por OLT y PON. Nombre, NAP, zona e IP son administrativos. La OT es opcional. Fernando aprueba manualmente; solo el agente PC Scanner autorizado puede ejecutar cambios Huawei. El guardado permanente requiere revisión independiente.</p>
 </main>
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
  <section class="dialog"><div class="dialogTop"><h2 id="modalTitle">Autorización manual</h2><button type="button" class="secondary" id="close">Cerrar</button></div>
@@ -57,7 +57,7 @@ td{font-size:12px;padding:13px 12px;border-bottom:1px solid #e9eff2;white-space:
   <label class="full">IP administrativa (opcional)<input id="ip" inputmode="decimal" placeholder="172.x.x.x; no configura la ONU"></label>
   <div class="dialogActions"><button type="submit" class="primary" id="save">Guardar datos</button><button type="button" class="secondary" id="approve" disabled>Aprobar manualmente</button><button type="button" class="secondary" id="preflight" disabled>Comprobar preparación</button><button type="button" class="primary" id="queueHuawei" disabled>Enviar a agente Huawei</button></div>
  </form>
- <p class="help">Debes indicar NAP o zona. El serial, modelo, OLT y PON provienen de Huawei y no son editables. La aprobación no activa todavía la ONU en Huawei.</p>
+ <p class="help">Indica NAP o zona. La aprobación coloca automáticamente la solicitud en cola cuando existe perfil GPON habilitado. El agente local solo escribe si también están habilitados servidor y OLT. Guardar la configuración de la OLT sigue siendo un paso supervisado.</p>
  <p class="msg" id="message" role="status"></p><div id="preflightResults" role="status" aria-live="polite"></div></section>
 </div>
 <script>
@@ -132,11 +132,11 @@ async function open(index){
  $('form').querySelectorAll('input').forEach(input=>input.disabled=!editable);$('otOption').disabled=!editable;
  $('save').disabled=!editable;$('approve').disabled=!editable||state!=='DATOS_REGISTRADOS';
  $('preflight').disabled=!['APROBADA_PENDIENTE_PERFIL','APROBADA_PENDIENTE_EJECUCION','EJECUTANDO','PENDIENTE_GUARDAR','AUTORIZADA','ERROR'].includes(state);
- $('queueHuawei').disabled=!['APROBADA_PENDIENTE_PERFIL','APROBADA_PENDIENTE_EJECUCION'].includes(state)||x.olt_codigo!=='SALCEDO'||x.onu_sn!=='48575443C8BFCE42';
+ $('queueHuawei').disabled=state!=='APROBADA_PENDIENTE_PERFIL'||x.conflicto_ot;
  $('preflightResults').innerHTML='';
  $('message').textContent=x.conflicto_ot?'El serial aparece asociado a varias OT. Corrige antes de aprobar.':
  state==='APROBADA_PENDIENTE_PERFIL'?'✓ Aprobación administrativa guardada. El perfil GPON está pendiente de habilitación técnica para ejecución; pulsa «Comprobar preparación» para ver cuáles condiciones faltan. La ONU todavía NO está activada en Huawei. El envío al agente permanece bloqueado hasta habilitar el perfil.':
- state==='APROBADA_PENDIENTE_EJECUCION'?'✓ Aprobación manual registrada. Pendiente de ejecución por Huawei V3; todavía no está activada.':
+ state==='APROBADA_PENDIENTE_EJECUCION'?'✓ Aprobada y en cola del agente Huawei. No necesitas volver a enviarla. Solo se ejecuta con autorización de escritura en el servidor y la PC.':
  state==='PENDIENTE_GUARDAR'?'La ONU requiere confirmar el guardado permanente de su configuración en Huawei. No está finalizada.':
  state==='AUTORIZADA'?'Autorización finalizada según el registro Huawei.':
  state==='EJECUTANDO'?'Solicitud en ejecución. No intentes aprobarla otra vez.':
@@ -188,7 +188,7 @@ $('form').onsubmit=async e=>{
 };
 $('approve').onclick=async()=>{
  const x=selected;if(!x)return;
- if(!confirm('¿Confirmas la aprobación manual de la ONU '+x.onu_sn+'? La OLT no será modificada todavía.'))return;
+ if(!confirm('¿Apruebas la ONU '+x.onu_sn+'? Si tiene un perfil validado y las escrituras están habilitadas en servidor y PC, el agente podrá configurarla automáticamente.'))return;
  $('approve').disabled=true;$('save').disabled=true;
  try{
   const d=await call('approve',{orden_id:x.orden_id||undefined,olt_codigo:x.olt_codigo,onu_sn:x.onu_sn});
