@@ -150,7 +150,25 @@ $('eyeBtn').onclick=()=>{const i=$('credSecret');i.type=i.type==='password'?'tex
 
 const PROFILE_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-onu-perfiles-olt';
 let PROFILE_ROWS=[];
-async function profileCall(body){const r=await fetch(PROFILE_API,{method:'POST',headers:{'Content-Type':'application/json','x-session':me.session_token||''},body:JSON.stringify(body)}),d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw new Error(d.error||'Error al consultar perfiles');return d;}
+async function profileCall(body){
+ // El endpoint requiere una sesion general; cuerpo JSON con media type simple
+ // para evitar preflight OPTIONS bloqueado antes del runtime.
+ let r;
+ try{
+  r=await fetch(PROFILE_API,{
+   method:'POST',
+   mode:'cors',
+   cache:'no-store',
+   headers:{'Content-Type':'text/plain;charset=UTF-8'},
+   body:JSON.stringify({...body,session_token:me.session_token||''})
+  });
+ }catch(e){
+  throw new Error('No se pudo conectar al servicio de perfiles ONU. '+String(e?.message||e));
+ }
+ const d=await r.json().catch(()=>({}));
+ if(!r.ok||d.error)throw new Error(d.error||('Error HTTP '+r.status+' al consultar perfiles'));
+ return d;
+}
 const nval=id=>$(id).value===''?null:Number($(id).value);
 function renderProfileRows(){
  const val=$('pOlt').value,entries=PROFILE_ROWS.filter(x=>x.olt_id===val);
