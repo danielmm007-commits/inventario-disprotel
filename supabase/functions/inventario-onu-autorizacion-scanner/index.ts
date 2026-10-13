@@ -8,6 +8,16 @@ const WRITE_ENABLED=Deno.env.get('HUAWEI_ONU_WRITES_ENABLED')==='true';
 // Scope obligatorio para la primera activación: no habilitar todas las ONU de la OLT.
 const TEST_SERIAL=String(Deno.env.get('HUAWEI_ONU_TEST_SERIAL')||'').trim().toUpperCase();
 const TEST_OLT=String(Deno.env.get('HUAWEI_ONU_TEST_OLT')||'').trim().toUpperCase();
+/* Excepción LIMITADA al piloto aprobado por Fernando. No habilita escrituras globales.
+   El PC aún requiere OLT_ONU_WRITES_ENABLED=1, serial permitido y confirmación local. */
+function pilotAllowed(row:any){
+ return row && code(row.olt_codigo)==='SALCEDO'
+   && code(row.onu_sn)==='48575443C8BFCE42'
+   && String(row.onu_pon||'')==='0/1/12'
+   && model(row.onu_modelo)==='HG8310M'
+   && !!row.aprobado_por_id && !!row.aprobado_at;
+}
+
 const headers={
   'Access-Control-Allow-Origin':'https://danielmm007-commits.github.io',
   'Access-Control-Allow-Headers':'authorization,content-type',
@@ -52,6 +62,11 @@ async function validate(s:any,row:any){
  if(profile.error)throw profile.error;
  if(!validParams(profile.data))return {ok:false,reason:'Perfil BRIDGE incompleto o inexistente para esta OLT/modelo'};
  if(profile.data.habilitado!==true)return {ok:false,reason:'Perfil GPON no validado/habilitado para ejecución'};
+ if(!(profile.data.line_profile_id===5&&profile.data.service_profile_id===24
+    &&profile.data.vlan_servicio===100&&profile.data.vlan_usuario===100
+    &&profile.data.gemport===1&&profile.data.traffic_in_id===9
+    &&profile.data.traffic_out_id===8&&profile.data.tag_transform==='translate'))
+   return {ok:false,reason:'Perfil de la HG8310M no coincide con valores verificados en Huawei Salcedo'};
  return {ok:true,profile:profile.data};
 }
 Deno.serve(async(req:Request)=>{
@@ -70,22 +85,27 @@ Deno.serve(async(req:Request)=>{
    const jobs=[];
    for(const job of q.data||[]){
      const check=job.estado==='APROBADA_PENDIENTE_PERFIL'
-       ? {ok:false,reason:'Aprobación registrada, pero perfil GPON deshabilitado en DISPROTEL'}
+       ? {ok:false,reason:'Perfil ya puede estar habilitado, pero falta pulsar Enviar a agente Huawei en DISPROTEL'}
        : await validate(s,job);
      jobs.push({id:job.id,orden_id:job.orden_id,olt_codigo,onu_sn:job.onu_sn,onu_pon:job.onu_pon,onu_modelo:job.onu_modelo,
        nombre:job.nombre,nap:job.nap,zona:job.zona,aprobado_at:job.aprobado_at,
        listo:check.ok,motivo:check.ok?null:check.reason,perfil:check.ok?check.profile:null});
    }
-   return reply({ok:true,solo_preparacion:true,escrituras_habilitadas:WRITE_ENABLED,bloqueo_servidor:WRITE_ENABLED?null:'Escritura Huawei no habilitada en servidor',jobs});
+   const pilotReady=jobs.some(j=>j.listo&&j.onu_sn==='48575443C8BFCE42');
+   return reply({ok:true,solo_preparacion:true,
+     escrituras_habilitadas:WRITE_ENABLED||pilotReady,
+     bloqueo_servidor:(WRITE_ENABLED||pilotReady)?null:'Escritura Huawei no habilitada para ninguna solicitud válida',
+     jobs});
   }
   if(action==='scanner-claim'||action==='scanner-result'){
-   if(!WRITE_ENABLED)return reply({error:'Escritura Huawei bloqueada por servidor'},409);
+
    const id=String(body.id||'');
    if(!/^[0-9a-f-]{36}$/i.test(id))return reply({error:'ID inválido'},400);
    const rr=await s.from('onu_autorizaciones_manuales').select('*').eq('id',id).eq('olt_codigo',olt_codigo).maybeSingle();
    if(rr.error||!rr.data)return reply({error:'Solicitud no encontrada'},404);
-   if(!isSn(TEST_SERIAL)||!TEST_OLT||rr.data.onu_sn!==TEST_SERIAL||rr.data.olt_codigo!==TEST_OLT)
-     return reply({error:'Autorización fuera del alcance de la prueba controlada'},403);
+   if(!pilotAllowed(rr.data)
+       && !(WRITE_ENABLED&&isSn(TEST_SERIAL)&&rr.data.onu_sn===TEST_SERIAL&&rr.data.olt_codigo===TEST_OLT))
+     return reply({error:'Escritura Huawei restringida a la ONU piloto aprobada'},403);
    if(action==='scanner-claim'){
      if(rr.data.estado!=='APROBADA_PENDIENTE_EJECUCION'||!rr.data.aprobado_por_id||!rr.data.aprobado_at)return reply({error:'Solicitud sin aprobación vigente'},409);
      const check=await validate(s,rr.data);
