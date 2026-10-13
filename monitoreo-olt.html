@@ -315,7 +315,7 @@ function showModuleView(view,openNew=false){
   const dash=$('dashboardArea'),cfg=$('configArea'),frame=$('configFrame');
   if(view==='config'){
     dash.classList.add('hidden');cfg.classList.add('show');
-    if(!frame.src)frame.src='configuracion-olts.html?v=20261013-onu-auto1';
+    if(!frame.src)frame.src='configuracion-olts.html?v=20261013-onu-cards-v2';
     if(openNew){
       const tryOpen=()=>{try{frame.contentDocument?.getElementById('newBtn')?.click()}catch{}};
       if(frame.contentDocument?.readyState==='complete')setTimeout(tryOpen,120);else frame.addEventListener('load',()=>setTimeout(tryOpen,120),{once:true});
