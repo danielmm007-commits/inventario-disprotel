@@ -45,7 +45,7 @@ td{font-size:12px;padding:13px 12px;border-bottom:1px solid #e9eff2;white-space:
  <div class="filters"><input id="search" type="search" placeholder="Buscar serial, modelo o puerto" aria-label="Buscar ONU"><select id="oltFilter" aria-label="Filtrar OLT"><option value="">Todas las OLT</option></select></div>
 </div>
 <div id="groups"><div class="empty"><strong>Consultando detecciones…</strong>Huawei V3 no se modifica durante esta consulta.</div></div>
-<p class="notice">Las ONU se muestran por OLT y PON. El nombre, la NAP o zona y la IP son datos administrativos. Para aprobar se requiere una OT vinculada y un perfil GPON validado; no se ejecutan comandos en Huawei desde esta página.</p>
+<p class="notice">Las ONU se muestran por OLT y PON. El nombre, la NAP o zona y la IP son datos administrativos. La OT es opcional. Para ejecutar la autorización en Huawei sí se requiere un perfil GPON validado; esta página solo registra la aprobación manual.</p>
 </main>
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
  <section class="dialog"><div class="dialogTop"><h2 id="modalTitle">Autorización manual</h2><button type="button" class="secondary" id="close">Cerrar</button></div>
@@ -123,7 +123,8 @@ async function open(index){
  $('details').innerHTML='<strong>OLT:</strong> '+esc(x.olt_nombre||x.olt_codigo)+' · <strong>PON:</strong> '+esc(x.pon||'—')+
  '<div><strong>Modelo:</strong> '+esc(x.modelo||'—')+' · <strong>SN:</strong> '+esc(x.onu_sn||'—')+'</div>'+ 
  (x.modelo_catalogo?'<div><strong>Catálogo SmartOLT:</strong> '+esc(x.modelo_catalogo.capacidad)+' · '+esc(x.modelo_catalogo.ethernet_puertos)+' Ethernet · '+esc(x.modelo_catalogo.wifi_puertos)+' WiFi · '+esc(x.modelo_catalogo.voip_puertos)+' VoIP · CATV '+(x.modelo_catalogo.catv?'Sí':'No')+'</div>':'<div>Modelo no incluido en el catálogo importado</div>')+
- '<div><strong>Orden:</strong> '+esc(x.orden_numero||'Vinculación opcional')+'</div>';
+ '<div><strong>Orden:</strong> '+esc(x.orden_numero||'Vinculación opcional')+'</div>'+ 
+ (x.referencia_smartolt?'<div style="margin-top:9px;padding:10px;border:1px solid #bad9e7;border-radius:7px;background:#fff"><strong>Referencia SmartOLT (pendiente de validar en Huawei)</strong><div>Modo: '+esc(x.referencia_smartolt.modo_onu)+' · VLAN mostrada: '+esc(x.referencia_smartolt.vlan_internet_mostrada)+'</div><div>Line profile: '+esc(x.referencia_smartolt.line_profile_nombre)+' · Servicio: '+esc(x.referencia_smartolt.service_profile_nombre)+'</div><div>'+esc(x.referencia_smartolt.mapa_gem_texto)+'</div><div>Velocidades seleccionadas: ↓ '+esc(x.referencia_smartolt.velocidad_bajada)+' / ↑ '+esc(x.referencia_smartolt.velocidad_subida)+'</div><div style="color:#a16a16">Estos nombres no son los identificadores numéricos Huawei; no autorizan por sí solos.</div></div>':'');
  updateOrdersFor(x);
  $('nombre').value=x.nombre||'';$('nap').value=x.nap||'';$('zona').value=x.zona||'';$('ip').value=x.ip_administrativa||'';
  let state=x.estado_aprobacion||'';
