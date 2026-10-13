@@ -1744,7 +1744,7 @@ def _bridge_profile_summary(raw,kind):
     lines=[]
     # Nunca devolver descripciones de clientes, cuentas o IP.
     for row in value.splitlines():
-        if re.search(r"(?i)(gem(port)?|t.cont|mapping|vlan|traffic.table|port eth|dba.profile|profile.name|profile.id|mapping.mode)",row):
+        if re.search(r"(?i)(gem(port)?|t.cont|mapping|vlan|traffic.table|port eth|dba.profile|profile.name|profile.id|mapping.mode)",row) or re.match(r"^\s*\d+\s+\d+\s+\d+",row):
             cleaned=row.strip()[:160]
             if re.search(r"(?i)(password|login|username|secret|description|serial|auth)",cleaned):
                 continue
