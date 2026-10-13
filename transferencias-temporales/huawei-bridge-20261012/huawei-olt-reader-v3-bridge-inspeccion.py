@@ -1524,6 +1524,20 @@ async def onu_bridge_apply_controlled(cfg,job):
     if os.environ.get("OLT_ONU_WRITES_ENABLED","0")!="1":
         raise PermissionError("Escrituras ONU deshabilitadas localmente")
     params=_onu_bridge_profile(job)
+    # Para la primera prueba, un administrador debe fijar explicitamente UNO solo SN,
+    # OLT, PON y perfil. Un agente con flags globales no puede tocar cualquier ONU.
+    allowed_serial=str(os.environ.get("OLT_ONU_ALLOWED_SERIAL") or "").upper().strip()
+    allowed_olt=str(os.environ.get("OLT_ONU_ALLOWED_OLT") or "").upper().strip()
+    allowed_pon=str(os.environ.get("OLT_ONU_ALLOWED_PON") or "").strip()
+    allowed_srv=str(os.environ.get("OLT_ONU_ALLOWED_SERVICE_PROFILE") or "").strip()
+    if not allowed_serial or allowed_serial!=params["serial"]:
+        raise PermissionError("Serial no permitido para la prueba controlada")
+    if not allowed_olt or allowed_olt!=str(job.get("olt_codigo") or "").upper().strip():
+        raise PermissionError("OLT no permitida para la prueba controlada")
+    if not allowed_pon or allowed_pon!=params["fsp"]:
+        raise PermissionError("PON no permitido para la prueba controlada")
+    if not allowed_srv or allowed_srv!=str(params["profile"]["service_profile_id"]):
+        raise PermissionError("Service Profile no permitido para la prueba controlada")
     if str(cfg.get("codigo") or "").upper()!=str(job.get("olt_codigo") or "").upper():
         raise ValueError("OLT de la orden no coincide con el agente")
     reader=writer=None
