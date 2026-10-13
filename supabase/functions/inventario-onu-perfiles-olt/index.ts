@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 const ORIGIN="https://danielmm007-commits.github.io";
-const HEADERS={"Access-Control-Allow-Origin":ORIGIN,"Access-Control-Allow-Headers":"content-type,x-session,authorization","Access-Control-Allow-Methods":"POST,OPTIONS","Content-Type":"application/json;charset=utf-8"};
+const HEADERS={"Access-Control-Allow-Origin":ORIGIN,"Access-Control-Allow-Headers":"content-type,x-session,x-user,x-pin,authorization","Access-Control-Allow-Methods":"POST,OPTIONS","Content-Type":"application/json;charset=utf-8"};
 const answer=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:HEADERS});
 const norm=(x:unknown)=>String(x??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
 async function hash(x:string){const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(x));return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,"0")).join("");}
