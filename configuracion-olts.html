@@ -110,7 +110,7 @@ function render(){
  <div class="cardActions"><button class="test" data-test-id="${x.id}" onclick="testOlt('${x.id}')">⚡ Probar conexión</button><button onclick="editOlt('${x.id}')">✎ Editar</button><button class="${x.activo?'toggleOff':''}" onclick="toggleOlt('${x.id}',${!x.activo})">${x.activo?'⏸ Desactivar':'▶ Activar'}</button></div>
  </article>`).join(''):'<div class="empty">Todavía no hay OLT registradas. Usa “Agregar OLT”.</div>';
 }
-async function load(){try{const d=await call({action:'list'});rows=d.rows||[];render();syncProfileOlts();await loadProfiles()}catch(e){$('grid').innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}
+async function load(){try{const d=await call({action:'list'});rows=d.rows||[];render();await loadProfiles();syncProfileOlts()}catch(e){$('grid').innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}
 function openForm(row=null){
  $('formTitle').textContent=row?'Editar OLT':'Agregar OLT';
  $('id').value=row?.id||'';
