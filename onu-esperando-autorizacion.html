@@ -49,7 +49,7 @@ td{font-size:12px;padding:13px 12px;border-bottom:1px solid #e9eff2;white-space:
 </main>
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
  <section class="dialog"><div class="dialogTop"><h2 id="modalTitle">Autorización manual</h2><button type="button" class="secondary" id="close">Cerrar</button></div>
- <div class="details" id="details"></div>
+ <div class="details" id="details"></div><label style="display:grid;gap:6px;margin:12px 0;font-size:11px;font-weight:800;color:#456477">Vincular a OT (opcional)<select id="otOption" style="width:100%;border:1px solid #cbdde7;border-radius:8px;padding:11px;font-size:12px"><option value="">Sin OT — autorización directa</option></select></label>
  <form class="fields" id="form">
   <label class="full">Nombre / descripción de la ONU *<input id="nombre" maxlength="120" required autocomplete="off" placeholder="Cliente o nombre de referencia"></label>
   <label>NAP<input id="nap" maxlength="80" placeholder="Identificación de NAP"></label>
@@ -68,13 +68,23 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
 if(!me.session_token){$('updated').textContent='Sesión no disponible. Ingresa a DISPROTEL desde el panel principal.';return}
-let items=[],selected=null,busy=false;
+let items=[],selected=null,busy=false,activeOrders=[];
 async function call(action,payload={}){
  const r=await fetch(API,{method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain;charset=UTF-8'},
  body:JSON.stringify({action,session_token:me.session_token,...payload})});
  const d=await r.json().catch(()=>({}));
  if(!r.ok||d.error)throw Error(d.error||('Error HTTP '+r.status));
  return d;
+}
+async function getActiveOrders(){
+ try{const d=await call('active-orders');activeOrders=Array.isArray(d.rows)?d.rows:[]}
+ catch(e){activeOrders=[];console.warn('No se pudo cargar listado de OT',e)}
+}
+function updateOrdersFor(x){
+ const linked=x.orden_id||'';
+ $('otOption').innerHTML='<option value="">Sin OT — autorización directa</option>'+activeOrders.map(o=>
+ '<option value="'+esc(o.id)+'">'+esc(o.id_orden||'OT')+' · '+esc(o.tipo_trabajo||'')+' · '+esc(o.cliente_nombre_final||o.cliente_nombre||'')+'</option>').join('');
+ if(linked&&activeOrders.some(o=>o.id===linked))$('otOption').value=linked;
 }
 function date(v){if(!v)return 'Sin fecha';const d=new Date(v);return Number.isNaN(d.getTime())?'Sin fecha':d.toLocaleString('es-EC',{dateStyle:'short',timeStyle:'short'})}
 function render(){
@@ -89,17 +99,17 @@ function render(){
  '<div class="tableWrap"><table><thead><tr><th>Tipo PON</th><th>Tarjeta</th><th>Puerto</th><th>Serial</th><th>Modelo</th><th>Detectada</th><th>Estado</th><th>Acción</th></tr></thead><tbody>'+
  arr.map(x=>{
   const pon=String(x.pon||'').split('/');const index=items.indexOf(x);
-  const status=x.conflicto_ot?'OT duplicada':x.estado_aprobacion==='APROBADA_PENDIENTE_EJECUCION'?'Aprobada, sin ejecutar':x.estado_aprobacion==='DATOS_REGISTRADOS'?'Datos registrados':x.orden_id?'Pendiente':'Sin OT vinculada';
+  const status=x.conflicto_ot?'OT duplicada':x.estado_aprobacion==='APROBADA_PENDIENTE_EJECUCION'?'Aprobada, sin ejecutar':x.estado_aprobacion==='DATOS_REGISTRADOS'?'Datos registrados':x.orden_id?'Pendiente':'Pendiente · sin OT';
   return '<tr><td>GPON</td><td>'+esc(pon[1]||'—')+'</td><td>'+esc(pon[2]||'—')+'</td><td class="serial">'+esc(x.onu_sn_display||x.onu_sn)+'</td>'+
   '<td class="model">'+esc(x.modelo||'—')+'</td><td>'+esc(date(x.detectada_at||x.ultima_lectura_at))+'</td><td><span class="status">'+esc(status)+'</span></td>'+
-  '<td><button class="action" type="button" data-index="'+index+'">'+(x.orden_id&&!x.conflicto_ot?'Autorizar':'Ver detalle')+'</button></td></tr>';
+  '<td><button class="action" type="button" data-index="'+index+'">'+(x.conflicto_ot?'Ver conflicto':'Autorizar')+'</button></td></tr>';
  }).join('')+'</tbody></table></div></section>';
  }).join('');
 }
 async function load(){
  if(busy)return;busy=true;$('refresh').disabled=true;$('updated').textContent='Actualizando lista…';
  try{
-  const d=await call('pending-list');items=Array.isArray(d.items)?d.items:[];
+  const d=await call('pending-list');items=Array.isArray(d.items)?d.items:[];await getActiveOrders();
   const prev=$('oltFilter').value,codes=[...new Set(items.map(x=>x.olt_codigo))].sort();
   $('oltFilter').innerHTML='<option value="">Todas las OLT</option>'+codes.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
   if(codes.includes(prev))$('oltFilter').value=prev;
@@ -112,13 +122,14 @@ async function open(index){
  const x=items[index];if(!x)return;selected=x;$('modal').classList.add('show');
  $('details').innerHTML='<strong>OLT:</strong> '+esc(x.olt_nombre||x.olt_codigo)+' · <strong>PON:</strong> '+esc(x.pon||'—')+
  '<div><strong>Modelo:</strong> '+esc(x.modelo||'—')+' · <strong>SN:</strong> '+esc(x.onu_sn||'—')+'</div>'+
- '<div><strong>Orden:</strong> '+esc(x.orden_numero||'No asociada a OT')+'</div>';
+ '<div><strong>Orden:</strong> '+esc(x.orden_numero||'Vinculación opcional')+'</div>';
+ updateOrdersFor(x);
  $('nombre').value=x.nombre||'';$('nap').value=x.nap||'';$('zona').value=x.zona||'';$('ip').value=x.ip_administrativa||'';
  let state=x.estado_aprobacion||'';
- const editable=Boolean(x.orden_id&&!x.conflicto_ot&&!['APROBADA_PENDIENTE_EJECUCION','EJECUTANDO','PENDIENTE_GUARDAR','AUTORIZADA'].includes(state));
- $('form').querySelectorAll('input').forEach(input=>input.disabled=!editable);
+ const editable=Boolean(!x.conflicto_ot&&!['APROBADA_PENDIENTE_PERFIL','APROBADA_PENDIENTE_EJECUCION','EJECUTANDO','PENDIENTE_GUARDAR','AUTORIZADA'].includes(state));
+ $('form').querySelectorAll('input').forEach(input=>input.disabled=!editable);$('otOption').disabled=!editable;
  $('save').disabled=!editable;$('approve').disabled=!editable||state!=='DATOS_REGISTRADOS';
- $('message').textContent=x.conflicto_ot?'El serial está vinculado a más de una OT. Corrige la asociación.':!x.orden_id?'El técnico debe identificar esta ONU en una OT antes de autorizarla.':
+ $('message').textContent=x.conflicto_ot?'El serial aparece asociado a varias OT. Corrige antes de aprobar.':
  state==='APROBADA_PENDIENTE_EJECUCION'?'Aprobación registrada. Esperando ejecución Huawei.':editable?'Completa los datos administrativos; guarda y confirma la aprobación.':'No editable en su estado actual.';
 }
 function close(){$('modal').classList.remove('show');selected=null}
@@ -127,24 +138,24 @@ $('refresh').onclick=load;$('oltFilter').onchange=render;$('search').oninput=ren
 $('close').onclick=close;$('modal').addEventListener('click',e=>{if(e.target===$('modal'))close()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
 $('form').onsubmit=async e=>{
- e.preventDefault();if(!selected?.orden_id)return;const x=selected;
+ e.preventDefault();if(!selected)return;const x=selected;
  $('save').disabled=true;$('approve').disabled=true;
  try{
-  await call('register',{orden_id:x.orden_id,nombre:$('nombre').value,nap:$('nap').value,zona:$('zona').value,ip_administrativa:$('ip').value});
-  x.estado_aprobacion='DATOS_REGISTRADOS';x.nombre=$('nombre').value;x.nap=$('nap').value;x.zona=$('zona').value;x.ip_administrativa=$('ip').value;
+  await call('register',{orden_id:$('otOption').value||undefined,olt_codigo:x.olt_codigo,onu_sn:x.onu_sn,onu_pon:x.pon,nombre:$('nombre').value,nap:$('nap').value,zona:$('zona').value,ip_administrativa:$('ip').value});
+  x.estado_aprobacion='DATOS_REGISTRADOS';x.orden_id=$('otOption').value||null;x.nombre=$('nombre').value;x.nap=$('nap').value;x.zona=$('zona').value;x.ip_administrativa=$('ip').value;
   $('message').textContent='✓ Datos guardados. Puedes aprobar manualmente.';
   $('approve').disabled=false;render();
  }catch(err){$('message').textContent='Error: '+err.message}
  finally{$('save').disabled=false}
 };
 $('approve').onclick=async()=>{
- const x=selected;if(!x?.orden_id)return;
+ const x=selected;if(!x)return;
  if(!confirm('¿Confirmas la aprobación manual de la ONU '+x.onu_sn+'? La OLT no será modificada todavía.'))return;
  $('approve').disabled=true;$('save').disabled=true;
  try{
-  await call('approve',{orden_id:x.orden_id});
-  x.estado_aprobacion='APROBADA_PENDIENTE_EJECUCION';
-  $('message').textContent='✓ Aprobación guardada. Pendiente de ejecución Huawei.';
+  const d=await call('approve',{orden_id:x.orden_id||undefined,olt_codigo:x.olt_codigo,onu_sn:x.onu_sn});
+  x.estado_aprobacion=d.registro?.estado||'APROBADA_PENDIENTE_PERFIL';
+  $('message').textContent='✓ '+(d.nota||'Aprobación registrada; Huawei sin cambios.');
   render();
  }catch(err){$('message').textContent='Error: '+err.message;$('approve').disabled=false;$('save').disabled=false}
 };
