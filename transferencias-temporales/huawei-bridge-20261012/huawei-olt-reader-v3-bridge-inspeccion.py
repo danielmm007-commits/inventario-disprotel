@@ -1477,8 +1477,8 @@ def _onu_native_vlan_command(params, ont_id):
 def _onu_parse_native_port_attribute(raw, ont_id, expected_vlan):
     """Valida una unica fila ETH1 con port switch=on y native VLAN esperada."""
     for line in str(raw or "").splitlines():
-        match=re.match(r'^\\s*(\\d+)\\s+1\\s+ETH\\s+enable\\s+auto\\s+auto\\s+on\\s+'
-                       r'(?:on|off)\\s+(\\d+)\\s+0\\s*$',line,re.I)
+        match=re.match(r'^\s*(\d+)\s+1\s+ETH\s+enable\s+auto\s+auto\s+on\s+'
+                       r'(?:on|off)\s+(\d+)\s+0\s*
         if match and int(match.group(1))==ont_id and int(match.group(2))==expected_vlan:
             return True
     return False
@@ -1507,9 +1507,637 @@ def onu_bridge_dry_run(job,ont_id_ejemplo=None):
                         f'display service-port port {params["fsp"]} ont {placeholder}',
                         f'interface gpon {params["frame"]}/{params["slot"]}',
                         f'display ont info {params["port"]} {placeholder}'],
-            "advertencia":"BORRADOR sin ejecucion: sustituir ONT-ID exclusivamente tras respuesta de ont add; '
-                           'verificar online/config normal/match y persistencia antes de afirmar autorizacion. '
-                           'No ejecutar save automaticamente, podria guardar otros cambios de OLT."}
+            "advertencia":("BORRADOR sin ejecucion: sustituir ONT-ID exclusivamente tras respuesta de ont add; "
+                           "verificar online/config normal/match y persistencia antes de afirmar autorizacion. "
+                           "No ejecutar save automaticamente, podria guardar otros cambios de OLT.")}
+
+
+async def onu_bridge_apply_controlled(cfg,job):
+    """Solo después de doble habilitacion; nunca se llama desde lectura normal."""
+    if os.environ.get("OLT_ONU_WRITES_ENABLED","0")!="1":
+        raise PermissionError("Escrituras ONU deshabilitadas localmente")
+    params=_onu_bridge_profile(job)
+    if str(cfg.get("codigo") or "").upper()!=str(job.get("olt_codigo") or "").upper():
+        raise ValueError("OLT de la orden no coincide con el agente")
+    reader=writer=None
+    steps=[]
+    ont_added=None
+    try:
+        reader,writer=await open_configured_olt(cfg)
+        async def issue(command,timeout=50):
+            result=await _session_command(reader,writer,command,timeout=timeout)
+            if _bridge_invalid(result) or re.search(r"(?i)(^\s*%.*(?:error|invalid)|too many parameters|unknown command|parameter error)",result,re.M):
+                raise RuntimeError("Huawei rechazo un comando de provisioning")
+            if not result.rstrip().endswith("#"):
+                raise RuntimeError("Prompt Huawei no confirmado; requiere revision manual")
+            return result
+        await issue("config",20)
+        autofind=await issue("display ont autofind all",70)
+        matches=[x for x in parse_autofind(autofind)
+                 if str(x.get("sn") or "").upper()==params["serial"]
+                 and re.sub(r"\s+","",str(x.get("fsp") or ""))==params["fsp"]]
+        if len(matches)!=1:
+            raise RuntimeError("La ONU ya no figura exactamente una vez en autofind")
+        await issue(f'interface gpon {params["frame"]}/{params["slot"]}',20)
+        inv=await issue(f'display ont info {params["port"]} all',65)
+        existing=parse_inventory_status(inv)
+        if any(x.get("sn")==params["serial"] for x in existing):
+            raise RuntimeError("ONU ya registrada en PON; evitar duplicado")
+        # Primer comando de escritura: si la respuesta es incierta no hay reintento automatico.
+        add_resp=await issue(params["ont_add_command"],70)
+        ont_added=_onu_parse_added_id(add_resp)
+        steps.append("ont_add")
+        # Seguimos en (config-if-gpon-F/S)#, donde se admite ont port native-vlan.
+        # Nunca se modifica el ONT-ID de referencia 45: el nuevo ID viene de ont add.
+        await issue(_onu_native_vlan_command(params,ont_added),50)
+        steps.append("native_vlan")
+        nv_read=await issue(f'display ont port attribute {params["port"]} {ont_added} eth 1',45)
+        if not _onu_parse_native_port_attribute(nv_read,ont_added,params["profile"]["vlan_usuario"]):
+            raise RuntimeError("VLAN nativa ETH1 no coincide con VLAN de usuario; detener y revisar")
+        await issue("quit",20)
+        # El service-port se crea desde (config)# con el ONT-ID real.
+        service_cmd=_onu_service_command(params,ont_added)
+        sv_resp=await issue(service_cmd,70)
+        if not re.search(r"(?i)(success|service-port|^\s*%?\s*command)",sv_resp):
+            raise RuntimeError("Service-port no confirmado; revisar manualmente")
+        steps.append("service_port")
+        # La verificacion se hace en vivo y en la misma sesion independiente.
+        svc=await issue(f'display service-port port {params["fsp"]} ont {ont_added}',45)
+        profile=params["profile"]
+        # Verificar en una sola fila: VLAN, F/S/P, ONT-ID, GEM, VLAN de usuario, RX, TX y UP.
+        port_pattern=(
+            r"^\s*\d+\s+"+str(profile["vlan_servicio"])+
+            r"\s+\S+\s+gpon\s+"+str(params["frame"])+
+            r"\s*/\s*"+str(params["slot"])+r"\s*/\s*"+str(params["port"])+
+            r"\s+"+str(ont_added)+r"\s+"+str(profile["gemport"])+
+            r"\s+vlan\s+"+str(profile["vlan_usuario"])+
+            r"\s+"+str(profile["traffic_in_id"])+
+            r"\s+"+str(profile["traffic_out_id"])+r"\s+up\s*$"
+        )
+        if not any(re.search(port_pattern,row,re.I) for row in svc.splitlines()):
+            raise RuntimeError("La OLT no confirma VLAN/GEM/traffic table/UP del service-port")
+        await issue(f'interface gpon {params["frame"]}/{params["slot"]}',20)
+        verified=False
+        for i in range(12):
+            info=await issue(f'display ont info {params["port"]} {ont_added}',35)
+            snm=re.search(r"(?im)^\s*SN\s*:\s*([A-Fa-f0-9]{16})\b",info)
+            online=bool(re.search(r"(?im)^\s*Run state\s*:\s*online\b",info))
+            config_normal=bool(re.search(r"(?im)^\s*Config state\s*:\s*normal\b",info))
+            match_normal=bool(re.search(r"(?im)^\s*Match state\s*:\s*match\s*$",info))
+            if snm and snm.group(1).upper()!=params["serial"]:
+                raise RuntimeError("Huawei devolvio otro serial: requiere investigacion")
+            if snm and online and config_normal and match_normal:
+                verified=True
+                break
+            await asyncio.sleep(10)
+        if not verified:
+            raise RuntimeError("ONU creada pero no verifica online + config normal + match. Revisar manualmente; NO reintentar el alta.")
+        # NO se hace save por defecto, pues puede pedir confirmación interactiva.
+        return {"verified_online":True,"native_vlan_verificada":True,"config_match":True,
+                "serial_verificado":params["serial"],"ont_id":ont_added,
+                "guardado_permanente":False,"motivo":"Provisionamiento verificado en running-config; guardar persistencia Huawei en ventana aprobada"}
+    except Exception as exc:
+        # Jamás borrar/crear ONT automáticamente para recuperarse de fallo parcial.
+        raise RuntimeError("Autorizacion incompleta; sin reintento automatico; pasos="+",".join(steps)+
+                           ("; ONT-ID="+str(ont_added) if ont_added is not None else "")+
+                           "; detalle="+str(exc)) from exc
+    finally:
+        if writer is not None:
+            try: writer.close()
+            except Exception: pass
+
+# ================================================================
+# AUTORIZACIONES MANUALES: LECTURA DE COLA, SIN ESCRITURA HUAWEI
+# No se mezcla con CONFIRMADO (evidencia SmartOLT).
+# Aun cuando una ONU este aprobada, NO se ejecuta 'ont add'.
+# ================================================================
+def onu_aprobaciones_api(action,olt_codigo,payload=None):
+    import urllib.request
+    code=str(olt_codigo or "").strip().upper()
+    if not re.fullmatch(r"[A-Z0-9_-]{2,32}",code):
+        raise ValueError("OLT no permitida")
+    token=os.environ.get("DETECTOR_TOKEN","")
+    if not token:
+        raise RuntimeError("Falta token de agente")
+    base=os.environ.get("SUPABASE_URL","https://ajnbswrwnjpjypjiorye.supabase.co").rstrip("/")
+    request_body={"action":str(action),"olt_codigo":code}
+    if payload:
+        request_body.update(payload)
+    encoded=json.dumps(request_body).encode("utf-8")
+    req=urllib.request.Request(
+        base+"/functions/v1/inventario-onu-autorizacion-scanner",
+        data=encoded,
+        headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+        method="POST"
+    )
+    with urllib.request.urlopen(req,timeout=20) as resp:
+        data=json.loads(resp.read().decode("utf-8"))
+    if data.get("ok") is not True:
+        raise RuntimeError("Error al leer cola de autorización")
+    return data
+
+def leer_autorizaciones_manual_aprobadas(olt_codigo):
+    return onu_aprobaciones_api("scanner-pending",olt_codigo)
+
+
+    async def bridge_local_worker():
+        """Solicitud local opcional de lectura GPON, no genera sondeo a Supabase."""
+        basedir=_Path(os.environ.get("LOCALAPPDATA",str(_Path.home()))) / "DISPROTEL" / "bridge_inspeccion"
+        try:
+            basedir.mkdir(parents=True,exist_ok=True)
+        except Exception as exc:
+            print(json.dumps({"fase":"BRIDGE_INSPECT_SETUP","error":str(exc)}),flush=True)
+            return
+        request=basedir / "solicitud.json"
+        processing=basedir / "solicitud.procesando"
+        output=basedir / "resultado.json"
+        while not stop.is_set():
+            if request.is_file():
+                try:
+                    request.replace(processing)
+                    data=json.loads(processing.read_text(encoding="utf-8"))
+                    code=str(data.get("olt_codigo") or "").strip().upper()
+                    pon=str(data.get("pon") or "").strip()
+                    result=await asyncio.to_thread(lambda: asyncio.run(bridge_inspect(code,pon)))
+                    temp=output.with_suffix(".tmp")
+                    temp.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding="utf-8")
+                    temp.replace(output)
+                    print(json.dumps({"fase":"BRIDGE_INSPECT_OK","olt_codigo":code,"pon":pon,
+                                      "onu_revisadas":len(result.get("onu_revisadas",[]))},ensure_ascii=False),flush=True)
+                except Exception as exc:
+                    result={"ok":False,"solo_lectura":True,"error":str(exc)}
+                    try:
+                        output.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding="utf-8")
+                    except Exception:
+                        pass
+                    print(json.dumps({"fase":"BRIDGE_INSPECT_ERROR","error":str(exc)}),flush=True)
+                finally:
+                    try: processing.unlink(missing_ok=True)
+                    except Exception: pass
+            try:
+                await asyncio.wait_for(stop.wait(),timeout=2)
+            except asyncio.TimeoutError:
+                pass
+
+    async def live_worker():
+        # La cola LIVE permanece atendible mientras un inventario tarda minutos.
+        while not stop.is_set():
+            try:
+                now=asyncio.get_running_loop().time()
+                wake=rt_event.is_set()
+                rt_event.clear()
+                # Respaldo conservador: 5s cuando no hay Realtime, 30s conectado.
+                if wake or now>=limits.get("next_live",0) or not rt_state['connected']:
+                    limits['next_live']=now+(30 if rt_enabled and rt_state['connected'] else tick)
+                    for cfg in list(olts):
+                        await execute_live(cfg)
+            except Exception as exc:
+                print(json.dumps({"ok":False,"fase":"LIVE_WORKER","error":str(exc)},ensure_ascii=False),flush=True)
+            try:
+                await asyncio.wait_for(rt_event.wait(),timeout=tick)
+            except asyncio.TimeoutError:
+                pass
+
+    async def inventory_worker(cfg):
+        codigo=str(cfg.get('codigo') or '')
+        start=asyncio.get_running_loop().time()
+        print(json.dumps({"ok":True,"fase":"INVENTARIO_INICIO","codigo":codigo},ensure_ascii=False),flush=True)
+        try:
+            # No asyncio.wait_for: cancelaría la espera pero no el hilo Telnet.
+            # Impedimos iniciar otro inventario mientras el anterior siga vivo.
+            result=await asyncio.to_thread(lambda: asyncio.run(poll_configured_olt(cfg)))
+            print(json.dumps(result,ensure_ascii=False),flush=True)
+        except Exception as exc:
+            print(json.dumps({"ok":False,"fase":"INVENTARIO","codigo":codigo,"error":str(exc)},ensure_ascii=False),flush=True)
+        finally:
+            print(json.dumps({"fase":"INVENTARIO_FIN","codigo":codigo,
+                "segundos":round(asyncio.get_running_loop().time()-start,1)},ensure_ascii=False),flush=True)
+
+    rt_task=asyncio.create_task(_huawei_realtime_events(rt_event,rt_state)) if rt_enabled else None
+    live_task=asyncio.create_task(live_worker())
+    bridge_task=asyncio.create_task(bridge_local_worker())
+    print(json.dumps({"ok":True,"multi_olt":True,"read_only":True,
+        "message":"Huawei V3: LIVE independiente de inventario",
+        "tick_seconds":tick,"config_refresh_seconds":config_interval,
+        "test_refresh_seconds":tests_interval},ensure_ascii=False),flush=True)
+    next_cfg=next_tests=0.0
+    try:
+        while True:
+            now=asyncio.get_running_loop().time()
+            if now>=next_cfg:
+                try:
+                    data=await asyncio.to_thread(olt_config_call,"scanner-list")
+                    if data and data.get('ok') is not False:
+                        fresh=data.get('olts') or []
+                        old={str(x.get('id')):x for x in olts}
+                        olts[:]=fresh
+                        for i,cfg in enumerate(fresh):
+                            oid=str(cfg.get('id') or '')
+                            if oid not in schedule:
+                                seconds=max(60,int(cfg.get('intervalo_seg') or 300))
+                                schedule[oid]=now+i*seconds/max(1,len(fresh))
+                        rt_event.set()  # detectar solicitudes incluso tras reconexión
+                        # Consulta de autorizaciones acoplada al refresco 5 min existente.
+                        # No agrega sondeo cada 5 s, y jamás escribe a las OLT.
+                        if os.environ.get("OLT_MANUAL_AUTORIZACIONES_PREVIEW","0")=="1":
+                            for cfg_ap in fresh:
+                                codigo_ap=str(cfg_ap.get("codigo") or "").strip().upper()
+                                try:
+                                    cola_ap=await asyncio.to_thread(leer_autorizaciones_manual_aprobadas,codigo_ap)
+                                    items_ap=cola_ap.get("jobs") or []
+                                    resumen_ap={"fase":"ONU_APROBADAS_PREVIEW","olt":codigo_ap,
+                                                "cantidad":len(items_ap),
+                                                "listas":sum(1 for x in items_ap if x.get("listo") is True),
+                                                "bloqueadas":[{"motivo":x.get("motivo")} for x in items_ap if x.get("listo") is not True],
+                                                "ejecucion":False}
+                                    if items_ap:
+                                        print(json.dumps(resumen_ap,ensure_ascii=False),flush=True)
+                                except Exception as exc:
+                                    print(json.dumps({"fase":"ONU_APROBADAS_PREVIEW_ERROR","olt":codigo_ap,
+                                                      "error":str(exc)},ensure_ascii=False),flush=True)
+                        print(json.dumps({"fase":"CONFIG_OK","olts":[x.get('codigo') for x in fresh]},ensure_ascii=False),flush=True)
+                    next_cfg=asyncio.get_running_loop().time()+config_interval
+                except Exception as exc:
+                    print(json.dumps({"fase":"CONFIG_ERROR","error":str(exc)},ensure_ascii=False),flush=True)
+                    next_cfg=asyncio.get_running_loop().time()+30
+            if now>=next_tests:
+                try:
+                    tests=await asyncio.to_thread(lambda: asyncio.run(handle_olt_test_queue()))
+                    if tests:print(json.dumps({"trigger":"PRUEBAS_OLT","tests":tests},ensure_ascii=False),flush=True)
+                except Exception as exc:
+                    print(json.dumps({"fase":"PRUEBAS_OLT","error":str(exc)},ensure_ascii=False),flush=True)
+                next_tests=asyncio.get_running_loop().time()+tests_interval
+            for cfg in list(olts):
+                oid=str(cfg.get('id') or '')
+                if not oid: continue
+                job=inventory_jobs.get(oid)
+                if job and not job.done():
+                    continue
+                if now>=schedule.get(oid,now):
+                    interval=max(60,int(cfg.get('intervalo_seg') or 300))
+                    inventory_jobs[oid]=asyncio.create_task(inventory_worker(cfg))
+                    schedule[oid]=now+interval
+            await asyncio.sleep(tick)
+    finally:
+        stop.set()
+        live_task.cancel()
+        bridge_task.cancel()
+        if rt_task:rt_task.cancel()
+        for task in inventory_jobs.values():task.cancel()
+
+
+async def service_loop():
+    seconds=max(5,int(os.environ.get("OLT_POLL_SECONDS","10")))
+    print(json.dumps({
+        "ok": True,
+        "diagnostico_inicio": True,
+        "olt": OLT_NAME,
+        "olt_codigo": os.environ.get("OLT_CODIGO","SALCEDO"),
+        "supabase_url": os.environ.get("SUPABASE_URL","https://ajnbswrwnjpjypjiorye.supabase.co"),
+        "detector_token_configurado": bool(os.environ.get("DETECTOR_TOKEN","")),
+        "service_mode": os.environ.get("OLT_SERVICE_MODE","0"),
+        "poll_seconds": seconds
+    }, ensure_ascii=False))
+    while True:
+        try:
+            pending=backend_call("scanner-pending") or {}
+            count=int(pending.get("pending_count",0) or 0)
+            live=await process_live_requests()
+            live_count=int(live.get("pending_count",0) or 0)
+            baja=await process_baja_requests()
+            baja_count=int(baja.get("pending_count",0) or 0)
+            if count>0:
+                payload=await run_once()
+                payload["trigger"]="SOLICITUD_OT"
+                payload["requests"]=count
+                payload["consultas_live"]=live
+                payload["bajas"]=baja
+                print(json.dumps(payload,ensure_ascii=False))
+            elif live_count>0:
+                print(json.dumps({
+                    "ok":True,
+                    "read_only":True,
+                    "olt":OLT_NAME,
+                    "trigger":"CONSULTA_CLIENTE_LIVE",
+                    "consultas_live":live
+                },ensure_ascii=False))
+            elif baja_count>0:
+                print(json.dumps({
+                    "ok":True,
+                    "read_only":True,
+                    "olt":OLT_NAME,
+                    "trigger":"VERIFICACION_BAJA",
+                    "bajas":baja
+                },ensure_ascii=False))
+            else:
+                print(json.dumps({
+                    "ok":True,
+                    "read_only":True,
+                    "olt":OLT_NAME,
+                    "waiting":True,
+                    "pending_requests":0,
+                    "pending_live":0,
+                    "pending_bajas":0,
+                    "message":"Sin solicitudes ONU, consultas en vivo ni verificaciones de baja pendientes. No se consulta la OLT."
+                },ensure_ascii=False))
+        except Exception as exc:
+            print(json.dumps({"ok":False,"olt":OLT_NAME,"error":str(exc)},ensure_ascii=False))
+        await asyncio.sleep(seconds)
+
+
+def self_test_parser():
+    """Prueba local del parser de baja. No conecta a la OLT ni al backend."""
+    sample_found = """
+F/S/P               : 0/1/12
+ONT-ID              : 6
+SN                  : HWTC3D4AEE32
+Run state           : online
+"""
+    sample_missing = """
+Failure: The ONT does not exist
+"""
+    found = parse_ont_info_by_sn(sample_found, "HWTC3D4AEE32")
+    missing = parse_ont_info_by_sn(sample_missing, "HWTC00000000")
+    ok_found = (
+        found.get("found") is True
+        and found.get("ont_id") == "6"
+        and found.get("pon") == "0/1/12"
+        and str(found.get("run_state") or "").lower() == "online"
+    )
+    ok_missing = missing.get("found") is False
+    return {
+        "ok": bool(ok_found and ok_missing),
+        "read_only": True,
+        "self_test": True,
+        "network_used": False,
+        "found_case": found,
+        "missing_case": missing,
+    }
+
+
+async def main():
+    if len(sys.argv)>=2 and sys.argv[1]=="--bridge-inspect":
+        if len(sys.argv)!=4:
+            print("Uso: --bridge-inspect CODIGO_OLT F/S/P",flush=True)
+            return 2
+        try:
+            resultado=await bridge_inspect(sys.argv[2],sys.argv[3])
+            print(json.dumps(resultado,ensure_ascii=False,indent=2),flush=True)
+            return 0 if resultado.get("ok") else 1
+        except Exception as exc:
+            print(json.dumps({"ok":False,"solo_lectura":True,"error":str(exc)},ensure_ascii=False),flush=True)
+            return 1
+    if "--self-test" in sys.argv:
+        result = self_test_parser()
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result.get("ok") else 1
+    if os.environ.get("OLT_MULTI_MODE","0")=="1":
+        await multi_olt_service_loop()
+        return 0
+    if os.environ.get("OLT_SERVICE_MODE","0")=="1":
+        await service_loop()
+        return 0
+    try:
+        print(json.dumps(await run_once(),ensure_ascii=False,indent=2))
+        return 0
+    except Exception as exc:
+        print(json.dumps({"ok":False,"read_only":True,"olt":OLT_NAME,"host":HOST,"error":str(exc)},ensure_ascii=False,indent=2))
+        return 1
+
+
+
+# Windows: evita que la selección de texto (QuickEdit) suspenda todo el lector.
+def _huawei_disable_console_quickedit():
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.GetStdHandle.argtypes = [wintypes.DWORD]
+        kernel32.GetStdHandle.restype = wintypes.HANDLE
+        kernel32.GetConsoleMode.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+        kernel32.GetConsoleMode.restype = wintypes.BOOL
+        kernel32.SetConsoleMode.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        kernel32.SetConsoleMode.restype = wintypes.BOOL
+        STD_INPUT_HANDLE = 0xFFFFFFF6
+        ENABLE_QUICK_EDIT_MODE = 0x0040
+        ENABLE_EXTENDED_FLAGS = 0x0080
+        handle = kernel32.GetStdHandle(STD_INPUT_HANDLE)
+        mode = wintypes.DWORD()
+        if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            new_mode = (mode.value | ENABLE_EXTENDED_FLAGS) & ~ENABLE_QUICK_EDIT_MODE
+            if kernel32.SetConsoleMode(handle, new_mode):
+                print('HUAWEI: QuickEdit desactivado; seleccionar texto no pausa el lector', flush=True)
+    except Exception as exc:
+        print('HUAWEI: no se pudo modificar QuickEdit: ' + str(exc), flush=True)
+
+# Registro local con rotación: conserva salida de consola y añade un archivo.
+def _huawei_setup_log():
+    import io
+    import logging
+    from logging.handlers import RotatingFileHandler
+    from pathlib import Path
+    import threading
+
+    class ConsoleAndLog(io.TextIOBase):
+        def __init__(self, stream, logger, level):
+            self.stream, self.logger, self.level = stream, logger, level
+            self.lock = threading.RLock()
+            self.partial = ""
+
+        def write(self, msg):
+            with self.lock:
+                self.stream.write(msg)
+                self.stream.flush()
+                self.partial += msg
+                while "\n" in self.partial:
+                    line, self.partial = self.partial.split("\n", 1)
+                    if line.strip():
+                        try:
+                            self.logger.log(self.level, line.rstrip("\r"))
+                        except Exception:
+                            pass
+            return len(msg)
+
+        def flush(self):
+            with self.lock:
+                self.stream.flush()
+                if self.partial.strip():
+                    try:
+                        self.logger.log(self.level, self.partial.rstrip("\r"))
+                    except Exception:
+                        pass
+                self.partial = ""
+
+        def isatty(self):
+            return self.stream.isatty()
+
+        @property
+        def encoding(self):
+            return self.stream.encoding
+
+    try:
+        base = Path(os.environ.get('LOCALAPPDATA') or Path.home()) / 'DISPROTEL' / 'logs'
+        base.mkdir(parents=True, exist_ok=True)
+        path = base / 'huawei-lector.log'
+        logger = logging.getLogger('disprotel.huawei.console')
+        logger.setLevel(logging.INFO)
+        logger.propagate = False
+        logger.handlers.clear()
+        handler = RotatingFileHandler(path, maxBytes=5*1024*1024, backupCount=3, encoding='utf-8')
+        handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | %(message)s'))
+        logger.addHandler(handler)
+        sys.stdout = ConsoleAndLog(sys.stdout, logger, logging.INFO)
+        sys.stderr = ConsoleAndLog(sys.stderr, logger, logging.ERROR)
+        print(f'HUAWEI: registro habilitado en {path}', flush=True)
+    except Exception as exc:
+        print(f'HUAWEI: no se pudo iniciar el registro: {exc}', file=sys.__stderr__, flush=True)
+
+
+# ============================================================
+# DISPROTEL / HUAWEI V3: INSPECCION DE PERFILES BRIDGE
+# Ejecutar una sola vez: python script.py --bridge-inspect SALCEDO 0/2/0
+# TODAS LAS ORDENES HUAWEI DE ESTE MODULO SON 'display'.
+# La lectura no registra ni modifica ONU. La autorizacion de
+# escritura queda pendiente hasta confirmar perfiles reales.
+# ============================================================
+def _bridge_field(raw, patterns):
+    for pattern in patterns:
+        match=re.search(pattern, str(raw),re.I|re.M)
+        if match:
+            return int(match.group(1))
+    return None
+
+def _bridge_invalid(text):
+    return bool(re.search(r"(?i)(unknown command|unrecognized command|parameter error|invalid parameter|failure:)",str(text)))
+
+def _bridge_profile_summary(raw,kind):
+    value=str(raw or "")
+    if _bridge_invalid(value):
+        return {"disponible":False,"aviso":"Comando de consulta no compatible en esta OLT"}
+    lines=[]
+    # Nunca devolver descripciones de clientes, cuentas o IP.
+    for row in value.splitlines():
+        if re.search(r"(?i)(gem(port)?|t.cont|mapping|vlan|traffic.table|port eth|dba.profile|profile.name|profile.id|mapping.mode)",row) or re.match(r"^\s*\d+\s+\d+\s+\d+",row):
+            cleaned=row.strip()[:160]
+            if re.search(r"(?i)(password|login|username|secret|description|serial|auth)",cleaned):
+                continue
+            lines.append(cleaned)
+        if len(lines)>=22:
+            break
+    return {"disponible":True,"tipo":kind,"lineas":lines}
+
+async def bridge_inspect(olt_codigo, fsp):
+    """Consulta 2 ONU vecinas en UNA PON. No modifica Huawei ni Supabase."""
+    code=str(olt_codigo).strip().upper()
+    if code not in ("SALCEDO","LATACUNGA"):
+        raise ValueError("OLT no habilitada para inspeccion inicial")
+    match=re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{1,2})",str(fsp))
+    if not match:
+        raise ValueError("PON debe expresarse F/S/P, por ejemplo 0/2/0")
+    frame,slot,port=map(int,match.groups())
+    if any(x>31 for x in (frame,slot,port)):
+        raise ValueError("PON fuera de limites")
+    config=await asyncio.to_thread(olt_config_call,"scanner-list")
+    olts=config.get("olts") if isinstance(config,dict) else None
+    cfg=next((o for o in (olts or []) if str(o.get("codigo") or "").strip().upper()==code),None)
+    if not cfg:
+        raise ValueError("No existe OLT activa con ese codigo en scanner-list")
+    reader=writer=None
+    results={"ok":False,"solo_lectura":True,"escrituras_ejecutadas":0,
+        "olt_codigo":code,"pon":f"{frame}/{slot}/{port}",
+        "onu_revisadas":[],"line_profiles":{},"service_profiles":{},
+        "advertencias":[]}
+    try:
+        reader,writer=await open_configured_olt(cfg)
+        cmd=await _session_command(reader,writer,"config",timeout=20)
+        if _bridge_invalid(cmd):
+            raise RuntimeError("No fue posible entrar a modo config de lectura")
+        cmd=await _session_command(reader,writer,f"interface gpon {frame}/{slot}",timeout=20)
+        if _bridge_invalid(cmd):
+            raise RuntimeError("Tarjeta GPON no accesible")
+        overview=await _session_command(reader,writer,f"display ont info {port} all",timeout=60)
+        if _bridge_invalid(overview):
+            raise RuntimeError("El puerto no permite consulta display ont info")
+        neighbors=[r for r in parse_inventory_status(overview)
+                   if r.get("fsp")==f"{frame}/{slot}/{port}" and r.get("run_state")=="online"]
+        if not neighbors:
+            results["advertencias"].append("No se encontraron ONU online en esta PON; no es posible inferir perfiles")
+        # El objetivo es descubrir perfiles utilizados, NO clonar datos de clientes.
+        for neighbor in neighbors[:2]:
+            ont_id=int(neighbor["ont_id"])
+            detail=await _session_command(reader,writer,f"display ont info {port} {ont_id}",timeout=35)
+            line_id=_bridge_field(detail,[r"(?:ONT\s+)?line\s*profile\s*ID\s*:\s*(\d+)",r"Line\s*profile\s*:\s*(\d+)"])
+            srv_id=_bridge_field(detail,[r"(?:ONT\s+)?(?:srv|service)\s*profile\s*ID\s*:\s*(\d+)",r"Service\s*profile\s*:\s*(\d+)"])
+            if _bridge_invalid(detail):
+                results["advertencias"].append(f"No se pudo consultar ONT-ID {ont_id}")
+                continue
+            results["onu_revisadas"].append({
+                "ont_id":ont_id,"line_profile_id":line_id,"srv_profile_id":srv_id,
+                "equipo_online":True,"serial_final":str(neighbor.get("sn") or "")[-4:]})
+        # El service-port se consulta desde modo global.
+        await _session_command(reader,writer,"quit",timeout=15)
+        for row in results["onu_revisadas"]:
+            ident=row["ont_id"]
+            port_info=await _session_command(reader,writer,
+                f"display service-port port {frame}/{slot}/{port} ont {ident}",timeout=35)
+            row["service_port"]=_bridge_profile_summary(port_info,"service-port")
+        line_ids={r["line_profile_id"] for r in results["onu_revisadas"] if r.get("line_profile_id") is not None}
+        srv_ids={r["srv_profile_id"] for r in results["onu_revisadas"] if r.get("srv_profile_id") is not None}
+        for profile_id in sorted(line_ids):
+            info=await _session_command(reader,writer,
+                f"display ont-lineprofile gpon profile-id {profile_id}",timeout=30)
+            results["line_profiles"][str(profile_id)]=_bridge_profile_summary(info,"line-profile")
+        for profile_id in sorted(srv_ids):
+            info=await _session_command(reader,writer,
+                f"display ont-srvprofile gpon profile-id {profile_id}",timeout=30)
+            results["service_profiles"][str(profile_id)]=_bridge_profile_summary(info,"srv-profile")
+        results["ok"]=True
+        results["advertencias"].append(
+           "Este reporte no acredita el perfil BRIDGE: contrastar modelo, GEM y VLAN antes de cualquier ont add.")
+        return results
+    finally:
+        if writer is not None:
+            try: writer.close()
+            except Exception: pass
+
+
+if __name__ == "__main__":
+    _huawei_setup_log()
+    _huawei_disable_console_quickedit()
+    sys.exit(asyncio.run(main())),line,re.I)
+        if match and int(match.group(1))==ont_id and int(match.group(2))==expected_vlan:
+            return True
+    return False
+
+
+def onu_bridge_dry_run(job,ont_id_ejemplo=None):
+    """Previsualizacion de secuencia; NUNCA conecta ni ejecuta Huawei."""
+    params=_onu_bridge_profile(job,preview_only=True)
+    p=params["profile"]
+    placeholder="<ONT_ID_ASIGNADO_POR_HUAWEI>"
+    return {"solo_previsualizacion":True,"escrituras_ejecutadas":0,
+            "ip_incluida":False,"tipo":"BRIDGE","perfil_habilitado":job["perfil"].get("habilitado") is True,
+            "comandos":[f'interface gpon {params["frame"]}/{params["slot"]}',
+                        f'display ont autofind {params["port"]}',
+                        f'display ont info {params["port"]} all',
+                        params["ont_add_command"],
+                        (f'ont port native-vlan {params["port"]} {placeholder} eth 1 '
+                         f'vlan {p["vlan_usuario"]} priority 0'),
+                        f'display ont port attribute {params["port"]} {placeholder} eth 1',
+                        "quit",
+                        (f'service-port vlan {p["vlan_servicio"]} gpon {params["fsp"]} '
+                         f'ont {placeholder} gemport {p["gemport"]} multi-service '
+                         f'user-vlan {p["vlan_usuario"]} tag-transform {params["tag"]} '
+                         f'inbound traffic-table index {p["traffic_in_id"]} '
+                         f'outbound traffic-table index {p["traffic_out_id"]}'),
+                        f'display service-port port {params["fsp"]} ont {placeholder}',
+                        f'interface gpon {params["frame"]}/{params["slot"]}',
+                        f'display ont info {params["port"]} {placeholder}'],
+            "advertencia":("BORRADOR sin ejecucion: sustituir ONT-ID exclusivamente tras respuesta de ont add; "
+                           "verificar online/config normal/match y persistencia antes de afirmar autorizacion. "
+                           "No ejecutar save automaticamente, podria guardar otros cambios de OLT.")}
 
 
 async def onu_bridge_apply_controlled(cfg,job):
