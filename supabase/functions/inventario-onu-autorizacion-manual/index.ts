@@ -71,6 +71,45 @@ Deno.serve(async req=>{
    const q=orden_id?db.from('onu_autorizaciones_manuales').select('*').eq('orden_id',orden_id).maybeSingle():identity();
    const r=await q;if(r.error)throw r.error;return reply({ok:true,registro:r.data});
   }
+  if(action==='preflight'){
+   // PREVUELO: consulta de Supabase, nunca cambia estado ni ejecuta Huawei.
+   const reg=await identity();
+   if(reg.error)throw reg.error;
+   if(!reg.data)return reply({error:'Esta ONU no tiene datos administrativos registrados'},404);
+   const r=reg.data;
+   const checks:{codigo:string,ok:boolean,detalle:string}[]=[];
+   const add=(codigo:string,ok:boolean,detalle:string)=>checks.push({codigo,ok,detalle});
+   add('APROBACION',!!r.aprobado_por_id&&!!r.aprobado_at&&['APROBADA_PENDIENTE_PERFIL','APROBADA_PENDIENTE_EJECUCION'].includes(r.estado),
+     r.aprobado_at?'Aprobación registrada; estado '+r.estado:'Falta aprobación manual vigente');
+   const cfg=await db.from('olt_configuraciones').select('id,activo').eq('codigo',olt_codigo).maybeSingle();
+   if(cfg.error)throw cfg.error;
+   add('OLT',cfg.data?.activo===true,cfg.data?.activo===true?'OLT configurada y habilitada':'OLT no activa o no configurada');
+   const det=await db.from('olt_onu_autofind_cache').select('pon,modelo,presente,ultima_lectura_at').eq('olt_codigo',olt_codigo).eq('onu_sn',onu_sn).maybeSingle();
+   if(det.error)throw det.error;
+   const same=!!det.data&&det.data.presente===true&&det.data.pon===r.onu_pon&&normalize(det.data.modelo)===normalize(r.onu_modelo);
+   add('AUTOFIND',same,same?'Serial, PON y modelo coinciden en detección':'No coincide serial/modelo/PON en detección Huawei');
+   const age=det.data?.ultima_lectura_at?Date.now()-Date.parse(det.data.ultima_lectura_at):NaN;
+   const fresh=Number.isFinite(age)&&age>=0&&age<=15*60*1000;
+   add('LECTURA_RECIENTE',fresh,fresh?'Detección actualizada hace '+Math.ceil(age/60000)+' min':'Detección sin lectura reciente (máximo 15 min)');
+   const inv=await db.from('huawei_onus_cache').select('id').eq('olt_codigo',olt_codigo).eq('onu_sn',onu_sn).eq('presente',true).limit(1);
+   if(inv.error)throw inv.error;
+   add('NO_REGISTRADA',(inv.data||[]).length===0,(inv.data||[]).length?'El serial figura en inventario Huawei: no duplicar':'No figura como registrada en el inventario del scanner');
+   const modelo=normalize(r.onu_modelo).replace(/[^A-Z0-9_.-]/g,'');
+   const prof=cfg.data?await db.from('onu_perfiles_olt').select('tipo_onu,modelo_clave,vlan_servicio,vlan_usuario,line_profile_id,service_profile_id,gemport,traffic_in_id,traffic_out_id,tag_transform,habilitado,fuente').eq('olt_id',cfg.data.id).eq('tipo_onu','BRIDGE').eq('modelo_clave',modelo).maybeSingle():{data:null,error:null};
+   if(prof.error)throw prof.error;
+   const p=prof.data;
+   const complete=!!p&&['vlan_servicio','vlan_usuario','line_profile_id','service_profile_id','gemport','traffic_in_id','traffic_out_id'].every(k=>Number.isSafeInteger(p[k]))&&p.tag_transform==='translate';
+   add('PERFIL',complete,complete?'Perfil numérico completo: línea '+p.line_profile_id+', servicio '+p.service_profile_id+', VLAN '+p.vlan_servicio+', GEM '+p.gemport+', RX '+p.traffic_in_id+', TX '+p.traffic_out_id:'Faltan parámetros de perfil GPON');
+   add('PERFIL_HABILITADO',p?.habilitado===true,p?.habilitado===true?'Perfil habilitado por revisión técnica':'Perfil intencionalmente deshabilitado para escrituras');
+   // No afirmamos conectividad Huawei ni ejecución desde un API que no opera la PC.
+   return reply({ok:true,solo_lectura:true,escrituras_ejecutadas:0,olt_codigo,onu_sn,estado:r.estado,
+     perfil:p?{modelo_clave:p.modelo_clave,line_profile_id:p.line_profile_id,service_profile_id:p.service_profile_id,
+       vlan_servicio:p.vlan_servicio,vlan_usuario:p.vlan_usuario,gemport:p.gemport,
+       traffic_in_id:p.traffic_in_id,traffic_out_id:p.traffic_out_id,tag_transform:p.tag_transform,habilitado:p.habilitado}:null,
+     checks,apto_para_cola:checks.every(c=>c.ok),
+     ejecucion_huawei_disponible:false,
+     aviso:'Verificación de base de datos y cachés. NO es una conexión a la consola Huawei ni prueba del guardado persistente. El agente de escritura aún no está instalado/validado en producción.'});
+  }
   if(action==='register'){
    if(ord.data&&['COMPLETADA','CANCELADA'].includes(normalize(ord.data.estado)))return reply({error:'OT cerrada'},409);
    const code=orden_id?olt_codigo:normalize(data.olt_codigo);
