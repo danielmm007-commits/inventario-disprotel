@@ -99,10 +99,10 @@ function render(){
  '<div class="tableWrap"><table><thead><tr><th>Tipo PON</th><th>Tarjeta</th><th>Puerto</th><th>Serial</th><th>Modelo</th><th>Detectada</th><th>Estado</th><th>Acción</th></tr></thead><tbody>'+
  arr.map(x=>{
   const pon=String(x.pon||'').split('/');const index=items.indexOf(x);
-  const status=x.conflicto_ot?'OT duplicada':x.estado_aprobacion==='APROBADA_PENDIENTE_EJECUCION'?'Aprobada, sin ejecutar':x.estado_aprobacion==='DATOS_REGISTRADOS'?'Datos registrados':x.orden_id?'Pendiente':'Pendiente · sin OT';
+  const status=x.conflicto_ot?'Conflicto de OT':x.estado_aprobacion==='APROBADA_PENDIENTE_PERFIL'?'Aprobada · falta perfil GPON':x.estado_aprobacion==='APROBADA_PENDIENTE_EJECUCION'?'Aprobada · pendiente Huawei':x.estado_aprobacion==='PENDIENTE_GUARDAR'?'Pendiente de guardar en Huawei':x.estado_aprobacion==='EJECUTANDO'?'Ejecutando':x.estado_aprobacion==='DATOS_REGISTRADOS'?'Datos registrados':x.estado_aprobacion==='AUTORIZADA'?'Autorizada':x.estado_aprobacion==='ERROR'?'Requiere revisión':x.orden_id?'Pendiente':'Pendiente · sin OT';
   return '<tr><td>GPON</td><td>'+esc(pon[1]||'—')+'</td><td>'+esc(pon[2]||'—')+'</td><td class="serial">'+esc(x.onu_sn_display||x.onu_sn)+'</td>'+
   '<td class="model">'+esc(x.modelo||'—')+(x.modelo_catalogo?'<div style="font-size:10px;font-weight:600;color:#587e8f;margin-top:4px">'+esc(x.modelo_catalogo.capacidad)+' · LAN '+esc(x.modelo_catalogo.ethernet_puertos)+' · WiFi '+esc(x.modelo_catalogo.wifi_puertos)+(x.modelo_catalogo.catv?' · CATV':'')+'</div>':'<div style="font-size:10px;color:#a2762d;margin-top:4px">Modelo sin ficha</div>')+'</td><td>'+esc(date(x.detectada_at||x.ultima_lectura_at))+'</td><td><span class="status">'+esc(status)+'</span></td>'+
-  '<td><button class="action" type="button" data-index="'+index+'">'+(x.conflicto_ot?'Ver conflicto':'Autorizar')+'</button></td></tr>';
+  '<td><button class="action" type="button" data-index="'+index+'">'+(x.conflicto_ot?'Ver conflicto':x.estado_aprobacion&&x.estado_aprobacion!=='DATOS_REGISTRADOS'?'Ver estado':'Autorizar')+'</button></td></tr>';
  }).join('')+'</tbody></table></div></section>';
  }).join('');
 }
@@ -131,7 +131,13 @@ async function open(index){
  $('form').querySelectorAll('input').forEach(input=>input.disabled=!editable);$('otOption').disabled=!editable;
  $('save').disabled=!editable;$('approve').disabled=!editable||state!=='DATOS_REGISTRADOS';
  $('message').textContent=x.conflicto_ot?'El serial aparece asociado a varias OT. Corrige antes de aprobar.':
- state==='APROBADA_PENDIENTE_EJECUCION'?'Aprobación registrada. Esperando ejecución Huawei.':editable?'Completa los datos administrativos; guarda y confirma la aprobación.':'No editable en su estado actual.';
+ state==='APROBADA_PENDIENTE_PERFIL'?'✓ Fernando ya aprobó esta ONU y los datos administrativos están guardados. Falta validar el perfil Huawei (VLAN, Line Profile, Service Profile, GEM y tráfico) para '+(x.modelo||'este modelo')+' en '+(x.olt_codigo||'esta OLT')+'. No se ha activado en Huawei.':
+ state==='APROBADA_PENDIENTE_EJECUCION'?'✓ Aprobación manual registrada. Pendiente de ejecución por Huawei V3; todavía no está activada.':
+ state==='PENDIENTE_GUARDAR'?'La ONU requiere confirmar el guardado permanente de su configuración en Huawei. No está finalizada.':
+ state==='AUTORIZADA'?'Autorización finalizada según el registro Huawei.':
+ state==='EJECUTANDO'?'Solicitud en ejecución. No intentes aprobarla otra vez.':
+ state==='ERROR'?'Hay un error registrado. La solicitud requiere revisión técnica antes de repetir la operación.':
+ editable?'Completa los datos administrativos; guarda y confirma la aprobación.':'Solicitud no editable en su estado actual.';
 }
 function close(){$('modal').classList.remove('show');selected=null}
 $('groups').addEventListener('click',e=>{const b=e.target.closest('button[data-index]');if(b)open(Number(b.dataset.index))});
@@ -156,7 +162,7 @@ $('approve').onclick=async()=>{
  try{
   const d=await call('approve',{orden_id:x.orden_id||undefined,olt_codigo:x.olt_codigo,onu_sn:x.onu_sn});
   x.estado_aprobacion=d.registro?.estado||'APROBADA_PENDIENTE_PERFIL';
-  $('message').textContent='✓ '+(d.nota||'Aprobación registrada; Huawei sin cambios.');
+  $('message').textContent='✓ '+(d.nota||'Aprobación administrativa registrada; Huawei sin cambios.')+(x.estado_aprobacion==='APROBADA_PENDIENTE_PERFIL'?' La ONU aún no tiene un perfil GPON validado: falta completar esa configuración antes de poder activarla.':'');
   render();
  }catch(err){$('message').textContent='Error: '+err.message;$('approve').disabled=false;$('save').disabled=false}
 };
