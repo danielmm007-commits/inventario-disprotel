@@ -55,7 +55,7 @@ td{font-size:12px;padding:13px 12px;border-bottom:1px solid #e9eff2;white-space:
   <label>NAP<input id="nap" maxlength="80" placeholder="Identificación de NAP"></label>
   <label>Zona<input id="zona" maxlength="80" placeholder="Sector o comunidad"></label>
   <label class="full">IP administrativa (opcional)<input id="ip" inputmode="decimal" placeholder="172.x.x.x; no configura la ONU"></label>
-  <div class="dialogActions"><button type="submit" class="primary" id="save">Guardar datos</button><button type="button" class="secondary" id="approve" disabled>Aprobar manualmente</button><button type="button" class="secondary" id="preflight" disabled>Comprobar preparación</button></div>
+  <div class="dialogActions"><button type="submit" class="primary" id="save">Guardar datos</button><button type="button" class="secondary" id="approve" disabled>Aprobar manualmente</button><button type="button" class="secondary" id="preflight" disabled>Comprobar preparación</button><button type="button" class="primary" id="queueHuawei" disabled>Enviar a agente Huawei</button></div>
  </form>
  <p class="help">Debes indicar NAP o zona. El serial, modelo, OLT y PON provienen de Huawei y no son editables. La aprobación no activa todavía la ONU en Huawei.</p>
  <p class="msg" id="message" role="status"></p><div id="preflightResults" role="status" aria-live="polite"></div></section>
@@ -132,6 +132,7 @@ async function open(index){
  $('form').querySelectorAll('input').forEach(input=>input.disabled=!editable);$('otOption').disabled=!editable;
  $('save').disabled=!editable;$('approve').disabled=!editable||state!=='DATOS_REGISTRADOS';
  $('preflight').disabled=!['APROBADA_PENDIENTE_PERFIL','APROBADA_PENDIENTE_EJECUCION','EJECUTANDO','PENDIENTE_GUARDAR','AUTORIZADA','ERROR'].includes(state);
+ $('queueHuawei').disabled=!['APROBADA_PENDIENTE_PERFIL','APROBADA_PENDIENTE_EJECUCION'].includes(state)||x.olt_codigo!=='SALCEDO'||x.onu_sn!=='48575443C8BFCE42';
  $('preflightResults').innerHTML='';
  $('message').textContent=x.conflicto_ot?'El serial aparece asociado a varias OT. Corrige antes de aprobar.':
  state==='APROBADA_PENDIENTE_PERFIL'?'✓ Aprobación administrativa guardada. El perfil GPON está pendiente de habilitación técnica para ejecución; pulsa «Comprobar preparación» para ver cuáles condiciones faltan. La ONU todavía NO está activada en Huawei.':
@@ -157,6 +158,17 @@ $('preflight').onclick=async()=>{
   $('preflightResults').innerHTML='<section style="border:1px solid #bed8e3;background:#f5fafc;border-radius:10px;padding:12px;margin-top:12px"><strong>Comprobación de preparación · solo lectura</strong>'+summary+technical+status+'<p style="margin-top:10px;font-size:12px;font-weight:700;color:#9b5c12">'+esc(d.aviso||'La autorización Huawei continúa deshabilitada.')+'</p></section>';
  }catch(e){$('preflightResults').textContent='No se pudo completar la comprobación: '+e.message}
  finally{$('preflight').disabled=false}
+};
+$('queueHuawei').onclick=async()=>{
+ const x=selected;if(!x)return;
+ if(!confirm('Enviar la ONU '+x.onu_sn+' de '+x.olt_codigo+' a la cola del agente Huawei? El envio NO configura la OLT; el agente requiere habilitacion local.'))return;
+ $('queueHuawei').disabled=true;
+ try{
+  const d=await call('enqueue-huawei',{olt_codigo:x.olt_codigo,onu_sn:x.onu_sn,confirmar_serial:x.onu_sn});
+  x.estado_aprobacion=d.registro?.estado||x.estado_aprobacion;
+  $('message').textContent='✓ '+(d.nota||'Solicitud enviada al agente Huawei');render();
+ }catch(e){$('message').textContent='No se pudo enviar al agente: '+e.message}
+ finally{$('queueHuawei').disabled=false}
 };
 function close(){$('modal').classList.remove('show');selected=null}
 $('groups').addEventListener('click',e=>{const b=e.target.closest('button[data-index]');if(b)open(Number(b.dataset.index))});
