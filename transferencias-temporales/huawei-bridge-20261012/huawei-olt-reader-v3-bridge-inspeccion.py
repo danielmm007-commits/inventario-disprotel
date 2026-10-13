@@ -1475,41 +1475,48 @@ def _onu_native_vlan_command(params, ont_id):
 
 
 def _onu_parse_native_port_attribute(raw, ont_id, expected_vlan):
-    """Valida una unica fila ETH1 con port switch=on y native VLAN esperada."""
+    """Confirma Ethernet 1, puerto activo, native VLAN y prioridad 0."""
     for line in str(raw or "").splitlines():
-        match=re.match(r'^\\s*(\\d+)\\s+1\\s+ETH\\s+enable\\s+auto\\s+auto\\s+on\\s+'
-                       r'(?:on|off)\\s+(\\d+)\\s+0\\s*$',line,re.I)
-        if match and int(match.group(1))==ont_id and int(match.group(2))==expected_vlan:
+        c=line.split()
+        if (len(c)==10 and c[0]==str(ont_id) and c[1]=="1"
+            and c[2].upper()=="ETH" and c[3].lower()=="enable"
+            and c[4].lower()=="auto" and c[5].lower()=="auto"
+            and c[6].lower()=="on" and c[8]==str(expected_vlan)
+            and c[9]=="0"):
             return True
     return False
 
 
+def _onu_info_value(raw, field):
+    for line in str(raw or "").splitlines():
+        key, sep, value=line.partition(":")
+        if sep and key.strip().lower()==field.lower():
+            return value.strip().lower()
+    return ""
+
+
 def onu_bridge_dry_run(job,ont_id_ejemplo=None):
-    """Previsualizacion de secuencia; NUNCA conecta ni ejecuta Huawei."""
+    """Previsualiza sin llamar a Huawei, incluso cuando el perfil está deshabilitado."""
     params=_onu_bridge_profile(job,preview_only=True)
     p=params["profile"]
-    placeholder="<ONT_ID_ASIGNADO_POR_HUAWEI>"
-    return {"solo_previsualizacion":True,"escrituras_ejecutadas":0,
-            "ip_incluida":False,"tipo":"BRIDGE","perfil_habilitado":job["perfil"].get("habilitado") is True,
-            "comandos":[f'interface gpon {params["frame"]}/{params["slot"]}',
-                        f'display ont autofind {params["port"]}',
-                        f'display ont info {params["port"]} all',
-                        params["ont_add_command"],
-                        (f'ont port native-vlan {params["port"]} {placeholder} eth 1 '
-                         f'vlan {p["vlan_usuario"]} priority 0'),
-                        f'display ont port attribute {params["port"]} {placeholder} eth 1',
-                        "quit",
-                        (f'service-port vlan {p["vlan_servicio"]} gpon {params["fsp"]} '
-                         f'ont {placeholder} gemport {p["gemport"]} multi-service '
-                         f'user-vlan {p["vlan_usuario"]} tag-transform {params["tag"]} '
-                         f'inbound traffic-table index {p["traffic_in_id"]} '
-                         f'outbound traffic-table index {p["traffic_out_id"]}'),
-                        f'display service-port port {params["fsp"]} ont {placeholder}',
-                        f'interface gpon {params["frame"]}/{params["slot"]}',
-                        f'display ont info {params["port"]} {placeholder}'],
-            "advertencia":"BORRADOR sin ejecucion: sustituir ONT-ID exclusivamente tras respuesta de ont add; '
-                           'verificar online/config normal/match y persistencia antes de afirmar autorizacion. '
-                           'No ejecutar save automaticamente, podria guardar otros cambios de OLT."}
+    new_id="<ONT_ID_REAL_ASIGNADO_POR_HUAWEI>"
+    commands=[
+        f'interface gpon {params["frame"]}/{params["slot"]}',
+        f'display ont autofind {params["port"]}',
+        f'display ont info {params["port"]} all',
+        params["ont_add_command"],
+        f'ont port native-vlan {params["port"]} {new_id} eth 1 vlan {p["vlan_usuario"]} priority 0',
+        f'display ont port attribute {params["port"]} {new_id} eth 1',
+        "quit",
+        f'service-port vlan {p["vlan_servicio"]} gpon {params["fsp"]} ont {new_id} gemport {p["gemport"]} multi-service user-vlan {p["vlan_usuario"]} tag-transform {params["tag"]} inbound traffic-table index {p["traffic_in_id"]} outbound traffic-table index {p["traffic_out_id"]}',
+        f'display service-port port {params["fsp"]} ont {new_id}',
+        f'interface gpon {params["frame"]}/{params["slot"]}',
+        f'display ont info {params["port"]} {new_id}',
+    ]
+    return {"solo_previsualizacion":True,"escrituras_ejecutadas":0,"ip_incluida":False,
+            "tipo":"BRIDGE","perfil_habilitado":job["perfil"].get("habilitado") is True,
+            "comandos":commands,
+            "advertencia":"SOLO BORRADOR. Se exige ONT-ID real devuelto por ont add y verificación online/config normal/match. No guardar toda la OLT automáticamente."}
 
 
 async def onu_bridge_apply_controlled(cfg,job):
@@ -1547,7 +1554,7 @@ async def onu_bridge_apply_controlled(cfg,job):
         add_resp=await issue(params["ont_add_command"],70)
         ont_added=_onu_parse_added_id(add_resp)
         steps.append("ont_add")
-        await issue("quit",20)
+        # El modo gpon es necesario para el comando de VLAN nativa.
         # La VLAN nativa se programa SOBRE LA ONU NUEVA y se comprueba antes del service-port.
         # Nunca se toca el ONT-ID de referencia 45: ONT-ID proviene del resultado de ont add.
         nv_resp=await issue(_onu_native_vlan_command(params,ont_added),50)
@@ -1555,6 +1562,7 @@ async def onu_bridge_apply_controlled(cfg,job):
         nv_read=await issue(f'display ont port attribute {params["port"]} {ont_added} eth 1',45)
         if not _onu_parse_native_port_attribute(nv_read,ont_added,params["profile"]["vlan_usuario"]):
             raise RuntimeError("VLAN nativa ETH1 no coincide con VLAN de usuario; detener y revisar")
+        await issue("quit",20)
         # Siguiente comando de escritura: service-port usa el ONT-ID devuelto por Huawei.
         service_cmd=_onu_service_command(params,ont_added)
         sv_resp=await issue(service_cmd,70)
@@ -1581,9 +1589,9 @@ async def onu_bridge_apply_controlled(cfg,job):
         for i in range(12):
             info=await issue(f'display ont info {params["port"]} {ont_added}',35)
             snm=re.search(r"(?im)^\s*SN\s*:\s*([A-Fa-f0-9]{16})\b",info)
-            online=bool(re.search(r"(?im)^\\s*Run state\\s*:\\s*online\\b",info))
-            config_normal=bool(re.search(r"(?im)^\\s*Config state\\s*:\\s*normal\\b",info))
-            match_normal=bool(re.search(r"(?im)^\\s*Match state\\s*:\\s*match\\s*$",info))
+            online=_onu_info_value(info,"Run state")=="online"
+            config_normal=_onu_info_value(info,"Config state")=="normal"
+            match_normal=_onu_info_value(info,"Match state")=="match"
             if snm and snm.group(1).upper()!=params["serial"]:
                 raise RuntimeError("Huawei devolvio otro serial: requiere investigacion")
             if snm and online and config_normal and match_normal:
