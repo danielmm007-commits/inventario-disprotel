@@ -31,15 +31,17 @@ Deno.serve(async req=>{
     if(reg.error)throw reg.error;saved=reg.data||[];
    }
    const alive=new Map(orders.filter((o:any)=>!['COMPLETADA','CANCELADA'].includes(normalize(o.estado))).map((o:any)=>[o.id,o]));
+   const registeredAll=await db.from('onu_autorizaciones_manuales').select('orden_id,olt_codigo,onu_sn,nombre,nap,zona,ip_administrativa,estado').in('onu_sn',sns).limit(300);
+   if(registeredAll.error)throw registeredAll.error;
    const items=found.map((r:any)=>{
     const linked=(assoc.data||[]).filter((a:any)=>a.olt_codigo===r.olt_codigo&&a.onu_sn===r.onu_sn&&a.onu_pon===r.pon&&alive.has(a.orden_id));
     // Si dos OT reclaman el mismo serial, no autorizar por ambigüedad.
     const selected=linked.length===1?linked[0]:null;
     const ot=selected?alive.get(selected.orden_id):null;
-    const registered=selected?saved.find((a:any)=>a.orden_id===selected.orden_id&&a.olt_codigo===r.olt_codigo&&a.onu_sn===r.onu_sn):null;
+    const registered=(registeredAll.data||[]).find((a:any)=>a.olt_codigo===r.olt_codigo&&a.onu_sn===r.onu_sn)||null;
     return {olt_codigo:r.olt_codigo,olt_nombre:r.olt_nombre,onu_sn:r.onu_sn,onu_sn_display:r.onu_sn_display,pon:r.pon,
       modelo:r.modelo,vendor:r.vendor,version:r.version,software:r.software,detectada_at:r.detectada_at,
-      ultima_lectura_at:r.ultima_lectura_at,orden_id:ot?.id||null,orden_numero:ot?.id_orden||null,
+      ultima_lectura_at:r.ultima_lectura_at,orden_id:registered?.orden_id||ot?.id||null,orden_numero:ot?.id_orden||null,
       conflicto_ot:linked.length>1,estado_aprobacion:registered?.estado||null,nombre:registered?.nombre||null,
       nap:registered?.nap||null,zona:registered?.zona||null,ip_administrativa:registered?.ip_administrativa||null};
    });
@@ -87,22 +89,22 @@ Deno.serve(async req=>{
    return reply({ok:true,registro:saved.data,nota:'Información administrativa registrada'});
   }
   if(action==='approve'){
-   if(['COMPLETADA','CANCELADA'].includes(normalize(ord.data.estado)))return reply({error:'La OT está cerrada'},409);
-   const old=await db.from('onu_autorizaciones_manuales').select('*').eq('orden_id',orden_id).maybeSingle();if(old.error||!old.data)return reply({error:'Registra primero los datos administrativos'},409);
-   if(old.data.estado!=='DATOS_REGISTRADOS')return reply({error:'La solicitud ya fue procesada o aprobada'},409);
-   const reqRow=await db.from('orden_onu_solicitudes').select('onu_sn,onu_pon,olt_codigo,estado').eq('orden_id',orden_id).maybeSingle();
-   if(reqRow.error||reqRow.data?.estado==='CONFIRMADO'||reqRow.data?.onu_sn!==old.data.onu_sn||reqRow.data?.onu_pon!==old.data.onu_pon||reqRow.data?.olt_codigo!==old.data.olt_codigo)return reply({error:'La detección de la OT cambió; revisar antes de aprobar'},409);
-   const det=await db.from('olt_onu_autofind_cache').select('presente,pon,ultima_lectura_at').eq('olt_codigo',old.data.olt_codigo).eq('onu_sn',old.data.onu_sn).eq('presente',true).maybeSingle();
-   if(det.error||!det.data||det.data.pon!==old.data.onu_pon)return reply({error:'La ONU ya no consta pendiente en Huawei'},409);
-   const profileOlt=await db.from('olt_configuraciones').select('id,activo').eq('codigo',old.data.olt_codigo).eq('activo',true).maybeSingle();
-   if(profileOlt.error||!profileOlt.data)return reply({error:'OLT no configurada o inactiva'},409);
-   const model=normalize(old.data.onu_modelo).replace(/[^A-Z0-9_.-]/g,'');
-   const profile=await db.from('onu_perfiles_olt').select('id,vlan_servicio,line_profile_id,service_profile_id,gemport,traffic_in_id,traffic_out_id').eq('olt_id',profileOlt.data.id).eq('tipo_onu','BRIDGE').eq('modelo_clave',model).maybeSingle();
-   if(profile.error||!profile.data||[profile.data.vlan_servicio,profile.data.line_profile_id,profile.data.service_profile_id,profile.data.gemport,profile.data.traffic_in_id,profile.data.traffic_out_id].some(v=>v==null))return reply({error:'No existe un perfil BRIDGE completo para el modelo detectado en esta OLT'},409);
-   const up=await db.from('onu_autorizaciones_manuales').update({estado:'APROBADA_PENDIENTE_EJECUCION',aprobado_por_id:me.id,aprobado_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',old.data.id).eq('estado','DATOS_REGISTRADOS').select('id,estado').maybeSingle();
-   if(up.error)throw up.error;if(!up.data)return reply({error:'Solicitud aprobada previamente; recarga'},409);
-   await db.from('orden_historial').insert({orden_id,evento:'ONU_HUAWEI_APROBACION_MANUAL',detalle:{olt_codigo:old.data.olt_codigo,onu_sn:old.data.onu_sn,pon:old.data.onu_pon,perfil_id:profile.data.id,ip_solo_administrativa:true},realizado_por_id:me.id});
-   return reply({ok:true,registro:up.data,nota:'Aprobación registrada. El lector Huawei todavía no ejecuta escrituras.'});
+   if(ord.data&&['COMPLETADA','CANCELADA'].includes(normalize(ord.data.estado)))return reply({error:'OT cerrada'},409);
+   const old=orden_id?await db.from('onu_autorizaciones_manuales').select('*').eq('orden_id',orden_id).maybeSingle():await identity();
+   if(old.error||!old.data)return reply({error:'Primero registra los datos'},409);
+   if(old.data.estado!=='DATOS_REGISTRADOS')return reply({error:'Solicitud ya procesada'},409);
+   const det=await db.from('olt_onu_autofind_cache').select('pon,modelo,ultima_lectura_at').eq('olt_codigo',old.data.olt_codigo).eq('onu_sn',old.data.onu_sn).eq('presente',true).maybeSingle();
+   if(det.error||!det.data||det.data.pon!==old.data.onu_pon||normalize(det.data.modelo)!==normalize(old.data.onu_modelo))return reply({error:'Huawei ya no detecta el mismo modelo/PON'},409);
+   const olt=await db.from('olt_configuraciones').select('id').eq('codigo',old.data.olt_codigo).eq('activo',true).maybeSingle();
+   if(olt.error||!olt.data)return reply({error:'OLT inactiva'},409);
+   const modelo=normalize(old.data.onu_modelo).replace(/[^A-Z0-9_.-]/g,'');
+   const p=await db.from('onu_perfiles_olt').select('*').eq('olt_id',olt.data.id).eq('tipo_onu','BRIDGE').eq('modelo_clave',modelo).maybeSingle();if(p.error)throw p.error;
+   const complete=!!p.data&&['vlan_servicio','vlan_usuario','line_profile_id','service_profile_id','gemport','traffic_in_id','traffic_out_id'].every(k=>p.data[k]!=null)&&p.data.tag_transform==='translate'&&p.data.habilitado===true;
+   const estado=complete?'APROBADA_PENDIENTE_EJECUCION':'APROBADA_PENDIENTE_PERFIL';
+   const up=await db.from('onu_autorizaciones_manuales').update({estado,aprobado_por_id:me.id,aprobado_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',old.data.id).eq('estado','DATOS_REGISTRADOS').select('id,estado').maybeSingle();
+   if(up.error)throw up.error;if(!up.data)return reply({error:'Solicitud actualizada previamente'},409);
+   if(old.data.orden_id)await db.from('orden_historial').insert({orden_id:old.data.orden_id,evento:'ONU_HUAWEI_APROBACION_MANUAL',detalle:{olt_codigo:old.data.olt_codigo,onu_sn:old.data.onu_sn,perfil_id:p.data?.id||null,estado,ip_solo_administrativa:true},realizado_por_id:me.id});
+   return reply({ok:true,registro:up.data,nota:complete?'Aprobación guardada; ejecución Huawei aún deshabilitada.':'Aprobación guardada, pendiente de perfil GPON validado. No se ejecutará Huawei.'});
   }
   return reply({error:'Acción desconocida'},400);
  }catch(e){return reply({error:String((e as Error).message||e)},400)}
