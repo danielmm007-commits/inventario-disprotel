@@ -1521,12 +1521,19 @@ async def onu_bridge_apply_controlled(cfg,job):
         steps.append("service_port")
         # La verificacion se hace en vivo y en la misma sesion independiente.
         svc=await issue(f'display service-port port {params["fsp"]} ont {ont_added}',45)
-        matched=[row for row in svc.splitlines()
-                 if re.search(r"(?i)\bgpon\b",row) and
-                 re.search(r"\b"+str(p["vlan_servicio"])+r"\b",row)
-                 for p in [params["profile"]]]
-        if not matched:
-            raise RuntimeError("Falta comprobar service-port VLAN en Huawei")
+        profile=params["profile"]
+        # Verificar en una sola fila: VLAN, F/S/P, ONT-ID, GEM, VLAN de usuario, RX, TX y UP.
+        port_pattern=(
+            r"^\\s*\\d+\\s+"+str(profile["vlan_servicio"])+
+            r"\\s+\\S+\\s+gpon\\s+"+str(params["frame"])+
+            r"\\s*/\\s*"+str(params["slot"])+r"\\s*/\\s*"+str(params["port"])+
+            r"\\s+"+str(ont_added)+r"\\s+"+str(profile["gemport"])+
+            r"\\s+vlan\\s+"+str(profile["vlan_usuario"])+
+            r"\\s+"+str(profile["traffic_in_id"])+
+            r"\\s+"+str(profile["traffic_out_id"])+r"\\s+up\\s*$"
+        )
+        if not any(re.search(port_pattern,row,re.I) for row in svc.splitlines()):
+            raise RuntimeError("La OLT no confirma VLAN/GEM/traffic table/UP del service-port")
         await issue(f'interface gpon {params["frame"]}/{params["slot"]}',20)
         verified=False
         for i in range(12):
