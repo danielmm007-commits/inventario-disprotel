@@ -132,7 +132,7 @@ async function open(index){
  $('form').querySelectorAll('input').forEach(input=>input.disabled=!editable);$('otOption').disabled=!editable;
  $('save').disabled=!editable;$('approve').disabled=!editable||state!=='DATOS_REGISTRADOS';
  $('preflight').disabled=!['APROBADA_PENDIENTE_PERFIL','APROBADA_PENDIENTE_EJECUCION','EJECUTANDO','PENDIENTE_GUARDAR','AUTORIZADA','ERROR'].includes(state);
- $('queueHuawei').disabled=state!=='APROBADA_PENDIENTE_PERFIL'||x.conflicto_ot;
+ $('queueHuawei').disabled=true; // Se habilita solo después de un preflight válido.
  $('preflightResults').innerHTML='';
  $('message').textContent=x.conflicto_ot?'El serial aparece asociado a varias OT. Corrige antes de aprobar.':
  state==='APROBADA_PENDIENTE_PERFIL'?'✓ Aprobación administrativa guardada. El perfil GPON está pendiente de habilitación técnica para ejecución; pulsa «Comprobar preparación» para ver cuáles condiciones faltan. La ONU todavía NO está activada en Huawei. El envío al agente permanece bloqueado hasta habilitar el perfil.':
@@ -152,6 +152,7 @@ $('preflight').onclick=async()=>{
   const p=d.perfil||{};
   const checks=Array.isArray(d.checks)?d.checks:[];
   const passing=checks.filter(c=>c.ok).length;const total=checks.length;const issues=checks.filter(c=>!c.ok);
+   $('queueHuawei').disabled=!(selected===x&&x.estado_aprobacion==='APROBADA_PENDIENTE_PERFIL'&&d.apto_para_cola===true&&!x.conflicto_ot);
   const summary='<div style="padding:9px 0;font-size:12px;font-weight:800;color:'+(issues.length?'#9b5c12':'#1b6c50')+'">'+esc(passing)+' de '+esc(total)+' condiciones aprobadas. '+(issues.length?'Pendientes: '+esc(issues.map(c=>c.codigo.replaceAll('_',' ').toLowerCase()).join(', ')):'Comprobaciones de base de datos correctas; esto no habilita la ejecución Huawei.')+'</div>';
   const status=checks.map(c=>'<div style="padding:7px 0;border-bottom:1px solid #e5edf1;color:'+(c.ok?'#1b6c50':'#a36517')+'">'+(c.ok?'✓ ':'⚠ ')+esc(c.detalle)+'</div>').join('');
   const technical=d.perfil?'<div style="font-size:12px;padding:10px 0"><strong>Perfil DISPROTEL:</strong> Línea '+esc(p.line_profile_id)+' · Servicio '+esc(p.service_profile_id)+' · VLAN '+esc(p.vlan_servicio)+'/'+esc(p.vlan_usuario)+' · GEM '+esc(p.gemport)+' · RX '+esc(p.traffic_in_id)+' · TX '+esc(p.traffic_out_id)+' · '+esc(p.tag_transform)+'</div>':'';
