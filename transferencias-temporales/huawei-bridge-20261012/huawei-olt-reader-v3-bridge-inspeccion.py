@@ -690,17 +690,6 @@ async def read_autofind():
 
 
 async def main():
-    if len(sys.argv)>=2 and sys.argv[1]=="--bridge-inspect":
-        if len(sys.argv)!=4:
-            print("Uso: --bridge-inspect CODIGO_OLT F/S/P",flush=True)
-            return 2
-        try:
-            resultado=await bridge_inspect(sys.argv[2],sys.argv[3])
-            print(json.dumps(resultado,ensure_ascii=False,indent=2),flush=True)
-            return 0 if resultado.get("ok") else 1
-        except Exception as exc:
-            print(json.dumps({"ok":False,"solo_lectura":True,"error":str(exc)},ensure_ascii=False),flush=True)
-            return 1
     try:
         onts = await read_autofind()
         payload = {
@@ -1570,6 +1559,17 @@ Failure: The ONT does not exist
 
 
 async def main():
+    if len(sys.argv)>=2 and sys.argv[1]=="--bridge-inspect":
+        if len(sys.argv)!=4:
+            print("Uso: --bridge-inspect CODIGO_OLT F/S/P",flush=True)
+            return 2
+        try:
+            resultado=await bridge_inspect(sys.argv[2],sys.argv[3])
+            print(json.dumps(resultado,ensure_ascii=False,indent=2),flush=True)
+            return 0 if resultado.get("ok") else 1
+        except Exception as exc:
+            print(json.dumps({"ok":False,"solo_lectura":True,"error":str(exc)},ensure_ascii=False),flush=True)
+            return 1
     if "--self-test" in sys.argv:
         result = self_test_parser()
         print(json.dumps(result, ensure_ascii=False, indent=2))
