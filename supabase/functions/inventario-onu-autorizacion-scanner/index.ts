@@ -129,22 +129,6 @@ Deno.serve(async(req:Request)=>{
      motivo:String(result.motivo||'').slice(0,300)
    },updated_at:new Date().toISOString()}).eq('id',id).eq('estado','EJECUTANDO').select('id,estado').maybeSingle();
    if(upd.error)throw upd.error;if(!upd.data)return reply({error:'Resultado ya registrado'},409);
-   // Intento administrativo opcional tras una provisión Huawei verificada.
-   // Si SmartOLT aún no ha importado la ONU, el error NO cambia el resultado
-   // Huawei; la pantalla permite reintentar el metadata-sync con seguridad.
-   if(success&&Deno.env.get('SMARTOLT_METADATA_AUTO_ENABLED')==='true'){
-     const syncUrl=(Deno.env.get('SUPABASE_URL')||'')+
-       '/functions/v1/inventario-onu-smartolt-metadata';
-     const task=fetch(syncUrl,{method:'POST',headers:{
-       'Authorization':'Bearer '+AUTH_TOKEN,'Content-Type':'application/json'
-     },body:JSON.stringify({action:'sync',olt_codigo,onu_sn:rr.data.onu_sn})})
-     .then(async res=>{
-       if(!res.ok)console.warn('SmartOLT metadata pendiente:',res.status,(await res.text()).slice(0,180));
-     }).catch(e=>console.warn('SmartOLT metadata pendiente:',String(e).slice(0,180)));
-     const runtime=(globalThis as any).EdgeRuntime;
-     if(runtime?.waitUntil)runtime.waitUntil(task);
-     else await task;
-   }
    return reply({ok:true,...upd.data});
   }
   return reply({error:'Acción inválida'},400);
