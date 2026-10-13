@@ -101,7 +101,7 @@ function render(){
   const pon=String(x.pon||'').split('/');const index=items.indexOf(x);
   const status=x.conflicto_ot?'OT duplicada':x.estado_aprobacion==='APROBADA_PENDIENTE_EJECUCION'?'Aprobada, sin ejecutar':x.estado_aprobacion==='DATOS_REGISTRADOS'?'Datos registrados':x.orden_id?'Pendiente':'Pendiente · sin OT';
   return '<tr><td>GPON</td><td>'+esc(pon[1]||'—')+'</td><td>'+esc(pon[2]||'—')+'</td><td class="serial">'+esc(x.onu_sn_display||x.onu_sn)+'</td>'+
-  '<td class="model">'+esc(x.modelo||'—')+'</td><td>'+esc(date(x.detectada_at||x.ultima_lectura_at))+'</td><td><span class="status">'+esc(status)+'</span></td>'+
+  '<td class="model">'+esc(x.modelo||'—')+(x.modelo_catalogo?'<div style="font-size:10px;font-weight:600;color:#587e8f;margin-top:4px">'+esc(x.modelo_catalogo.capacidad)+' · LAN '+esc(x.modelo_catalogo.ethernet_puertos)+' · WiFi '+esc(x.modelo_catalogo.wifi_puertos)+(x.modelo_catalogo.catv?' · CATV':'')+'</div>':'<div style="font-size:10px;color:#a2762d;margin-top:4px">Modelo sin ficha</div>')+'</td><td>'+esc(date(x.detectada_at||x.ultima_lectura_at))+'</td><td><span class="status">'+esc(status)+'</span></td>'+
   '<td><button class="action" type="button" data-index="'+index+'">'+(x.conflicto_ot?'Ver conflicto':'Autorizar')+'</button></td></tr>';
  }).join('')+'</tbody></table></div></section>';
  }).join('');
@@ -121,7 +121,8 @@ async function load(){
 async function open(index){
  const x=items[index];if(!x)return;selected=x;$('modal').classList.add('show');
  $('details').innerHTML='<strong>OLT:</strong> '+esc(x.olt_nombre||x.olt_codigo)+' · <strong>PON:</strong> '+esc(x.pon||'—')+
- '<div><strong>Modelo:</strong> '+esc(x.modelo||'—')+' · <strong>SN:</strong> '+esc(x.onu_sn||'—')+'</div>'+
+ '<div><strong>Modelo:</strong> '+esc(x.modelo||'—')+' · <strong>SN:</strong> '+esc(x.onu_sn||'—')+'</div>'+ 
+ (x.modelo_catalogo?'<div><strong>Catálogo SmartOLT:</strong> '+esc(x.modelo_catalogo.capacidad)+' · '+esc(x.modelo_catalogo.ethernet_puertos)+' Ethernet · '+esc(x.modelo_catalogo.wifi_puertos)+' WiFi · '+esc(x.modelo_catalogo.voip_puertos)+' VoIP · CATV '+(x.modelo_catalogo.catv?'Sí':'No')+'</div>':'<div>Modelo no incluido en el catálogo importado</div>')+
  '<div><strong>Orden:</strong> '+esc(x.orden_numero||'Vinculación opcional')+'</div>';
  updateOrdersFor(x);
  $('nombre').value=x.nombre||'';$('nap').value=x.nap||'';$('zona').value=x.zona||'';$('ip').value=x.ip_administrativa||'';
