@@ -128,16 +128,18 @@ Deno.serve(async req=>{
    return reply({error:'Falta confirmar identidad ONU/PON en el inventario Huawei. No se modifica SmartOLT'},409);
   const cfg=settings(olt);
   const {row,external}=await locate(cfg,sn);
-  const currentName=field(row,['name','onu_name']);
+  const nameKey=['name','onu_name'].find(k=>row[k]!==undefined);
+  const currentName=nameKey?String(row[nameKey]??'').trim():'';
   const commentKey=['address_or_comment','address','onu_address','comment'].find(k=>row[k]!==undefined);
   // Si no conocemos el valor actual, no forzamos una escritura.
   if(!commentKey)return reply({error:'SmartOLT no entregó el comentario actual; revisar formato API antes de escribir'},409);
   const currentComment=String(row[commentKey]??'').trim();
   const changes:{name?:string,address_or_comment?:string}={};
-  if(!currentName)changes.name=name;
+  // Si SmartOLT no informó el campo de nombre, jamás adivinar su valor.
+  if(nameKey&&!currentName)changes.name=name;
   if(currentComment!==ip){
    if(currentComment&&!human) return reply({error:'Comentario SmartOLT diferente; revisión manual obligatoria'},409);
-   if(currentComment&&body.sobrescribir_comentario!==true)
+   if(currentComment&&action==='sync'&&body.sobrescribir_comentario!==true)
     return reply({error:'SmartOLT ya tiene otro comentario. Confirmar antes de reemplazar.',actual:currentComment,propuesto:ip},409);
    changes.address_or_comment=ip;
   }
