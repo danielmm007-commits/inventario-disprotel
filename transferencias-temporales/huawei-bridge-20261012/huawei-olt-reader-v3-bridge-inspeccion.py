@@ -1395,7 +1395,7 @@ async def multi_olt_service_loop():
 # Se trabaja en una sesion Telnet independiente al inventario de V3.
 # NUNCA configurar IP administrativa dentro de la ONU.
 # ================================================================
-def _onu_bridge_profile(job):
+def _onu_bridge_profile(job, preview_only=False):
     if not isinstance(job,dict) or not isinstance(job.get("perfil"),dict):
         raise ValueError("Falta perfil GPON aprobado")
     p=job["perfil"]
@@ -1411,7 +1411,7 @@ def _onu_bridge_profile(job):
         raise ValueError("Autorizacion no permitida para WIFI o CATV")
     if str(p.get("modelo_clave") or "").upper()!=str(job.get("onu_modelo") or "").upper():
         raise ValueError("Modelo de ONU no coincide con su perfil")
-    if p.get("habilitado") is not True:
+    if p.get("habilitado") is not True and not preview_only:
         raise ValueError("El perfil aun no esta habilitado por revision tecnica")
     integer={}
     fields={"vlan_servicio":(1,4094),"vlan_usuario":(1,4094),
@@ -1466,15 +1466,50 @@ def _onu_service_command(params,ont_id):
             f'outbound traffic-table index {p["traffic_out_id"]}')
 
 
-def onu_bridge_dry_run(job,ont_id_ejemplo=0):
-    """Genera comandos para revision tecnica. NO se conecta ni ejecuta Huawei."""
-    params=_onu_bridge_profile(job)
+def _onu_native_vlan_command(params, ont_id):
+    """VLAN nativa ETH1 comprobada con ayuda de consola Huawei Salcedo 2026-10-13."""
+    if not isinstance(ont_id,int) or isinstance(ont_id,bool) or not (0<=ont_id<=127):
+        raise ValueError("ONT-ID no valido para native-vlan")
+    return (f'ont port native-vlan {params["port"]} {ont_id} eth 1 '
+            f'vlan {params["profile"]["vlan_usuario"]} priority 0')
+
+
+def _onu_parse_native_port_attribute(raw, ont_id, expected_vlan):
+    """Valida una unica fila ETH1 con port switch=on y native VLAN esperada."""
+    for line in str(raw or "").splitlines():
+        match=re.match(r'^\\s*(\\d+)\\s+1\\s+ETH\\s+enable\\s+auto\\s+auto\\s+on\\s+'
+                       r'(?:on|off)\\s+(\\d+)\\s+0\\s*$',line,re.I)
+        if match and int(match.group(1))==ont_id and int(match.group(2))==expected_vlan:
+            return True
+    return False
+
+
+def onu_bridge_dry_run(job,ont_id_ejemplo=None):
+    """Previsualizacion de secuencia; NUNCA conecta ni ejecuta Huawei."""
+    params=_onu_bridge_profile(job,preview_only=True)
+    p=params["profile"]
+    placeholder="<ONT_ID_ASIGNADO_POR_HUAWEI>"
     return {"solo_previsualizacion":True,"escrituras_ejecutadas":0,
-            "ip_incluida":False,"tipo":"BRIDGE",
+            "ip_incluida":False,"tipo":"BRIDGE","perfil_habilitado":job["perfil"].get("habilitado") is True,
             "comandos":[f'interface gpon {params["frame"]}/{params["slot"]}',
-                        params["ont_add_command"],"quit",
-                        _onu_service_command(params,ont_id_ejemplo)],
-            "advertencia":"ONT-ID del service-port es provisional: Huawei debe devolver el ONT-ID real."}
+                        f'display ont autofind {params["port"]}',
+                        f'display ont info {params["port"]} all',
+                        params["ont_add_command"],
+                        (f'ont port native-vlan {params["port"]} {placeholder} eth 1 '
+                         f'vlan {p["vlan_usuario"]} priority 0'),
+                        f'display ont port attribute {params["port"]} {placeholder} eth 1',
+                        "quit",
+                        (f'service-port vlan {p["vlan_servicio"]} gpon {params["fsp"]} '
+                         f'ont {placeholder} gemport {p["gemport"]} multi-service '
+                         f'user-vlan {p["vlan_usuario"]} tag-transform {params["tag"]} '
+                         f'inbound traffic-table index {p["traffic_in_id"]} '
+                         f'outbound traffic-table index {p["traffic_out_id"]}'),
+                        f'display service-port port {params["fsp"]} ont {placeholder}',
+                        f'interface gpon {params["frame"]}/{params["slot"]}',
+                        f'display ont info {params["port"]} {placeholder}'],
+            "advertencia":"BORRADOR sin ejecucion: sustituir ONT-ID exclusivamente tras respuesta de ont add; '
+                           'verificar online/config normal/match y persistencia antes de afirmar autorizacion. '
+                           'No ejecutar save automaticamente, podria guardar otros cambios de OLT."}
 
 
 async def onu_bridge_apply_controlled(cfg,job):
@@ -1513,7 +1548,14 @@ async def onu_bridge_apply_controlled(cfg,job):
         ont_added=_onu_parse_added_id(add_resp)
         steps.append("ont_add")
         await issue("quit",20)
-        # Segundo comando de escritura: se usa el ONT-ID devuelto por Huawei.
+        # La VLAN nativa se programa SOBRE LA ONU NUEVA y se comprueba antes del service-port.
+        # Nunca se toca el ONT-ID de referencia 45: ONT-ID proviene del resultado de ont add.
+        nv_resp=await issue(_onu_native_vlan_command(params,ont_added),50)
+        steps.append("native_vlan")
+        nv_read=await issue(f'display ont port attribute {params["port"]} {ont_added} eth 1',45)
+        if not _onu_parse_native_port_attribute(nv_read,ont_added,params["profile"]["vlan_usuario"]):
+            raise RuntimeError("VLAN nativa ETH1 no coincide con VLAN de usuario; detener y revisar")
+        # Siguiente comando de escritura: service-port usa el ONT-ID devuelto por Huawei.
         service_cmd=_onu_service_command(params,ont_added)
         sv_resp=await issue(service_cmd,70)
         if not re.search(r"(?i)(success|service-port|^\s*%?\s*command)",sv_resp):
@@ -1539,17 +1581,20 @@ async def onu_bridge_apply_controlled(cfg,job):
         for i in range(12):
             info=await issue(f'display ont info {params["port"]} {ont_added}',35)
             snm=re.search(r"(?im)^\s*SN\s*:\s*([A-Fa-f0-9]{16})\b",info)
-            online=bool(re.search(r"(?im)^\s*Run state\s*:\s*online\b",info))
+            online=bool(re.search(r"(?im)^\\s*Run state\\s*:\\s*online\\b",info))
+            config_normal=bool(re.search(r"(?im)^\\s*Config state\\s*:\\s*normal\\b",info))
+            match_normal=bool(re.search(r"(?im)^\\s*Match state\\s*:\\s*match\\s*$",info))
             if snm and snm.group(1).upper()!=params["serial"]:
                 raise RuntimeError("Huawei devolvio otro serial: requiere investigacion")
-            if snm and online:
+            if snm and online and config_normal and match_normal:
                 verified=True
                 break
             await asyncio.sleep(10)
         if not verified:
-            raise RuntimeError("ONU creada, pero aun no figura ONLINE; requiere revision manual")
+            raise RuntimeError("ONU creada pero no verifica online + config normal + match. Revisar manualmente; NO reintentar el alta.")
         # NO se hace save por defecto, pues puede pedir confirmación interactiva.
-        return {"verified_online":True,"serial_verificado":params["serial"],"ont_id":ont_added,
+        return {"verified_online":True,"native_vlan_verificada":True,"config_match":True,
+                "serial_verificado":params["serial"],"ont_id":ont_added,
                 "guardado_permanente":False,"motivo":"Provisionamiento verificado en running-config; guardar persistencia Huawei en ventana aprobada"}
     except Exception as exc:
         # Jamás borrar/crear ONT automáticamente para recuperarse de fallo parcial.
