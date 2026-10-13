@@ -40,7 +40,7 @@ function onuStep(o){
  if(x.onu_sn)detalle+='<div class="stepState"><b>SN reportado:</b> '+esc(x.onu_sn)+'</div>';
  if(x.onu_pon)detalle+='<div class="stepState"><b>PON reportado:</b> '+esc(x.onu_pon)+'</div>';
  if(x.olt_nombre)detalle+='<div class="stepState"><b>OLT reportada:</b> '+esc(x.olt_nombre)+'</div>';
- const sel=x.onu_sn?'<div class="ipCandidate" style="margin-top:7px"><b>ONU IDENTIFICADA POR CAMPO</b><div class="stepState">'+esc(x.onu_modelo||'ONU/ONT')+' · '+esc(x.onu_sn_display||x.onu_sn||'')+'</div></div>':'';
+ const sel=x.onu_sn?'<div class="ipCandidate" style="margin-top:7px"><b>ONU IDENTIFICADA POR CAMPO</b><div class="stepState">'+esc(x.onu_modelo||'ONU/ONT')+' · '+esc(x.onu_sn_display||x.onu_sn||'')+'</div><button type="button" onclick="abrirRegistroOnuManual(\''+esc(o.id)+'\')" style="margin-top:8px">✍️ DATOS ADMINISTRATIVOS Y APROBACIÓN MANUAL</button></div>':'';
  const evidencia=x.evidencia_url?'<div class="stepState" style="margin-top:7px"><b>📷 EVIDENCIA SMARTOLT</b></div><img src="'+esc(x.evidencia_url)+'" onclick="window.open(this.src,\'_blank\')">':'';
  const accion=ok?'':'<div class="remoteTools"><label class="btnMini">🖼️ CARGAR ARCHIVO<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="subirOnuMesa(event,\''+o.id+'\')"></label><div class="remotePaste" tabindex="0" contenteditable="true" spellcheck="false" onclick="this.focus()" onkeydown="if(event.key!==\'v\'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarOnuMesa(event,\''+o.id+'\')">📋 PEGAR CAPTURA Ctrl+V</div></div>';
  return '<div class="step"><b>📡 ACTIVAR / CAMBIAR ONU</b><div class="stepState">'+(ok?'✅ Activación registrada con evidencia':corr?'⚠️ Requiere corrección: '+esc(x.observacion||''):'Fernando activa la ONU en SmartOLT y adjunta la captura como evidencia.')+'</div>'+detalle+sel+evidencia+accion+'</div>';
@@ -116,6 +116,93 @@ window.confirmarIpMesa=async(id,candidato)=>{if(!confirm('¿Confirmar esta IP co
 window.ipManualMesa=async(id,sol,actual)=>{const ip=prompt('IP correcta:',actual||'');if(!ip)return;const obs=prompt('Observación opcional:','')||'';try{await ipApi('assign-manual',{orden_id:id,solicitud_id:sol,ip:ip.trim(),observacion:obs});await cargar(true)}catch(e){alert(e.message)}};
 window.confirmarRemotoMesa=async id=>{if(!confirm('¿Confirmar que el acceso remoto funciona correctamente?'))return;try{await arApi('confirm',{orden_id:id});await cargar(true)}catch(e){alert(e.message)}};
 window.corregirRemotoMesa=async id=>{const obs=prompt('¿Qué debe corregir el técnico?');if(!obs)return;try{await arApi('correction',{orden_id:id,observacion:obs});await cargar(true)}catch(e){alert(e.message)}};
+
+const MANUAL_ONU_API=BASE+'inventario-onu-autorizacion-manual';
+async function manualOnu(action,orden_id,payload={}){
+ const token=ses().session_token||'';
+ if(!token)throw Error('Sesión general requerida');
+ // Petición CORS simple: evitar OPTIONS en navegadores de escritorio.
+ const r=await fetch(MANUAL_ONU_API,{method:'POST',cache:'no-store',headers:{'Content-Type':'text/plain;charset=UTF-8'},
+   body:JSON.stringify({action,orden_id,session_token:token,...payload})});
+ const d=await r.json().catch(()=>({}));
+ if(!r.ok||d.error)throw Error(d.error||('Error HTTP '+r.status));
+ return d;
+}
+function crearModalOnuManual(){
+ let wrap=$('onuManualDialog');
+ if(wrap)return wrap;
+ wrap=document.createElement('div');wrap.id='onuManualDialog';
+ wrap.style.cssText='position:fixed;inset:0;z-index:999999;background:rgba(0,25,42,.69);display:none;overflow-y:auto;padding:30px 12px';
+ wrap.innerHTML='<section style="max-width:660px;margin:auto;background:#fff;border-radius:14px;padding:18px;color:#163649;box-shadow:0 20px 70px #0004">'+
+ '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h3 style="margin:0;font-size:20px">📡 Autorizar ONU Huawei (manual)</h3><button type="button" id="onuMCerrar" style="width:auto;padding:8px 12px">Cerrar</button></div>'+
+ '<p id="onuMInfo" style="font-size:12px;background:#eaf4f9;padding:10px;border-radius:7px">Cargando datos…</p>'+
+ '<form id="onuMForm" style="display:grid;gap:10px">'+
+ '<label style="display:grid;gap:4px">Nombre / descripción ONU * <input id="onuMNombre" maxlength="120" required placeholder="Cliente o identificación de la ONU" style="padding:10px;border:1px solid #bdd0de;border-radius:7px"></label>'+
+ '<label style="display:grid;gap:4px">NAP <input id="onuMNap" maxlength="80" placeholder="NAP identificada por el técnico" style="padding:10px;border:1px solid #bdd0de;border-radius:7px"></label>'+
+ '<label style="display:grid;gap:4px">Zona <input id="onuMZona" maxlength="80" placeholder="Zona o sector" style="padding:10px;border:1px solid #bdd0de;border-radius:7px"></label>'+
+ '<label style="display:grid;gap:4px">IP (solo referencia administrativa) <input id="onuMIp" placeholder="172.25.x.x — no se configura en la ONU" style="padding:10px;border:1px solid #bdd0de;border-radius:7px"></label>'+
+ '<div style="font-size:11px;background:#fff2d9;padding:10px;border-radius:7px">Se requiere NAP o zona. La IP es opcional e informativa. El serial, modelo, OLT y PON vienen del detector Huawei. No se copian a mano.</div>'+
+ '<button type="submit" id="onuMGuardar" style="background:#116a89;color:white;border:0;border-radius:8px;padding:12px;cursor:pointer">Guardar datos administrativos</button>'+
+ '<button type="button" id="onuMAprobar" disabled style="background:#cfd8de;color:#52616d;border:0;border-radius:8px;padding:12px">APROBAR AUTORIZACIÓN MANUAL</button>'+
+ '<p id="onuMEstado" style="font-size:12px;font-weight:700"></p></form></section>';
+ document.body.appendChild(wrap);
+ $('onuMCerrar').onclick=()=>wrap.style.display='none';
+ wrap.addEventListener('click',e=>{if(e.target===wrap)wrap.style.display='none'});
+ return wrap;
+}
+let ONU_MANUAL_ID='';
+window.abrirRegistroOnuManual=async ordenId=>{
+ const ot=[...(DATA.instalaciones||[]),...(DATA.soportes||[])].find(x=>x.id===ordenId);
+ if(!ot?.onu?.onu_sn){alert('El técnico debe identificar primero la ONU mediante Huawei');return}
+ const wrap=crearModalOnuManual();ONU_MANUAL_ID=ordenId;
+ wrap.style.display='block';
+ $('onuMInfo').textContent='OLT: '+(ot.onu.olt_codigo||'—')+' · PON: '+(ot.onu.onu_pon||'—')+' · Modelo: '+(ot.onu.onu_modelo||'—')+' · SN: '+ot.onu.onu_sn;
+ $('onuMEstado').textContent='Consultando datos administrativos…';
+ $('onuMAprobar').disabled=true;
+ ['onuMNombre','onuMNap','onuMZona','onuMIp'].forEach(id=>$(id).value='');
+ try{
+  const d=await manualOnu('status',ordenId);
+  if(ONU_MANUAL_ID!==ordenId)return;
+  const r=d.registro;
+  if(r){
+   $('onuMNombre').value=r.nombre||'';
+   $('onuMNap').value=r.nap||'';
+   $('onuMZona').value=r.zona||'';
+   $('onuMIp').value=r.ip_administrativa||'';
+   $('onuMEstado').textContent='Estado: '+r.estado+(r.estado==='APROBADA_PENDIENTE_EJECUCION'?' · aún NO ejecutada en Huawei':'');
+   $('onuMAprobar').disabled=r.estado!=='DATOS_REGISTRADOS';
+   if(r.estado!=='DATOS_REGISTRADOS')$('onuMGuardar').disabled=true;
+   else $('onuMGuardar').disabled=false;
+  }else{
+   $('onuMGuardar').disabled=false;
+   $('onuMEstado').textContent='Ingresa nombre, NAP o zona y la IP opcional. Después guarda y aprueba.';
+  }
+ }catch(e){$('onuMEstado').textContent='Error: '+e.message}
+};
+function bloquearManualOnu(b){$('onuMGuardar').disabled=b;$('onuMAprobar').disabled=b;}
+document.addEventListener('submit',async e=>{
+ if(e.target?.id!=='onuMForm')return;
+ e.preventDefault();const id=ONU_MANUAL_ID;if(!id)return;
+ bloquearManualOnu(true);
+ try{
+  const d=await manualOnu('register',id,{nombre:$('onuMNombre').value,nap:$('onuMNap').value,zona:$('onuMZona').value,ip_administrativa:$('onuMIp').value});
+  $('onuMEstado').textContent='✅ Datos guardados. Puedes aprobar manualmente. Huawei permanece sin cambios.';
+  $('onuMAprobar').disabled=false;
+ }catch(err){$('onuMEstado').textContent='Error: '+err.message}
+ finally{$('onuMGuardar').disabled=false}
+});
+document.addEventListener('click',async e=>{
+ if(e.target?.id!=='onuMAprobar')return;
+ const id=ONU_MANUAL_ID;if(!id)return;
+ if(!confirm('¿Confirmas la aprobación MANUAL de esta ONU? Se registrará una solicitud para Huawei, pero el ejecutor aún está deshabilitado y NO se activará automáticamente.'))return;
+ bloquearManualOnu(true);
+ try{
+  const d=await manualOnu('approve',id);
+  $('onuMEstado').textContent='✅ '+(d.nota||'Aprobación registrada. Pendiente de ejecución Huawei.');
+  $('onuMAprobar').disabled=true;$('onuMGuardar').disabled=true;
+ }catch(err){$('onuMEstado').textContent='Error al aprobar: '+err.message;$('onuMAprobar').disabled=false;$('onuMGuardar').disabled=false}
+});
+
 window.addEventListener('disprotel:remote-updated',()=>cargar(true));
 const obs=new MutationObserver(()=>{ocultarLegacy();if(!$('app')?.classList.contains('hidden'))crear()});
 const iniciar=()=>{obs.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});setTimeout(crear,220)};
