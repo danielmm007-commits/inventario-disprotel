@@ -30,6 +30,28 @@
   <div class="stat"><strong id="sIssue">0</strong><span>CON RETRASO / ERROR</span></div>
 </section>
 <section class="grid" id="grid"><div class="empty">Consultando OLT…</div></section>
+
+<section class="card" id="onuPerfilSection" style="margin-top:12px">
+<div class="head"><div class="title"><b style="font-size:15px">Perfiles de autorización ONU por OLT</b><small>VLAN, perfiles y GEM independientes por modelo y tipo · Configuración sin ejecución Huawei</small></div><span class="state RETRASADA" style="white-space:nowrap">SOLO CONFIGURACIÓN</span></div>
+<p style="font-size:11px;color:var(--muted)">Todos los perfiles quedan deshabilitados para autorización automática. Los datos se guardan en Supabase; no se modifica ninguna ONU.</p>
+<form id="onuPerfilForm" class="form" style="margin-top:10px">
+<div class="field"><label>OLT</label><select id="pOlt" required></select></div>
+<div class="field"><label>Tipo ONU</label><select id="pTipo"><option value="BRIDGE">Bridge</option><option value="WIFI">WiFi</option><option value="CATV">CATV</option></select></div>
+<div class="field"><label>Modelo o familia</label><input id="pModelo" required maxlength="64" placeholder="HG8012H"></div>
+<div class="field"><label>VLAN de servicio</label><input id="pVlan" type="number" min="1" max="4094" placeholder="100"></div>
+<div class="field"><label>VLAN de usuario (si aplica)</label><input id="pVlanU" type="number" min="1" max="4094"></div>
+<div class="field"><label>Line profile ID</label><input id="pLine" type="number" min="0" max="4095"></div>
+<div class="field"><label>Service profile ID</label><input id="pService" type="number" min="0" max="4095"></div>
+<div class="field"><label>GEM port</label><input id="pGem" type="number" min="0" max="4095"></div>
+<div class="field"><label>Traffic RX (índice)</label><input id="pTrafficIn" type="number" min="0"></div>
+<div class="field"><label>Traffic TX (índice)</label><input id="pTrafficOut" type="number" min="0"></div>
+<div class="field"><label>Tag transform (si aplica)</label><select id="pTag"><option value="">Por confirmar</option><option value="translate">Translate</option><option value="transparent">Transparent</option><option value="default">Default</option></select></div>
+<div class="field full"><label>Observaciones</label><input id="pObs" maxlength="700" placeholder="Configuración validada contra ONU existente"></div>
+<div class="field full"><button type="submit" class="btn primary" id="pSave" style="background:#176389;color:white">Guardar perfil (sin activar autorización)</button></div>
+</form>
+<div class="notice" style="margin-top:8px">Los perfiles incompletos o sin comprobar no deben usarse para autorizar ONU. El lector Huawei V3 continúa en solo lectura.</div>
+<div id="pRows" style="margin-top:9px;font-size:11px;color:var(--ink)">Cargando perfiles…</div>
+</section>
 </div>
 
 <div class="modal" id="modal"><section class="dialog">
@@ -76,7 +98,7 @@ function render(){
  <div class="cardActions"><button class="test" data-test-id="${x.id}" onclick="testOlt('${x.id}')">⚡ Probar conexión</button><button onclick="editOlt('${x.id}')">✎ Editar</button><button class="${x.activo?'toggleOff':''}" onclick="toggleOlt('${x.id}',${!x.activo})">${x.activo?'⏸ Desactivar':'▶ Activar'}</button></div>
  </article>`).join(''):'<div class="empty">Todavía no hay OLT registradas. Usa “Agregar OLT”.</div>';
 }
-async function load(){try{const d=await call({action:'list'});rows=d.rows||[];render()}catch(e){$('grid').innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}
+async function load(){try{const d=await call({action:'list'});rows=d.rows||[];render();syncProfileOlts();await loadProfiles()}catch(e){$('grid').innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}
 function openForm(row=null){
  $('formTitle').textContent=row?'Editar OLT':'Agregar OLT';
  $('id').value=row?.id||'';
@@ -125,6 +147,40 @@ $('form').onsubmit=async e=>{e.preventDefault();try{
  await load();
 }catch(err){toast(err.message,'error')}};
 $('eyeBtn').onclick=()=>{const i=$('credSecret');i.type=i.type==='password'?'text':'password';$('eyeBtn').textContent=i.type==='password'?'👁':'🙈'};$('newBtn').onclick=()=>openForm();$('reloadBtn').onclick=load;$('closeBtn').onclick=$('cancelBtn').onclick=()=>$('modal').classList.remove('show');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('show')};
+
+const PROFILE_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-onu-perfiles-olt';
+let PROFILE_ROWS=[];
+async function profileCall(body){const r=await fetch(PROFILE_API,{method:'POST',headers:headers(),body:JSON.stringify(body)}),d=await r.json().catch(()=>({}));if(!r.ok||d.error)throw new Error(d.error||'Error al consultar perfiles');return d;}
+const nval=id=>$(id).value===''?null:Number($(id).value);
+function renderProfileRows(){
+ const val=$('pOlt').value,entries=PROFILE_ROWS.filter(x=>x.olt_id===val);
+ $('pRows').innerHTML=entries.length?entries.map(x=>'<div style="background:#f6fafc;padding:9px;border:1px solid #dae5eb;border-radius:7px;margin:5px 0"><strong>'+esc(x.tipo_onu)+' · '+esc(x.modelo_clave)+'</strong> | VLAN '+esc(x.vlan_servicio??'—')+' | Línea '+esc(x.line_profile_id??'—')+' | Servicio '+esc(x.service_profile_id??'—')+' | GEM '+esc(x.gemport??'—')+' · <b style="color:#a66">No habilitado</b><button type="button" class="btn" style="margin-left:8px;padding:3px 8px;background:white;border:1px solid #ddd" data-profile="'+esc(x.id)+'">Editar</button></div>').join(''):'<div style="color:#688">Aún no hay perfiles guardados para esta OLT.</div>';
+ $('pRows').querySelectorAll('[data-profile]').forEach(btn=>btn.onclick=()=>{const p=PROFILE_ROWS.find(x=>x.id===btn.dataset.profile);if(!p)return;const sets={pOlt:p.olt_id,pTipo:p.tipo_onu,pModelo:p.modelo_clave,pVlan:p.vlan_servicio,pVlanU:p.vlan_usuario,pLine:p.line_profile_id,pService:p.service_profile_id,pGem:p.gemport,pTrafficIn:p.traffic_in_id,pTrafficOut:p.traffic_out_id,pTag:p.tag_transform,pObs:p.observaciones};Object.entries(sets).forEach(([k,v])=>$(k).value=v??'');$('pSave').scrollIntoView({behavior:'smooth',block:'center'});});
+}
+async function loadProfiles(){
+ try{const d=await profileCall({action:'list'});PROFILE_ROWS=d.rows||[];renderProfileRows();}
+ catch(e){$('pRows').textContent=e.message;}
+}
+function syncProfileOlts(){
+ const last=$('pOlt').value;
+ $('pOlt').innerHTML=rows.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.nombre)+' ('+esc(x.codigo)+')</option>').join('');
+ if(rows.some(x=>x.id===last))$('pOlt').value=last;
+ renderProfileRows();
+}
+$('pOlt').onchange=renderProfileRows;
+$('onuPerfilForm').onsubmit=async e=>{
+ e.preventDefault();const btn=$('pSave');btn.disabled=true;
+ try{
+  await profileCall({action:'save',olt_id:$('pOlt').value,tipo_onu:$('pTipo').value,modelo_clave:$('pModelo').value,
+   vlan_servicio:nval('pVlan'),vlan_usuario:nval('pVlanU'),line_profile_id:nval('pLine'),
+   service_profile_id:nval('pService'),gemport:nval('pGem'),traffic_in_id:nval('pTrafficIn'),traffic_out_id:nval('pTrafficOut'),
+   tag_transform:$('pTag').value,observaciones:$('pObs').value});
+  toast('Perfil guardado sin activar escrituras Huawei','success','VLAN y perfiles configurados por OLT.');
+  await loadProfiles();
+ }catch(err){toast(err.message,'error');alert(err.message)}
+ finally{btn.disabled=false}
+};
+
 load();
 </script>
 </body>
