@@ -92,11 +92,13 @@ Deno.serve(async(req:Request)=>{
    const result=body.resultado;
    if(!result||typeof result!=='object'||Array.isArray(result))return reply({error:'Resultado Huawei obligatorio'},400);
    const success=body.ok===true;
-   // El resultado exitoso requiere evidencia de verificación en OLT, no solo respuesta de comando.
+   // Registrar estado PENDIENTE_GUARDAR cuando la configuración está online
+   // pero todavía no se confirmó el guardado persistente Huawei.
    if(success&&(!isSn(result.serial_verificado)||code(result.serial_verificado)!==rr.data.onu_sn||result.verified_online!==true))
      return reply({error:'Falta verificar serial y estado online real de la ONU'},409);
-   const upd=await s.from('onu_autorizaciones_manuales').update({estado:success?'AUTORIZADA':'ERROR',ejecutado_at:new Date().toISOString(),resultado_huawei:{
-     verified_online:result.verified_online===true,serial_verificado:result.serial_verificado||null,
+   const finalState=success?(result.guardado_permanente===true?'AUTORIZADA':'PENDIENTE_GUARDAR'):'ERROR';
+   const upd=await s.from('onu_autorizaciones_manuales').update({estado:finalState,ejecutado_at:new Date().toISOString(),resultado_huawei:{
+     verified_online:result.verified_online===true,guardado_permanente:result.guardado_permanente===true,serial_verificado:result.serial_verificado||null,
      ont_id:Number.isSafeInteger(result.ont_id)?result.ont_id:null,
      motivo:String(result.motivo||'').slice(0,300)
    },updated_at:new Date().toISOString()}).eq('id',id).eq('estado','EJECUTANDO').select('id,estado').maybeSingle();
