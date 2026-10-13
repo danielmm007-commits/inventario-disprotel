@@ -1566,7 +1566,7 @@ async def onu_bridge_apply_controlled(cfg,job):
 # No se mezcla con CONFIRMADO (evidencia SmartOLT).
 # Aun cuando una ONU este aprobada, NO se ejecuta 'ont add'.
 # ================================================================
-def leer_autorizaciones_manual_aprobadas(olt_codigo):
+def onu_aprobaciones_api(action,olt_codigo,payload=None):
     import urllib.request
     code=str(olt_codigo or "").strip().upper()
     if not re.fullmatch(r"[A-Z0-9_-]{2,32}",code):
@@ -1575,10 +1575,13 @@ def leer_autorizaciones_manual_aprobadas(olt_codigo):
     if not token:
         raise RuntimeError("Falta token de agente")
     base=os.environ.get("SUPABASE_URL","https://ajnbswrwnjpjypjiorye.supabase.co").rstrip("/")
-    payload=json.dumps({"action":"scanner-pending","olt_codigo":code}).encode("utf-8")
+    request_body={"action":str(action),"olt_codigo":code}
+    if payload:
+        request_body.update(payload)
+    encoded=json.dumps(request_body).encode("utf-8")
     req=urllib.request.Request(
         base+"/functions/v1/inventario-onu-autorizacion-scanner",
-        data=payload,
+        data=encoded,
         headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"},
         method="POST"
     )
@@ -1587,6 +1590,10 @@ def leer_autorizaciones_manual_aprobadas(olt_codigo):
     if data.get("ok") is not True:
         raise RuntimeError("Error al leer cola de autorización")
     return data
+
+def leer_autorizaciones_manual_aprobadas(olt_codigo):
+    return onu_aprobaciones_api("scanner-pending",olt_codigo)
+
 
     async def bridge_local_worker():
         """Solicitud local opcional de lectura GPON, no genera sondeo a Supabase."""
