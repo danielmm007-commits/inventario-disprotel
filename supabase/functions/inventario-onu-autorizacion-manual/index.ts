@@ -45,28 +45,46 @@ Deno.serve(async req=>{
    });
    return reply({ok:true,items,updated_at:new Date().toISOString()});
   }
+  if(action==='active-orders'){
+   const q=await db.from('ordenes_trabajo').select('id,id_orden,tipo_trabajo,estado,cliente_nombre,cliente_nombre_final,grupo_asignado').not('estado','in','("COMPLETADA","CANCELADA")').limit(150);
+   if(q.error)throw q.error;return reply({ok:true,rows:q.data||[]});
+  }
   const orden_id=String(data.orden_id||'').trim();
-  if(!/^[0-9a-f-]{36}$/i.test(orden_id))return reply({error:'OT obligatoria'},400);
-  const ord=await db.from('ordenes_trabajo').select('id,id_orden,estado').eq('id',orden_id).maybeSingle();if(ord.error||!ord.data)return reply({error:'OT inexistente'},404);
+  if(orden_id&&!/^[0-9a-f-]{36}$/i.test(orden_id))return reply({error:'OT inválida'},400);
+  let ord:any={data:null};
+  if(orden_id){ord=await db.from('ordenes_trabajo').select('id,estado').eq('id',orden_id).maybeSingle();if(ord.error||!ord.data)return reply({error:'OT inexistente'},404);}
+  const olt_codigo=normalize(data.olt_codigo||'');
+  const onu_sn=data.onu_sn?normSn(data.onu_sn):'';
+  const identity=()=>db.from('onu_autorizaciones_manuales').select('*').eq('olt_codigo',olt_codigo).eq('onu_sn',onu_sn).maybeSingle();
+  if(!orden_id&&(!olt_codigo||!onu_sn))return reply({error:'OLT y serial obligatorios'},400);
   if(action==='status'){
-   const r=await db.from('onu_autorizaciones_manuales').select('id,orden_id,olt_codigo,onu_sn,onu_pon,onu_modelo,nombre,nap,zona,ip_administrativa,estado,registrado_at,aprobado_at,registrado_por_id,aprobado_por_id').eq('orden_id',orden_id).maybeSingle();if(r.error)throw r.error;
-   return reply({ok:true,registro:r.data});
+   const q=orden_id?db.from('onu_autorizaciones_manuales').select('*').eq('orden_id',orden_id).maybeSingle():identity();
+   const r=await q;if(r.error)throw r.error;return reply({ok:true,registro:r.data});
   }
   if(action==='register'){
-   if(['COMPLETADA','CANCELADA'].includes(normalize(ord.data.estado)))return reply({error:'La OT está cerrada'},409);
-   const reqRow=await db.from('orden_onu_solicitudes').select('estado,olt_codigo,onu_sn,onu_pon,onu_modelo').eq('orden_id',orden_id).maybeSingle();
-   if(reqRow.error||!reqRow.data?.onu_sn||!reqRow.data?.onu_pon||!reqRow.data?.olt_codigo)return reply({error:'La ONU debe identificarse primero en el detector Huawei de la OT'},409);
-   if(reqRow.data.estado==='CONFIRMADO')return reply({error:'La ONU ya consta confirmada por evidencia; verifica el estado antes de continuar'},409);
-   const det=await db.from('olt_onu_autofind_cache').select('onu_sn,pon,modelo,presente,ultima_lectura_at').eq('olt_codigo',reqRow.data.olt_codigo).eq('onu_sn',reqRow.data.onu_sn).eq('presente',true).maybeSingle();
-   if(det.error||!det.data||det.data.pon!==reqRow.data.onu_pon)return reply({error:'ONU sin detección actual coincidente en la OLT y PON'},409);
-   const found=await db.from('onu_autorizaciones_manuales').select('id,estado').eq('orden_id',orden_id).maybeSingle();if(found.error)throw found.error;
-   if(found.data&&!['DATOS_REGISTRADOS','ERROR'].includes(found.data.estado))return reply({error:'Esta solicitud ya está aprobada o en ejecución'},409);
-   const name=String(data.nombre||'').trim(),nap=String(data.nap||'').trim(),zona=String(data.zona||'').trim();
-   if(name.length<2||name.length>120||(!nap&&!zona)||nap.length>80||zona.length>80)return reply({error:'Ingresa nombre y NAP o zona válidos'},400);
-   const payload={orden_id,olt_codigo:reqRow.data.olt_codigo,onu_sn:normSn(reqRow.data.onu_sn),onu_pon:reqRow.data.onu_pon,onu_modelo:reqRow.data.onu_modelo||det.data.modelo||null,nombre:name,nap:nap||null,zona:zona||null,ip_administrativa:validateIp(data.ip_administrativa),estado:'DATOS_REGISTRADOS',registrado_por_id:me.id,aprobado_por_id:null,aprobado_at:null,updated_at:new Date().toISOString()};
-   const r=found.data?await db.from('onu_autorizaciones_manuales').update(payload).eq('id',found.data.id).select('id,estado').single():await db.from('onu_autorizaciones_manuales').insert(payload).select('id,estado').single();
-   if(r.error)throw r.error;
-   return reply({ok:true,registro:r.data,nota:'Datos guardados. Huawei sin cambios.'});
+   if(ord.data&&['COMPLETADA','CANCELADA'].includes(normalize(ord.data.estado)))return reply({error:'OT cerrada'},409);
+   const code=orden_id?olt_codigo:normalize(data.olt_codigo);
+   const serial=orden_id?onu_sn:normSn(data.onu_sn);
+   if(!code||!serial)return reply({error:'OLT/serial obligatorio'},400);
+   if(orden_id){
+    const request=await db.from('orden_onu_solicitudes').select('olt_codigo,onu_sn,onu_pon,estado').eq('orden_id',orden_id).maybeSingle();
+    if(request.error)throw request.error;
+    if(request.data?.onu_sn&&(normalize(request.data.olt_codigo)!==code||normSn(request.data.onu_sn)!==serial||request.data.onu_pon!==data.onu_pon))
+      return reply({error:'La OT ya tiene otra ONU identificada; no se puede vincular esta'},409);
+    if(request.data?.estado==='CONFIRMADO')return reply({error:'La ONU ya fue confirmada en la OT'},409);
+   }
+   const det=await db.from('olt_onu_autofind_cache').select('onu_sn,pon,modelo').eq('olt_codigo',code).eq('onu_sn',serial).eq('presente',true).maybeSingle();
+   if(det.error||!det.data||det.data.pon!==data.onu_pon)return reply({error:'ONU no detectada en la OLT/PON seleccionadas'},409);
+   const current=await db.from('onu_autorizaciones_manuales').select('*').eq('olt_codigo',code).eq('onu_sn',serial).maybeSingle();
+   if(current.error)throw current.error;
+   if(current.data&&!['DATOS_REGISTRADOS','ERROR'].includes(current.data.estado))return reply({error:'ONU ya aprobada o en proceso'},409);
+   if(current.data?.orden_id&&orden_id&&current.data.orden_id!==orden_id)return reply({error:'ONU vinculada a otra OT'},409);
+   const nombre=String(data.nombre||'').trim(),nap=String(data.nap||'').trim(),zona=String(data.zona||'').trim();
+   if(nombre.length<2||nombre.length>120||(!nap&&!zona)||nap.length>80||zona.length>80)return reply({error:'Nombre y NAP o zona requeridos'},400);
+   const payload={orden_id:orden_id||null,olt_codigo:code,onu_sn:serial,onu_pon:det.data.pon,onu_modelo:det.data.modelo,nombre,nap:nap||null,zona:zona||null,ip_administrativa:validateIp(data.ip_administrativa),estado:'DATOS_REGISTRADOS',registrado_por_id:me.id,aprobado_por_id:null,aprobado_at:null,updated_at:new Date().toISOString()};
+   const saved=current.data?await db.from('onu_autorizaciones_manuales').update(payload).eq('id',current.data.id).eq('estado','DATOS_REGISTRADOS').select('id,estado').maybeSingle():await db.from('onu_autorizaciones_manuales').insert(payload).select('id,estado').single();
+   if(saved.error)throw saved.error;if(!saved.data)return reply({error:'La solicitud cambió; actualiza'},409);
+   return reply({ok:true,registro:saved.data,nota:'Información administrativa registrada'});
   }
   if(action==='approve'){
    if(['COMPLETADA','CANCELADA'].includes(normalize(ord.data.estado)))return reply({error:'La OT está cerrada'},409);
