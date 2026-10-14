@@ -129,7 +129,7 @@
       const aviso=document.getElementById('disprotelAvisoOTInicio');if(!aviso)return;
       const frame=document.querySelector('iframe.menuFrame');
       const enArea=document.body.classList.contains('moduleOpen')&&
-        /trabajos-tecnicos\\.html/.test(frame?.getAttribute('src')||'');
+        String(frame?.getAttribute('src')||'').includes('trabajos-tecnicos.html');
       aviso.style.display=enArea?'none':'flex';
     },160);
   },true);
