@@ -106,13 +106,19 @@ async function lecturaOptica(s:any,o:any){
     return Number.isFinite(t)&&t<=Date.now()+300000?t:0;
   };
   const registros:any[]=[];
-  if(huawei&&medicionValida(huawei.rx_optical_dbm)||huawei&&medicionValida(huawei.olt_rx_ont_dbm)){
+  const oltEsperada=String(vinculo?.olt_nombre||cache?.olt||'').toUpperCase();
+  const oltActual=String(huawei?.olt_codigo||'').toUpperCase();
+  // Un serial en OLT diferente a la asociada al servicio requiere revisión.
+  if(huawei&&oltEsperada&&oltActual&&!oltEsperada.includes(oltActual))huawei=null;
+  if(huawei&&(medicionValida(huawei.rx_optical_dbm)||medicionValida(huawei.olt_rx_ont_dbm))){
     const t=fechaValida(huawei.optica_leida_at);
     if(t)registros.push({fuente:'HUAWEI_CACHE',captura:t,leido_at:huawei.optica_leida_at,
       rx_onu_dbm:huawei.rx_optical_dbm??null,rx_olt_dbm:huawei.olt_rx_ont_dbm??null,
       tx_onu_dbm:huawei.tx_optical_dbm??null,distancia_m:huawei.distancia_m??null,
       estado:huawei.run_state||null,olt:huawei.olt_nombre||huawei.olt_codigo||null,
-      sn:huawei.onu_sn||sn16,tarjeta:huawei.fsp||null,puerto:huawei.fsp||null,
+      sn:huawei.onu_sn||sn16,
+      tarjeta:String(huawei.fsp||'').split('/').slice(0,2).join('/')||null,
+      puerto:String(huawei.fsp||'').split('/')[2]||null,
       ont_id:huawei.ont_id??null,modelo:cache?.onu_type||null,
       diagnostico_id:null,onu_external_id:cache?.onu_external_id||vinculo?.onu_external_id||null});
   }
