@@ -122,9 +122,8 @@ async function open(index){
  const x=items[index];if(!x)return;selected=x;$('modal').classList.add('show');
  $('details').innerHTML='<strong>OLT:</strong> '+esc(x.olt_nombre||x.olt_codigo)+' · <strong>PON:</strong> '+esc(x.pon||'—')+
  '<div><strong>Modelo:</strong> '+esc(x.modelo||'—')+' · <strong>SN:</strong> '+esc(x.onu_sn||'—')+'</div>'+ 
- (x.modelo_catalogo?'<div><strong>Catálogo SmartOLT:</strong> '+esc(x.modelo_catalogo.capacidad)+' · '+esc(x.modelo_catalogo.ethernet_puertos)+' Ethernet · '+esc(x.modelo_catalogo.wifi_puertos)+' WiFi · '+esc(x.modelo_catalogo.voip_puertos)+' VoIP · CATV '+(x.modelo_catalogo.catv?'Sí':'No')+'</div>':'<div>Modelo no incluido en el catálogo importado</div>')+
- '<div><strong>Orden:</strong> '+esc(x.orden_numero||'Vinculación opcional')+'</div>'+ 
- (x.referencia_smartolt?'<div style="margin-top:9px;padding:10px;border:1px solid #bad9e7;border-radius:7px;background:#fff"><strong>Referencia SmartOLT (pendiente de validar en Huawei)</strong><div>Modo: '+esc(x.referencia_smartolt.modo_onu)+' · VLAN mostrada: '+esc(x.referencia_smartolt.vlan_internet_mostrada)+'</div><div>Line profile: '+esc(x.referencia_smartolt.line_profile_nombre)+' · Servicio: '+esc(x.referencia_smartolt.service_profile_nombre)+'</div><div>'+esc(x.referencia_smartolt.mapa_gem_texto)+'</div><div>Velocidades seleccionadas: ↓ '+esc(x.referencia_smartolt.velocidad_bajada)+' / ↑ '+esc(x.referencia_smartolt.velocidad_subida)+'</div><div style="color:#a16a16">Estos nombres no son los identificadores numéricos Huawei; no autorizan por sí solos.</div></div>':'');
+ (x.modelo_catalogo?'<div><strong>Catálogo de modelos DISPROTEL:</strong> '+esc(x.modelo_catalogo.capacidad)+' · '+esc(x.modelo_catalogo.ethernet_puertos)+' Ethernet · '+esc(x.modelo_catalogo.wifi_puertos)+' WiFi · '+esc(x.modelo_catalogo.voip_puertos)+' VoIP · CATV '+(x.modelo_catalogo.catv?'Sí':'No')+'</div>':'<div>Modelo no identificado en el catálogo DISPROTEL</div>')+
+ '<div><strong>Orden:</strong> '+esc(x.orden_numero||'Vinculación opcional')+'</div>'; 
  updateOrdersFor(x);
  $('nombre').value=x.nombre||'';$('nap').value=x.nap||'';$('zona').value=x.zona||'';$('ip').value=x.ip_administrativa||'';
  let state=x.estado_aprobacion||'';
