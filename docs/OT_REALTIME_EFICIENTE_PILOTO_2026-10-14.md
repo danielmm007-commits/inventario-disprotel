@@ -18,6 +18,11 @@ Estado: **RAMA DE PRUEBA; NO DESPLEGADO**. No modifica Huawei, ONU ni el inventa
 6. En `trabajos-tecnicos.html`, disponibles y activas se consultan periódicamente; historial y órdenes propias se cachean 5 min y se refrescan después de eventos. Se eliminan 3 acciones inexistentes.
 7. Alertas de inventario **aún no usan Realtime**; temporalmente pasan de 10 a 60 s y se pausan en pestaña oculta. En una segunda fase se enviarán eventos privados de transferencias/materiales.
 
+## Compatibilidad de cuentas (revisión 2026-10-14)
+Actualmente hay **16 responsables activos y visibles**, de los cuales **7 tienen `auth_user_id` y 9 no**. Entre los 6 técnicos, 3 tienen Supabase Auth y 3 usan solamente el acceso legado. Un supervisor técnico activo sí tiene Supabase Auth.
+
+**No retirar el polling de respaldo** mientras queden cuentas sin `auth_user_id`. Para usuarios legados no se abrirá el canal privado; sus órdenes siguen consultándose cada 60 segundos. La transición a Auth debe hacerse por usuario, sin cambiar permisos ni crear credenciales no autorizadas. El piloto se debe validar con al menos un técnico Auth y uno legado.
+
 ## Validaciones antes de fusionar/desplegar
 - Confirmar que el JS UMD de Supabase está disponible desde el navegador de oficina.
 - Validar conexión privada con usuarios de Auth vigentes. Inicio de sesión anterior requiere salir/volver a entrar para adquirir la sesión Auth.
