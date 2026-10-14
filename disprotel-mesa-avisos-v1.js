@@ -71,14 +71,18 @@
    const r=requests.get(key);if(!r)return;
    r.due=Date.now()+ms;r.phase=phase;save();updateBadge();
  }
- function playSound(force=false){
+ async function playSound(force=false){
    if(!force&&!audioRequested)return;
    if(!force&&Date.now()-lastBeep<3000)return;
    try{
      const Audio=window.AudioContext||window.webkitAudioContext;
      if(!Audio)return;
      audio=audio||new Audio();
-     if(audio.state==='suspended')audio.resume().catch(()=>{});
+     if(audio.state==='suspended'){
+       // Los navegadores exigen un gesto de usuario antes de reproducir audio.
+       if(force)await audio.resume();
+       else{audio.resume().catch(()=>{});return}
+     }
      if(audio.state!=='running')return;
      lastBeep=Date.now();
      for(const [offset,freq] of [[0,660],[.16,880]]){
