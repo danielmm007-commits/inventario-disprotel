@@ -82,6 +82,8 @@
               revision,
               area:String(raw.area||'').slice(0,20),
               ot:String(raw.ot||'').slice(0,64),
+              orden_uuid:String(raw.orden_uuid||'').slice(0,40),
+              solicitud_id:String(raw.solicitud_id||'').slice(0,40),
               grupo:String(raw.grupo||'').slice(0,120),
               tipo:String(raw.tipo||'').slice(0,90),
               estado:String(raw.estado||'').slice(0,50),
