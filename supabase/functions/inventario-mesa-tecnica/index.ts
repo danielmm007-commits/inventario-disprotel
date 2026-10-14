@@ -373,9 +373,32 @@ Deno.serve(async req=>{
         .eq('olt_codigo',olt).eq('onu_sn',sn).eq('olt_estado','PENDIENTE')
         .gt('expira_at',iso).order('solicitado_at',{ascending:false}).limit(1).maybeSingle();
       if(exist.error)throw exist.error;
-      if(exist.data)return reply({ok:true,reutilizada:true,solicitud:{
-        id:exist.data.id,estado:'PENDIENTE',solicitado_at:exist.data.solicitado_at,
-        expira_at:exist.data.expira_at,olt_codigo:olt}});
+      if(exist.data){
+        // La lectura física se comparte, pero CADA OT necesita su propio ID
+        // para recibir resultado Realtime y consultar el estado de su orden.
+        const local=await s.from('consulta_red_solicitudes')
+          .select('id,solicitado_at,expira_at')
+          .eq('orden_id',o.id).eq('olt_codigo',olt).eq('onu_sn',sn)
+          .eq('olt_estado','PENDIENTE').gt('expira_at',iso)
+          .order('solicitado_at',{ascending:false}).limit(1).maybeSingle();
+        if(local.error)throw local.error;
+        if(local.data)return reply({ok:true,reutilizada:true,solicitud:{
+          id:local.data.id,estado:'PENDIENTE',solicitado_at:local.data.solicitado_at,
+          expira_at:local.data.expira_at,olt_codigo:olt}});
+        // Solicitud seguidora: el agente hará una lectura y el resultado
+        // atenderá todas las filas pendientes del mismo serial/OLT.
+        const seguidora=await s.from('consulta_red_solicitudes').insert({
+          servicio_id:o.servicio_cliente_id,orden_id:o.id,solicitado_por_id:me.id,
+          olt_codigo:olt,onu_sn:sn,olt_estado:'PENDIENTE',origen_consulta:'SERVICIO',
+          mikrotik_estado:'NO_APLICA',smartolt_estado:'NO_APLICA',
+          solicitado_at:iso,expira_at:exist.data.expira_at
+        }).select('id,olt_estado,solicitado_at,expira_at').single();
+        if(seguidora.error)throw seguidora.error;
+        return reply({ok:true,reutilizada:true,solicitud:{
+          id:seguidora.data.id,estado:'PENDIENTE',
+          solicitado_at:seguidora.data.solicitado_at,
+          expira_at:seguidora.data.expira_at,olt_codigo:olt}});
+      }
       const exp=new Date(now.getTime()+10*60000).toISOString();
       const insert=await s.from('consulta_red_solicitudes').insert({
         servicio_id:o.servicio_cliente_id,orden_id:o.id,solicitado_por_id:me.id,
