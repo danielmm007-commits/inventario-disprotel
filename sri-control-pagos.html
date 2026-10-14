@@ -9,7 +9,7 @@
 <section id="pay" class="tab panel"><h2>Pagos, abonos y excedentes</h2><p class="hint">Aquí vincularemos PDF o imagen de la transferencia, permitiendo distribuir un pago entre varias facturas y varios abonos a una misma factura. Si queda dinero sin aplicar, lo resaltaremos como excedente o anticipo pendiente de conciliación.</p><div id="paylist"></div><p class="hint">El registro de pagos y la carga de documentos todavía están bloqueados hasta completar conciliación, almacenamiento y control de duplicados.</p><button disabled>Registrar pago y adjuntar comprobante · Próximamente</button></section>
 <section id="setup" class="tab panel"><h2>Descarga y clasificación SRI</h2><p class="hint">La descarga automática de comprobantes desde el SRI requiere verificar un mecanismo de acceso soportado y seguro. Prepararemos también importación XML manual para que el trabajo no dependa de la disponibilidad del portal.</p><div id="contributors"></div><p class="hint warn">No se descargarán comprobantes ni se solicitarán credenciales del SRI hasta validar el método de integración.</p><button disabled>Descarga automática · En preparación</button></section>
 <p class="hint" id="status">Cargando información...</p><button id="reload">Actualizar datos</button>
-</main><script>
+</main><script src="vendor/jspdf.umd.min.js?v=20261014-3"></script><script>
 const $=id=>document.getElementById(id);
 const clean=v=>String(v??'').normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'');
 const filename=f=>f.fecha_emision+'_'+f.numero.replace(/[^0-9-]/g,'')+'.pdf';
@@ -19,33 +19,39 @@ const bytes=s=>enc.encode(s);
 const concat=parts=>{const total=parts.reduce((n,p)=>n+p.length,0),o=new Uint8Array(total);let i=0;for(const p of parts){o.set(p,i);i+=p.length}return o};
 const le16=n=>new Uint8Array([n&255,(n>>>8)&255]);
 const le32=n=>new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]);
-const pdfEscape=s=>clean(s).replace(/[^\x20-\x7e]/g,'?').replace(/[\\()]/g,'\\$&');
+
 function makePdf(f){
+ if(!window.jspdf?.jsPDF)throw Error('No se pudo iniciar el generador PDF local.');
+ const pdf=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
  const d=window.sriData,p=d.proveedores.find(x=>x.ruc===f.proveedor_ruc);
- const lines=['FACTURA ELECTRONICA - REPRESENTACION GRAFICA','Proveedor: '+(p?.nombre||f.proveedor_ruc),'RUC emisor: '+f.proveedor_ruc,'Factura: '+f.numero,'Fecha: '+f.fecha_emision,'Comprador RUC: '+f.contribuyente_ruc,'Clave de acceso: '+f.clave_acceso,'','DETALLE DE PRODUCTOS Y SERVICIOS'];
- for(const x of d.items.filter(x=>String(x.factura_id)===String(f.id))){
-   const desc=clean(x.descripcion||'');const chunks=desc.match(/.{1,72}/g)||[''];
-   lines.push(...chunks.map((c,i)=>(i?'  ':'')+c));
-   lines.push('   Cantidad: '+x.cantidad+'    Precio: '+money(x.precio_unitario)+'    Descuento: '+money(x.descuento)+'    Base linea: '+money(x.total));
+ const w=210,margin=16;let y=20;
+ const safe=v=>clean(String(v??'')).replace(/[^\x20-\x7e]/g,' ');
+ const tx=(v,x,at,size=10,style='normal')=>{pdf.setFont('helvetica',style);pdf.setFontSize(size);pdf.text(safe(v),x,at)};
+ const rule=()=>{pdf.setDrawColor(208,220,233);pdf.line(margin,y,w-margin,y);y+=7};
+ pdf.setFillColor(12,52,109);pdf.rect(0,0,w,36,'F');
+ pdf.setTextColor(255,255,255);tx('DISPROTEL | COMPROBANTE ELECTRONICO',margin,15,15,'bold');tx('REPRESENTACION GRAFICA GENERADA DESDE XML',margin,25,9);
+ pdf.setTextColor(32,50,69);y=45;
+ const field=(label,val)=>{tx(label,margin,y,9,'bold');const lines=pdf.splitTextToSize(safe(val),125);pdf.setFont('helvetica','normal');pdf.setFontSize(9);pdf.text(lines,64,y);y+=Math.max(1,lines.length)*5+3};
+ field('EMISOR',p?.nombre||f.proveedor_ruc);field('RUC EMISOR',f.proveedor_ruc);field('FACTURA',f.numero);field('FECHA EMISION',f.fecha_emision);field('RECEPTOR RUC',f.contribuyente_ruc);field('CLAVE DE ACCESO',f.clave_acceso);
+ y+=2;rule();
+ tx('DETALLE DE PRODUCTOS Y SERVICIOS',margin,y,11,'bold');y+=11;
+ const pageEnd=260;const page=()=>{pdf.addPage();y=19;tx('DISPROTEL | CONTINUACION DE FACTURA '+f.numero,margin,y,10,'bold');y+=10;rule()};
+ const items=d.items.filter(x=>String(x.factura_id)===String(f.id));
+ for(const x of items){
+   const desc=pdf.splitTextToSize(safe(x.descripcion),155);
+   if(y+desc.length*5+13>pageEnd)page();
+   pdf.setFont('helvetica','bold');pdf.setFontSize(9);pdf.text(desc,margin,y);y+=5*desc.length+1;
+   tx('Cantidad: '+x.cantidad+'     P. unitario: '+money(x.precio_unitario)+'     Descuento: '+money(x.descuento)+'     Base: '+money(x.total),margin+3,y,8);
+   y+=11;rule();
  }
- lines.push('','Subtotal: '+money(f.subtotal),'IVA: '+money(f.iva),'TOTAL: '+money(f.total),'','Generado desde datos importados del XML. No sustituye al XML firmado.');
- const pages=[];for(let i=0;i<lines.length;i+=42)pages.push(lines.slice(i,i+42));
- const objects=['',''];const add=x=>(objects.push(x),objects.length-1);
- const catalog=add('');const pagesId=add('');const font=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
- const pageIds=[];
- for(const pageLines of pages){
-  const content='BT /F1 10 Tf 44 795 Td 14 TL '+pageLines.map((x,i)=>(i?'T* ':'')+'('+pdfEscape(x)+') Tj').join('\n')+' ET';
-  const contentId=add('<< /Length '+bytes(content).length+' >>\nstream\n'+content+'\nendstream');
-  pageIds.push(add('<< /Type /Page /Parent '+pagesId+' 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 '+font+' 0 R >> >> /Contents '+contentId+' 0 R >>'));
- }
- objects[catalog]='<< /Type /Catalog /Pages '+pagesId+' 0 R >>';
- objects[pagesId]='<< /Type /Pages /Count '+pageIds.length+' /Kids ['+pageIds.map(i=>i+' 0 R').join(' ')+'] >>';
- const out=[bytes('%PDF-1.4\n')],offsets=[0];let position=out[0].length;
- for(let i=1;i<objects.length;i++){const part=bytes(i+' 0 obj\n'+objects[i]+'\nendobj\n');offsets[i]=position;out.push(part);position+=part.length}
- const xref=position;let trailer='xref\n0 '+objects.length+'\n0000000000 65535 f \n';
- for(let i=1;i<objects.length;i++)trailer+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
- trailer+='trailer\n<< /Size '+objects.length+' /Root '+catalog+' 0 R >>\nstartxref\n'+xref+'\n%%EOF\n';
- out.push(bytes(trailer));return concat(out);
+ if(y+34>pageEnd)page();
+ tx('SUBTOTAL',117,y,9);tx(money(f.subtotal),193,y,10,'bold');y+=8;
+ tx('IVA',117,y,9);tx(money(f.iva),193,y,10,'bold');y+=8;
+ pdf.setFillColor(231,240,249);pdf.rect(112,y-5,83,14,'F');
+ tx('TOTAL',117,y+3,12,'bold');tx(money(f.total),193,y+3,12,'bold');
+ const count=pdf.getNumberOfPages();
+ for(let i=1;i<=count;i++){pdf.setPage(i);pdf.setTextColor(100,112,126);tx('Documento informativo. El XML original firmado es el comprobante electronico.',margin,285,8);tx('Pagina '+i+' de '+count,175,290,8);}
+ return new Uint8Array(pdf.output('arraybuffer'));
 }
 const crcTable=(()=>{const a=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xedb88320^(c>>>1)):(c>>>1);a[n]=c>>>0}return a})();
 function crc32(data){let c=0xffffffff;for(const v of data)c=crcTable[(c^v)&255]^(c>>>8);return(c^0xffffffff)>>>0}
