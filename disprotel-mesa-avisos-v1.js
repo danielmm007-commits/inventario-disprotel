@@ -72,6 +72,7 @@
       border:1px solid #bfd5e2;border-left:5px solid #1379ac;border-radius:13px;
       box-shadow:0 12px 28px #19395538;padding:12px 32px 12px 13px;font:600 12px/1.4 system-ui,sans-serif;
       animation:disprotelMesaIn .24s ease-out}
+    #disprotelMesaToastStack.supervisor{top:244px}
     .disprotelMesaToast.ok{border-left-color:#159467}
     .disprotelMesaToast.warn{border-left-color:#d6a029}
     .disprotelMesaTitle{font-size:13px;font-weight:800}
@@ -82,11 +83,11 @@
     .disprotelMesaClose{position:absolute;right:5px;top:3px;font-size:22px;line-height:1;
       background:transparent;border:0;padding:5px 8px;cursor:pointer;color:#587080}
     @keyframes disprotelMesaIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
-    @media(max-width:680px){#disprotelMesaToastStack{top:64px;right:8px;width:calc(100vw - 16px)}}
+    @media(max-width:680px){#disprotelMesaToastStack{top:64px;right:8px;width:calc(100vw - 16px)}#disprotelMesaToastStack.supervisor{top:185px}}
     @media(prefers-reduced-motion:reduce){.disprotelMesaToast{animation:none}}
    `;
    document.head.append(s);root=document.createElement('div');root.id='disprotelMesaToastStack';
-   root.setAttribute('aria-label','Notificaciones de Mesa Técnica');document.body.append(root);return root;
+   root.setAttribute('aria-label','Notificaciones de Mesa Técnica');if(id===FERNANDO)root.className='supervisor';document.body.append(root);return root;
  }
  function enrich(card){
    const code=String(card.dataset.ot||''),meta=orderDetails.get(code)||{},
