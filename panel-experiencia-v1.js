@@ -73,8 +73,29 @@
   document.addEventListener('pointerdown',unlockTechAudio,{once:true});document.addEventListener('keydown',unlockTechAudio,{once:true});
   function applyTechnicalActivity(data){if(isRubi)return;const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=String(Math.max(0,Number(value)||0))},ids=Array.isArray(data?.availableIds)?data.availableIds.map(String):[],key='disprotel_tech_seen_available_'+String(me.id||me.usuario||'tecnico');let previous=null;try{previous=JSON.parse(localStorage.getItem(key)||'null')}catch{}localStorage.setItem(key,JSON.stringify(ids));const hasNew=Array.isArray(previous)&&ids.some(id=>!previous.includes(id));set('dashAvailable',data?.available);set('dashPending',data?.available);set('dashProcess',data?.active);syncAttentionIndicators();if(!ids.length||Number(data?.available||0)<=0){document.querySelectorAll('.menuAside button[data-href]').forEach(button=>{if(norm(button.textContent).includes('AREA TECNICA'))button.classList.remove('navNewActivity')})}if(hasNew){soundNewTechnicalActivity();document.querySelectorAll('.menuAside button[data-href]').forEach(button=>{if(norm(button.textContent).includes('AREA TECNICA'))button.classList.add('navNewActivity')})}}
   window.addEventListener('message',event=>{if(event.origin===location.origin&&event.data?.type==='disprotel-tech-counts')applyTechnicalActivity(event.data)});
-  let technicalPollBusy=false;async function pollTechnicalAttention(){if(isRubi||technicalPollBusy)return;technicalPollBusy=true;try{const endpoint='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-ordenes',request=action=>fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_token:me.session_token||'',action})}).then(async response=>{const data=await response.json();if(!response.ok||data.error)throw new Error(data.error||'No disponible');return data}),[available,active]=await Promise.all([request('available-orders'),request('my-active')]),availableRows=available.ordenes||[],activeRows=active.ordenes||[];applyTechnicalActivity({available:availableRows.length,active:activeRows.length,availableIds:availableRows.map(o=>String(o.id)).filter(Boolean)})}catch(e){console.warn('Alerta automática de Área técnica:',e)}finally{technicalPollBusy=false}}
-  setInterval(pollTechnicalAttention,15000);setTimeout(pollTechnicalAttention,1200);
+  let technicalPollBusy=false,technicalPollPending=false;async function pollTechnicalAttention(){if(isRubi)return;if(technicalPollBusy){technicalPollPending=true;return}technicalPollBusy=true;try{const endpoint='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-ordenes',request=action=>fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_token:me.session_token||'',action})}).then(async response=>{const data=await response.json();if(!response.ok||data.error)throw new Error(data.error||'No disponible');return data}),[available,active]=await Promise.all([request('available-orders'),request('my-active')]),availableRows=available.ordenes||[],activeRows=active.ordenes||[];applyTechnicalActivity({available:availableRows.length,active:activeRows.length,availableIds:availableRows.map(o=>String(o.id)).filter(Boolean)})}catch(e){console.warn('Alerta automática de Área técnica:',e)}finally{technicalPollBusy=false;if(technicalPollPending){technicalPollPending=false;setTimeout(pollTechnicalAttention,350)}}}
+  if(!window.DISPROTEL_OT_RT_PILOT){
+    setInterval(pollTechnicalAttention,15000);
+    setTimeout(pollTechnicalAttention,1200);
+  }else{
+    // Novedades de OT por Realtime; consulta de respaldo solo si hace falta.
+    let ultimaConsultaTecnica=0,otEventTimer=null;
+    const consultarActividad=async()=>{ultimaConsultaTecnica=Date.now();await pollTechnicalAttention()};
+    setTimeout(consultarActividad,1200);
+    document.addEventListener('disprotel:ot-evento',()=>{
+      if(document.hidden||isRubi)return;
+      clearTimeout(otEventTimer);otEventTimer=setTimeout(consultarActividad,450);
+    });
+    document.addEventListener('disprotel:ot-sincronizar',()=>{
+      if(!document.hidden&&!isRubi)consultarActividad();
+    });
+    setInterval(()=>{
+      if(document.hidden||isRubi)return;
+      const espera=window.DISPROTEL_OT_RT_CONNECTED?300000:60000;
+      if(Date.now()-ultimaConsultaTecnica>=espera)consultarActividad();
+    },15000);
+  
+  }
   document.addEventListener('click',event=>{const button=event.target.closest?.('.menuAside button[data-href]');if(button&&norm(button.textContent).includes('AREA TECNICA'))button.classList.remove('navNewActivity')},true);
   function syncTechnicalMetrics(){const set=(id,v)=>{const x=document.getElementById(id);if(x)x.textContent=v||'0'};if(isRubi){set('dashPurchases',metricByLabel('COMPRAS / INGRESOS'));set('dashTransfers',metricByLabel('TRANSFERENCIAS PENDIENTES'));set('dashSerialsPending',metricByLabel('SERIALES POR CARGAR'));set('dashSupport',metricByLabel('TRABAJOS POR ACEPTAR'));syncAttentionIndicators();return}set('dashAvailable',metricByLabel('TRABAJOS POR ACEPTAR'));set('dashProcess',metricByLabel('TRABAJOS EN PROCESO'));set('dashDone',metricByLabel('TRABAJOS FINALIZADOS'));set('dashPending',metricByLabel('TRABAJOS POR ACEPTAR'));syncAttentionIndicators()}
   function openTransfersFromDashboard(){if(menuShell){const b=[...menuShell.querySelectorAll('.menuAside button[data-href]')].find(x=>norm(x.textContent).includes('TRANSFERENCIAS'));if(b){b.click();return}}location.href='solicitudes-transferencias.html?v='+Date.now()}
