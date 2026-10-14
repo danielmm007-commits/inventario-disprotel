@@ -126,7 +126,7 @@
   }
 
   async function poll(){
-    if(running||document.hidden)return;running=true;
+    if(running)return;running=true;
     try{
       const d=await getAlerts(),changed=lastVersion!==null&&d.version!==lastVersion;
       lastData=d;
@@ -146,6 +146,5 @@
   const observer=new MutationObserver(()=>{if(lastData){paintMain(lastData);paintInside(lastData)}});
   observer.observe(document.body,{childList:true,subtree:true});
   poll();
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});
-  setInterval(poll,60000);
+  setInterval(poll,10000);
 })();
