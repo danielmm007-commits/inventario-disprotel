@@ -9,12 +9,60 @@
 <section id="pay" class="tab panel"><h2>Pagos, abonos y excedentes</h2><p class="hint">Aquí vincularemos PDF o imagen de la transferencia, permitiendo distribuir un pago entre varias facturas y varios abonos a una misma factura. Si queda dinero sin aplicar, lo resaltaremos como excedente o anticipo pendiente de conciliación.</p><div id="paylist"></div><p class="hint">El registro de pagos y la carga de documentos todavía están bloqueados hasta completar conciliación, almacenamiento y control de duplicados.</p><button disabled>Registrar pago y adjuntar comprobante · Próximamente</button></section>
 <section id="setup" class="tab panel"><h2>Descarga y clasificación SRI</h2><p class="hint">La descarga automática de comprobantes desde el SRI requiere verificar un mecanismo de acceso soportado y seguro. Prepararemos también importación XML manual para que el trabajo no dependa de la disponibilidad del portal.</p><div id="contributors"></div><p class="hint warn">No se descargarán comprobantes ni se solicitarán credenciales del SRI hasta validar el método de integración.</p><button disabled>Descarga automática · En preparación</button></section>
 <p class="hint" id="status">Cargando información...</p><button id="reload">Actualizar datos</button>
-</main><script src="vendor/jspdf.umd.min.js?v=1"></script><script src="vendor/jszip.min.js?v=1"></script><script>
+</main><script>
 const $=id=>document.getElementById(id);
 const clean=v=>String(v??'').normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'');
 const filename=f=>f.fecha_emision+'_'+f.numero.replace(/[^0-9-]/g,'')+'.pdf';
-function makePdf(f){if(!window.jspdf?.jsPDF)throw Error('No se pudo cargar el generador PDF. Revisa tu conexión.');const pdf=new jspdf.jsPDF({unit:'mm',format:'a4'});const d=window.sriData,p=d.proveedores.find(x=>x.ruc===f.proveedor_ruc);let y=17;const line=(label,v)=>{pdf.setFont('helvetica','bold');pdf.text(clean(label),15,y);pdf.setFont('helvetica','normal');const wrapped=pdf.splitTextToSize(clean(v),130);pdf.text(wrapped,68,y);y+=Math.max(1,wrapped.length)*6+2};pdf.setFontSize(16);pdf.text('REPRESENTACION GRAFICA DE FACTURA ELECTRONICA',15,y);y+=11;pdf.setFontSize(10);line('Proveedor',p?.nombre||f.proveedor_ruc);line('RUC emisor',f.proveedor_ruc);line('Factura',f.numero);line('Fecha',f.fecha_emision);line('Comprador RUC',f.contribuyente_ruc);line('Clave de acceso',f.clave_acceso);y+=5;pdf.setFont('helvetica','bold');pdf.text('PRODUCTOS Y SERVICIOS',15,y);y+=8;pdf.setFont('helvetica','normal');const items=d.items.filter(x=>String(x.factura_id)===String(f.id));for(const x of items){const desc=pdf.splitTextToSize(clean(x.descripcion),115);if(y+desc.length*5+8>270){pdf.addPage();y=18}pdf.text(desc,15,y);pdf.text(String(x.cantidad??''),137,y);pdf.text(money(x.total),160,y);y+=Math.max(1,desc.length)*5+5}if(y>252){pdf.addPage();y=18}y+=4;line('SUBTOTAL',money(f.subtotal));line('IVA',money(f.iva));line('TOTAL',money(f.total));pdf.setFontSize(8);pdf.text('Representacion generada por DISPROTEL desde datos importados del XML.',15,282);pdf.text('No sustituye el XML electronico firmado y autorizado.',15,287);return pdf}
-async function pdfZip(selected){const b=$('pdfestado');if(!selected.length){b.textContent='No hay facturas seleccionadas para este mes.';return}if(!window.JSZip)throw Error('No se pudo cargar el compresor ZIP.');if(selected.length>500)throw Error('Descarga como máximo 500 PDF por lote para proteger el navegador.');b.textContent='Generando '+selected.length+' PDF...';const zip=new JSZip();for(const f of selected)zip.file(filename(f),makePdf(f).output('arraybuffer'));const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='FACTURAS_SRI_'+$('pdfmes').value+'_'+selected.length+'.zip';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);b.textContent='ZIP generado: '+selected.length+' facturas. No se consultó el SRI.'}
+
+const enc=new TextEncoder();
+const bytes=s=>enc.encode(s);
+const concat=parts=>{const total=parts.reduce((n,p)=>n+p.length,0),o=new Uint8Array(total);let i=0;for(const p of parts){o.set(p,i);i+=p.length}return o};
+const le16=n=>new Uint8Array([n&255,(n>>>8)&255]);
+const le32=n=>new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]);
+const pdfEscape=s=>clean(s).replace(/[^\x20-\x7e]/g,'?').replace(/[\\()]/g,'\\$&');
+function makePdf(f){
+ const d=window.sriData,p=d.proveedores.find(x=>x.ruc===f.proveedor_ruc);
+ const lines=['FACTURA ELECTRONICA - REPRESENTACION GRAFICA','Proveedor: '+(p?.nombre||f.proveedor_ruc),'RUC emisor: '+f.proveedor_ruc,'Factura: '+f.numero,'Fecha: '+f.fecha_emision,'Comprador RUC: '+f.contribuyente_ruc,'Clave de acceso: '+f.clave_acceso,'','DETALLE DE PRODUCTOS Y SERVICIOS'];
+ for(const x of d.items.filter(x=>String(x.factura_id)===String(f.id))){
+   const desc=clean(x.descripcion||'');const chunks=desc.match(/.{1,72}/g)||[''];
+   lines.push(...chunks.map((c,i)=>(i?'  ':'')+c));
+   lines.push('   Cantidad: '+x.cantidad+'    Precio: '+money(x.precio_unitario)+'    Descuento: '+money(x.descuento)+'    Base linea: '+money(x.total));
+ }
+ lines.push('','Subtotal: '+money(f.subtotal),'IVA: '+money(f.iva),'TOTAL: '+money(f.total),'','Generado desde datos importados del XML. No sustituye al XML firmado.');
+ const pages=[];for(let i=0;i<lines.length;i+=42)pages.push(lines.slice(i,i+42));
+ const objects=['',''];const add=x=>(objects.push(x),objects.length-1);
+ const catalog=add('');const pagesId=add('');const font=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+ const pageIds=[];
+ for(const pageLines of pages){
+  const content='BT /F1 10 Tf 44 795 Td 14 TL '+pageLines.map((x,i)=>(i?'T* ':'')+'('+pdfEscape(x)+') Tj').join('\n')+' ET';
+  const contentId=add('<< /Length '+bytes(content).length+' >>\nstream\n'+content+'\nendstream');
+  pageIds.push(add('<< /Type /Page /Parent '+pagesId+' 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 '+font+' 0 R >> >> /Contents '+contentId+' 0 R >>'));
+ }
+ objects[catalog]='<< /Type /Catalog /Pages '+pagesId+' 0 R >>';
+ objects[pagesId]='<< /Type /Pages /Count '+pageIds.length+' /Kids ['+pageIds.map(i=>i+' 0 R').join(' ')+'] >>';
+ const out=[bytes('%PDF-1.4\n')],offsets=[0];let position=out[0].length;
+ for(let i=1;i<objects.length;i++){const part=bytes(i+' 0 obj\n'+objects[i]+'\nendobj\n');offsets[i]=position;out.push(part);position+=part.length}
+ const xref=position;let trailer='xref\n0 '+objects.length+'\n0000000000 65535 f \n';
+ for(let i=1;i<objects.length;i++)trailer+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+ trailer+='trailer\n<< /Size '+objects.length+' /Root '+catalog+' 0 R >>\nstartxref\n'+xref+'\n%%EOF\n';
+ out.push(bytes(trailer));return concat(out);
+}
+const crcTable=(()=>{const a=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xedb88320^(c>>>1)):(c>>>1);a[n]=c>>>0}return a})();
+function crc32(data){let c=0xffffffff;for(const v of data)c=crcTable[(c^v)&255]^(c>>>8);return(c^0xffffffff)>>>0}
+function zipFiles(files){const out=[],central=[];let offset=0;
+ for(const [name,data] of files){const n=bytes(name),crc=crc32(data),size=data.length;
+ const local=concat([le32(0x04034b50),le16(20),le16(0),le16(0),le16(0),le16(0),le32(crc),le32(size),le32(size),le16(n.length),le16(0),n,data]);
+ const record=concat([le32(0x02014b50),le16(20),le16(20),le16(0),le16(0),le16(0),le16(0),le32(crc),le32(size),le32(size),le16(n.length),le16(0),le16(0),le16(0),le16(0),le32(0),le32(offset),n]);
+ out.push(local);central.push(record);offset+=local.length}
+ const c=concat(central),end=concat([le32(0x06054b50),le16(0),le16(0),le16(files.length),le16(files.length),le32(c.length),le32(offset),le16(0)]);
+ return concat([...out,c,end]);
+}
+async function pdfZip(selected){const b=$('pdfestado');if(!selected.length){b.textContent='No hay facturas seleccionadas para este mes.';return}
+ if(selected.length>100)throw Error('Descarga hasta 100 facturas por lote para evitar sobrecargar el navegador.');
+ b.textContent='Generando '+selected.length+' PDF...';await new Promise(r=>setTimeout(r,25));
+ const zip=zipFiles(selected.map(f=>[filename(f),makePdf(f)]));
+ const url=URL.createObjectURL(new Blob([zip],{type:'application/zip'})),a=document.createElement('a');a.href=url;a.download='FACTURAS_SRI_'+$('pdfmes').value+'_'+selected.length+'.zip';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);b.textContent='ZIP generado: '+selected.length+' facturas. No se consultó el SRI.';
+}
 function filtered(){return (window.sriData?.facturas||[]).filter(f=>f.fecha_emision.startsWith($('pdfmes').value))}
 function displayFilter(){document.querySelectorAll('#factrows tr[data-fecha]').forEach(tr=>{const on=tr.dataset.fecha.startsWith($('pdfmes').value);tr.style.display=on?'':'none';if(!on)tr.querySelector('input').checked=false;const detail=tr.nextElementSibling;if(detail)detail.style.display='none'});$('pdfestado').textContent=filtered().length+' factura(s) en el mes seleccionado.'}
 $('pdfmes').onchange=displayFilter;
