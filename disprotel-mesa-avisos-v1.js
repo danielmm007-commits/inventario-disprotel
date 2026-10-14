@@ -305,6 +305,18 @@
    });
    document.querySelectorAll('#disprotelMesaToastStack .disprotelMesaToast').forEach(enrich);
  });
+ window.addEventListener('disprotel:mesa-pendientes-snapshot',event=>{
+   if(id!==FERNANDO)return;
+   const rows=event?.detail?.requerimientos;if(!Array.isArray(rows))return;
+   let firstShown=0;
+   for(const d of rows.slice(0,30)){
+     if(!d?.solicitud_id||!d?.orden_uuid||!d?.ot||!keyStatus(d).open)continue;
+     const key=keyFor(d),wasKnown=requests.has(key);
+     track(d);
+     // Reconocer pendientes existentes al abrir Inicio, sin sonar como nuevos.
+     if(!wasKnown&&firstShown++<2&&!document.hidden)show(d);
+   }
+ });
  window.addEventListener('disprotel:mesa-hito',event=>{
    const d=event?.detail||{};
    track(d);
