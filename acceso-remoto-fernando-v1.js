@@ -54,5 +54,16 @@ async function guardarEditorAR(){if(!EDIT_AR.img||!EDIT_AR.id)return;const b=$('
 window.seleccionarAR=async(e,id)=>{const f=e.target.files?.[0];e.target.value='';if(f)abrirEditorAR(f,id)};
 window.pegarPortapapelesAR=async(e,id)=>{const items=[...(e.clipboardData?.items||[])],item=items.find(x=>String(x.type||'').startsWith('image/'));if(!item){show('⚠️ El portapapeles no contiene una imagen.','err');return}e.preventDefault();const f=item.getAsFile();if(!f)return show('⚠️ No se pudo leer la captura.','err');abrirEditorAR(f,id)};
 let arObserverTimer=null;const ob=new MutationObserver(()=>{if(document.getElementById('app')?.classList.contains('hidden'))return;if(document.getElementById('accesoRemotoFernando'))return;clearTimeout(arObserverTimer);arObserverTimer=setTimeout(()=>cargarAR(),180)});
-document.addEventListener('DOMContentLoaded',()=>{cargarVisor();cargarCamara();cargarEstiloPegar();ob.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});setTimeout(cargarAR,700);setInterval(()=>{if(document.getElementById('accesoRemotoFernando'))pintarAR(false)},8000)});
+let arRealtimeTimer=null;
+window.addEventListener('disprotel:mesa-hito',e=>{
+ if(String(e?.detail?.area||'')!=='REMOTO')return;
+ clearTimeout(arRealtimeTimer);
+ arRealtimeTimer=setTimeout(()=>{
+   if(!document.hidden&&document.getElementById('accesoRemotoFernando'))pintarAR(true)
+ },750);
+});
+window.addEventListener('disprotel:ot-sincronizar',()=>{
+ if(!document.hidden&&document.getElementById('accesoRemotoFernando'))pintarAR(false);
+});
+document.addEventListener('DOMContentLoaded',()=>{cargarVisor();cargarCamara();cargarEstiloPegar();ob.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});setTimeout(cargarAR,700);setInterval(()=>{if(!document.hidden&&document.getElementById('accesoRemotoFernando'))pintarAR(false)},120000)});
 })();
