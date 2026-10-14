@@ -71,10 +71,23 @@
       client.realtime.setAuth(data.session.access_token);
       client.channel(CHANNEL,{config:{private:true}})
         .on('broadcast',{event:'ot_changed'},payload=>{
-          const revision=String(payload?.payload?.revision||'');
+          const raw=payload?.payload||{};
+          const revision=String(raw.revision||'');
           if(revision&&revision===lastRevision)return;
           lastRevision=revision;
-          // Agrupar eventos sucesivos; nunca descartar el ultimo cambio.
+          // Un evento individual por hito para las notificaciones de Fernando.
+          // El refresco general permanece agrupado para reducir invocaciones.
+          if(raw.ot&&raw.estado){
+            emit('disprotel:ot-hito',{
+              revision,
+              ot:String(raw.ot).slice(0,64),
+              estado:String(raw.estado).slice(0,64),
+              anterior:String(raw.anterior||'').slice(0,64),
+              grupo:String(raw.grupo||'').slice(0,120),
+              actor:String(raw.actor||'').slice(0,60),
+              accion:String(raw.accion||'').slice(0,12)
+            });
+          }
           clearTimeout(notifyTimer);
           notifyTimer=setTimeout(()=>emit('disprotel:ot-evento',{revision:lastRevision}),400);
         })
