@@ -158,6 +158,25 @@ async function latestIp(s:any,ordenId:string){
   if(q.data?.id&&q.data.estado==='PENDIENTE'){const c=await s.from('orden_ip_candidatos').select('id,address,comentario,score,queue_name,queue_parent,plan_detectado,detectado_at').eq('solicitud_ip_id',q.data.id).eq('estado','CANDIDATO').order('score',{ascending:false}).limit(8);if(c.error)throw c.error;candidatos=c.data||[]}
   return {solicitud:q.data||null,candidatos};
 }
+// Identidad canónica para Huawei: HWTCxxxxxxxx -> 48575443xxxxxxxx.
+function huaweiSn16(v:any):string|null{
+ const sn=String(v||'').toUpperCase().replace(/[\\s:.-]/g,'');
+ if(/^[0-9A-F]{16}$/.test(sn))return sn;
+ if(/^[A-Z0-9]{4}[A-F0-9]{8}$/.test(sn))
+   return [...sn.slice(0,4)].map(c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join('').toUpperCase()+sn.slice(4);
+ return null;
+}
+async function huaweiSolicitudEstado(s:any,ordenId:string){
+ const q=await s.from('consulta_red_solicitudes')
+   .select('id,olt_codigo,olt_estado,solicitado_at,expira_at,olt_respondido_at')
+   .eq('orden_id',ordenId).eq('mikrotik_estado','NO_APLICA')
+   .not('olt_codigo','is',null).order('solicitado_at',{ascending:false}).limit(1).maybeSingle();
+ if(q.error)throw q.error;
+ const x=q.data;if(!x)return null;
+ return {id:x.id,olt_codigo:x.olt_codigo,estado:x.olt_estado,
+   solicitado_at:x.solicitado_at,expira_at:x.expira_at,respondido_at:x.olt_respondido_at,
+   expirada:x.olt_estado==='PENDIENTE'&&new Date(x.expira_at).getTime()<=Date.now()};
+}
 async function state(s:any,o:any){
   const [m,on,ar,ip]=await Promise.all([
     s.from('orden_mesa_tecnica_estado').select('*').eq('orden_id',o.id).maybeSingle(),
@@ -168,7 +187,7 @@ async function state(s:any,o:any){
   if(m.error)throw m.error;if(on.error)throw on.error;if(ar.error)throw ar.error;
   const onu=on.data?{...on.data,evidencia_url:await signedOnu(s,on.data)}:null;
   const acceso=ar.data?{...ar.data,evidencia:await accesoEvidencia(s,ar.data)}:null;
-  return {mesa:m.data||null,onu,ip,acceso,optica:await lecturaOptica(s,o),requerimientos:await requerimientosMesa(s,o.id)};
+  return {mesa:m.data||null,onu,ip,acceso,optica:await lecturaOptica(s,o),lectura_huawei:await huaweiSolicitudEstado(s,o.id),requerimientos:await requerimientosMesa(s,o.id)};
 }
 async function ensureMesa(s:any,o:any,me:any){
   const {error}=await s.from('orden_mesa_tecnica_estado').upsert({orden_id:o.id,solicitado_por_id:me.id,solicitado_at:new Date().toISOString(),updated_at:new Date().toISOString()},{onConflict:'orden_id'});
@@ -323,6 +342,51 @@ Deno.serve(async req=>{
       }
       await ensureMesa(s,o,me);await ensureRemote(s,o,me);
       return reply({ok:true,...await state(s,o)});
+    }
+    if(action==='request-huawei-optical'){
+      // SOLO solicitud de lectura. La OLT nunca recibe comandos desde esta función.
+      if(!supervisor(me))return reply({error:'Solo Mesa Técnica puede solicitar la lectura Huawei'},403);
+      const o=await order(s,String(body.orden_id||''));
+      if(!o.servicio_cliente_id)return reply({error:'OT sin servicio enlazado; verifica identificación de ONU'},409);
+      const rq=await s.from('orden_mesa_requerimientos').select('id,acciones,estado').eq('orden_id',o.id)
+        .order('solicitado_at',{ascending:false}).limit(20);
+      if(rq.error)throw rq.error;
+      if(!(rq.data||[]).some((r:any)=>r.estado==='PENDIENTE'&&Array.isArray(r.acciones)&&r.acciones.includes('VERIFICAR_POTENCIA')))
+        return reply({error:'No existe una solicitud pendiente de verificación de potencia para esta OT'},409);
+      const v=await s.from('smartolt_onu_vinculos')
+        .select('sn,onu_external_id,olt_nombre,estado_vinculo').eq('servicio_id',o.servicio_cliente_id)
+        .order('updated_at',{ascending:false}).limit(2);
+      if(v.error)throw v.error;
+      if((v.data||[]).length!==1)return reply({error:'Vínculo de ONU ausente o ambiguo; confirma serial en el servicio'},409);
+      const vinc=v.data[0],sn=huaweiSn16(vinc.sn||vinc.onu_external_id);
+      if(!sn)return reply({error:'Serial del servicio no válido para Huawei'},409);
+      const matches=await s.from('huawei_onus_cache')
+        .select('olt_codigo,onu_sn').eq('onu_sn',sn).eq('presente',true).limit(2);
+      if(matches.error)throw matches.error;
+      if((matches.data||[]).length!==1)return reply({error:'ONU no identificada de forma única en caché Huawei. Verifica OLT/serial antes de leer'},409);
+      const olt=String(matches.data[0].olt_codigo||'').trim().toUpperCase();
+      const oltV=String(vinc.olt_nombre||'').trim().toUpperCase();
+      if(!olt||oltV&&!oltV.includes(olt))return reply({error:'La OLT Huawei no coincide con el vínculo SmartOLT'},409);
+      const now=new Date(),iso=now.toISOString();
+      const exist=await s.from('consulta_red_solicitudes')
+        .select('id,olt_estado,solicitado_at,expira_at')
+        .eq('olt_codigo',olt).eq('onu_sn',sn).eq('olt_estado','PENDIENTE')
+        .gt('expira_at',iso).order('solicitado_at',{ascending:false}).limit(1).maybeSingle();
+      if(exist.error)throw exist.error;
+      if(exist.data)return reply({ok:true,reutilizada:true,solicitud:{
+        id:exist.data.id,estado:'PENDIENTE',solicitado_at:exist.data.solicitado_at,
+        expira_at:exist.data.expira_at,olt_codigo:olt}});
+      const exp=new Date(now.getTime()+10*60000).toISOString();
+      const insert=await s.from('consulta_red_solicitudes').insert({
+        servicio_id:o.servicio_cliente_id,orden_id:o.id,solicitado_por_id:me.id,
+        olt_codigo:olt,onu_sn:sn,olt_estado:'PENDIENTE',origen_consulta:'SERVICIO',
+        mikrotik_estado:'NO_APLICA',smartolt_estado:'NO_APLICA',
+        solicitado_at:iso,expira_at:exp
+      }).select('id,olt_estado,solicitado_at,expira_at').single();
+      if(insert.error)throw insert.error;
+      return reply({ok:true,reutilizada:false,solicitud:{
+        id:insert.data.id,estado:insert.data.olt_estado,
+        solicitado_at:insert.data.solicitado_at,expira_at:insert.data.expira_at,olt_codigo:olt}});
     }
     if(action==='status'){
       const o=await order(s,String(body.orden_id||''));if(tech(me)&&!assigned(o,me))return reply({error:'OT fuera de tu asignación'},403);
