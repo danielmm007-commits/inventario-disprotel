@@ -16,8 +16,10 @@
  const STORE='disprotel_mesa_pendientes_fernando_v1';
  const AUDIO_STORE='disprotel_mesa_sonido_v1';
  const REMIND_MS=5*60*1000,WORKING_MS=15*60*1000,MAX_AGE=12*60*60*1000;
- let audio=null,audioRequested=false,lastBeep=0;
- try{audioRequested=sessionStorage.getItem(AUDIO_STORE)==='true'}catch{}
+ let audio=null,audioRequested=false,audioPreferred=false,lastBeep=0;
+ // Una preferencia anterior NO significa que el navegador haya liberado el audio
+ // tras recargar: cada nuevo contexto espera un gesto permitido por Edge.
+ try{audioPreferred=sessionStorage.getItem(AUDIO_STORE)==='true'}catch{}
  const keyFor=d=>norm(d.area)+'|'+String(d.solicitud_id||d.ot||'');
  function save(){
    if(id!==FERNANDO)return;
@@ -96,7 +98,7 @@
    }catch(e){console.debug('DISPROTEL Mesa audio',e)}
  }
  function enableAudio(){
-   audioRequested=true;
+   audioRequested=true;audioPreferred=true;
    try{sessionStorage.setItem(AUDIO_STORE,'true')}catch{}
    playSound(true);
    for(const button of document.querySelectorAll('.disprotelMesaEnableSound'))button.remove();
@@ -230,7 +232,7 @@
    }
    if(!audioRequested){
      const enable=document.createElement('button');enable.type='button';
-     enable.textContent='🔊 Activar sonido de Mesa';enable.className='disprotelMesaSoundEnable disprotelMesaEnableSound';
+     enable.textContent=audioPreferred?'🔊 Reanudar sonido de Mesa':'🔊 Activar sonido de Mesa';enable.className='disprotelMesaSoundEnable disprotelMesaEnableSound';
      enable.onclick=enableAudio;root.append(enable);
    }
    document.body.append(root);updateBadge();return root;
