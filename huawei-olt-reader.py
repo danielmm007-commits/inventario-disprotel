@@ -1259,17 +1259,40 @@ async def poll_configured_olt(cfg):
 
 
 async def multi_olt_service_loop():
+    # Solo lectura. tick es un despertador LOCAL, no una petición HTTP.
+    # Antes se consultaban pruebas, configuración y pendientes de cada OLT
+    # en CADA tick (5 s), incluso cuando no había trabajos.
     tick=max(2,int(os.environ.get("OLT_MULTI_TICK_SECONDS","5")))
+    config_interval=max(60,int(os.environ.get("OLT_CONFIG_REFRESH_SECONDS","300")))
+    test_interval=max(15,int(os.environ.get("OLT_TEST_POLL_SECONDS","60")))
+    live_interval=max(15,int(os.environ.get("OLT_LIVE_POLL_SECONDS","30")))
     next_due={}
+    next_live_due={}
+    next_test_at=0.0
+    next_config_at=0.0
+    olts=[]
     signature=None
-    print(json.dumps({"ok":True,"multi_olt":True,"read_only":True,"message":"Agente Huawei multi OLT iniciado","tick_seconds":tick},ensure_ascii=False))
+    print(json.dumps({
+        "ok":True,"multi_olt":True,"read_only":True,
+        "message":"Agente Huawei multi OLT iniciado",
+        "tick_seconds":tick,
+        "config_refresh_seconds":config_interval,
+        "test_poll_seconds":test_interval,
+        "live_poll_seconds":live_interval
+    },ensure_ascii=False))
     while True:
         try:
-            tests=await handle_olt_test_queue()
-            if tests:
-                print(json.dumps({"ok":True,"trigger":"PRUEBAS_OLT","tests":tests},ensure_ascii=False))
-            cfg_data=olt_config_call("scanner-list") or {}
-            olts=cfg_data.get("olts") or []
+            now=asyncio.get_running_loop().time()
+            if now>=next_test_at:
+                # Marcar antes del HTTP para no saturar Supabase ante errores.
+                next_test_at=now+test_interval
+                tests=await handle_olt_test_queue()
+                if tests:
+                    print(json.dumps({"ok":True,"trigger":"PRUEBAS_OLT","tests":tests},ensure_ascii=False))
+            if now>=next_config_at:
+                next_config_at=now+config_interval
+                cfg_data=olt_config_call("scanner-list") or {}
+                olts=cfg_data.get("olts") or []
             now=asyncio.get_running_loop().time()
             current=tuple((str(x.get("id")),int(x.get("intervalo_seg") or 300),int(x.get("orden") or 0)) for x in olts)
             if current!=signature:
@@ -1279,16 +1302,22 @@ async def multi_olt_service_loop():
                     interval=max(60,int(cfg.get("intervalo_seg") or 300))
                     next_due[str(cfg.get("id"))]=now+(index*(interval/count))
                 signature=current
-                print(json.dumps({"ok":True,"multi_olt":True,"configured":len(olts),"schedule":[{"codigo":x.get("codigo"),"intervalo_seg":x.get("intervalo_seg")} for x in olts]},ensure_ascii=False))
+                print(json.dumps({
+                    "ok":True,"multi_olt":True,"configured":len(olts),
+                    "schedule":[{"codigo":x.get("codigo"),"intervalo_seg":x.get("intervalo_seg")} for x in olts]
+                },ensure_ascii=False))
             for cfg in olts:
                 oid=str(cfg.get("id") or "")
                 if not oid:
                     continue
-
-                live=await process_configured_live_requests(cfg)
-                if int(live.get("pending_count",0) or 0)>0:
-                    print(json.dumps({"ok":True,"read_only":True,"codigo":cfg.get("codigo"),"trigger":"CONSULTA_CLIENTE_LIVE","consultas_live":live},ensure_ascii=False))
-
+                if now>=next_live_due.get(oid,0):
+                    next_live_due[oid]=now+live_interval
+                    live=await process_configured_live_requests(cfg)
+                    if int(live.get("pending_count",0) or 0)>0:
+                        print(json.dumps({
+                            "ok":True,"read_only":True,"codigo":cfg.get("codigo"),
+                            "trigger":"CONSULTA_CLIENTE_LIVE","consultas_live":live
+                        },ensure_ascii=False))
                 due=next_due.get(oid,now)
                 if now<due:
                     continue
