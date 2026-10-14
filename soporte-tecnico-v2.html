@@ -197,7 +197,10 @@ function mesaReqLine(r){
  }
  return '<div class="mesaMirrorReq '+(done?'done':'pending')+'"><div class="mesaMirrorReqHead"><b>'+(done?'✅ ATENDIDO':'⏳ ESPERANDO MESA TÉCNICA')+' · '+esc(names)+'</b><span>'+(done?'ATENDIDO':'PENDIENTE')+'</span></div><div class="muted">'+esc(fmt(r.solicitado_at))+(done&&r.atendido_at?' · atendido '+esc(fmt(r.atendido_at)):'')+'</div>'+extra+'</div>'
 }
-async function mesaStatus(){if(!['SOPORTE_TECNICO','CAMBIO_EQUIPOS','REUBICACION'].includes(DATA?.orden?.tipo_trabajo))return;try{const d=estabilizarMesaEvidencias(await post(MESA_API,{action:'status',orden_id:ORDEN}));MESA_STATE=d;const rs=d.requerimientos||[],sig=JSON.stringify(rs);if(sig!==MESA_RENDER_SIG){MESA_RENDER_SIG=sig;$('mesaSoporteEstado').innerHTML=rs.length?rs.map(mesaReqLine).join(''):'<div class="muted">Todavía no hay requerimientos enviados a Mesa Técnica.</div>';renderMesaActions()}}catch(e){$('mesaSoporteEstado').textContent='No se pudo consultar Mesa técnica: '+e.message}}
+async function mesaStatus(){if(!['SOPORTE_TECNICO','CAMBIO_EQUIPOS','REUBICACION'].includes(DATA?.orden?.tipo_trabajo))return;try{const d=estabilizarMesaEvidencias(await post(MESA_API,{action:'status',orden_id:ORDEN}));MESA_STATE=d;const rs=d.requerimientos||[],sig=JSON.stringify({rs,optica:d.optica?{
+ fuente:d.optica.fuente,leido_at:d.optica.leido_at,
+ rx_onu_dbm:d.optica.rx_onu_dbm,rx_olt_dbm:d.optica.rx_olt_dbm
+}:null});if(sig!==MESA_RENDER_SIG){MESA_RENDER_SIG=sig;$('mesaSoporteEstado').innerHTML=rs.length?rs.map(mesaReqLine).join(''):'<div class="muted">Todavía no hay requerimientos enviados a Mesa Técnica.</div>';renderMesaActions()}}catch(e){$('mesaSoporteEstado').textContent='No se pudo consultar Mesa técnica: '+e.message}}
 // Realtime actualiza al producirse un cambio real. El respaldo ya NO consulta cada 8s.
 let MESA_MIRROR_TIMER=null,MESA_EVENTO_TIMER=null;
 function iniciarEspejoMesa(){
