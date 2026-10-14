@@ -9,6 +9,8 @@
  let me={};try{me=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
  const id=String(me.id||'');
  if(![FERNANDO,BRYAN].includes(id)||!window.DISPROTEL_OT_RT_PILOT)return;
+ // El panel principal conserva la notificacion cuando un modulo abre en iframe.
+ if(window.self!==window.top)return;
  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim().replace(/[\s-]+/g,'_');
  const seen=new Map(),pending=[],orderDetails=new Map();
  const actionLabels={
