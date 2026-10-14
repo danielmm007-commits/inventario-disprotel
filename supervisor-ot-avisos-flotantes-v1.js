@@ -7,7 +7,8 @@ const recent=new Map(),waiting=[];
 function message(d){
  const state=norm(d.estado),group=String(d.grupo||'Grupo técnico');
  const short=group.toUpperCase().includes('CAMIONETA')?'Grupo Camioneta':group.toUpperCase().includes('FURGONETA')?'Grupo Furgoneta':group;
- const actor=String(d.actor||'').trim()||short;
+ const rawActor=String(d.actor||'').trim();
+ const actor=rawActor?(rawActor.charAt(0).toLocaleUpperCase('es-EC')+rawActor.slice(1).toLocaleLowerCase('es-EC')):short;
  const actions={
  PENDIENTE:['📋','Nueva orden pendiente'],CREADA:['📋','Nueva orden creada'],
  ASIGNADA:['📌','Orden asignada a '+short],
