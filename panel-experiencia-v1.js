@@ -71,8 +71,69 @@
   let techAudioCtx=null;function unlockTechAudio(){try{techAudioCtx=techAudioCtx||new(window.AudioContext||window.webkitAudioContext)();if(techAudioCtx.state==='suspended')techAudioCtx.resume()}catch{}}
   function soundNewTechnicalActivity(){try{unlockTechAudio();const ctx=techAudioCtx;if(!ctx||ctx.state!=='running')return;[0,.18,.36].forEach((delay,i)=>{const osc=ctx.createOscillator(),gain=ctx.createGain();osc.type='sine';osc.frequency.value=[660,880,1100][i];gain.gain.setValueAtTime(.0001,ctx.currentTime+delay);gain.gain.exponentialRampToValueAtTime(.18,ctx.currentTime+delay+.025);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+delay+.16);osc.connect(gain).connect(ctx.destination);osc.start(ctx.currentTime+delay);osc.stop(ctx.currentTime+delay+.18)})}catch{}}
   document.addEventListener('pointerdown',unlockTechAudio,{once:true});document.addEventListener('keydown',unlockTechAudio,{once:true});
-  function applyTechnicalActivity(data){if(isRubi)return;const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=String(Math.max(0,Number(value)||0))},ids=Array.isArray(data?.availableIds)?data.availableIds.map(String):[],key='disprotel_tech_seen_available_'+String(me.id||me.usuario||'tecnico');let previous=null;try{previous=JSON.parse(localStorage.getItem(key)||'null')}catch{}localStorage.setItem(key,JSON.stringify(ids));const hasNew=Array.isArray(previous)&&ids.some(id=>!previous.includes(id));set('dashAvailable',data?.available);set('dashPending',data?.available);set('dashProcess',data?.active);syncAttentionIndicators();if(!ids.length||Number(data?.available||0)<=0){document.querySelectorAll('.menuAside button[data-href]').forEach(button=>{if(norm(button.textContent).includes('AREA TECNICA'))button.classList.remove('navNewActivity')})}if(hasNew){soundNewTechnicalActivity();document.querySelectorAll('.menuAside button[data-href]').forEach(button=>{if(norm(button.textContent).includes('AREA TECNICA'))button.classList.add('navNewActivity')})}}
+  // Piloto Bryan: aviso persistente tambien en Inicio, sin consultas nuevas.
+  // Se alimenta de la misma respuesta ya consultada por el panel y por Realtime.
+  function mostrarPendientesInicio(cantidad){
+    if(!window.DISPROTEL_OT_RT_PILOT||role!=='TECNICO')return;
+    const total=Math.max(0,Number(cantidad)||0);
+    let aviso=document.getElementById('disprotelAvisoOTInicio');
+    if(!total){
+      if(aviso)aviso.remove();
+      return;
+    }
+    if(!aviso){
+      const styleId='disprotelAvisoOTInicioEstilo';
+      if(!document.getElementById(styleId)){
+        const style=document.createElement('style');
+        style.id=styleId;
+        style.textContent=`
+          #disprotelAvisoOTInicio{position:fixed;top:78px;right:18px;z-index:9995;
+            display:flex;align-items:center;gap:9px;max-width:min(310px,calc(100vw - 36px));
+            padding:10px 13px;border:1px solid #f6bd59;border-radius:12px;
+            background:#fff8df;box-shadow:0 9px 24px #16364a2b;
+            color:#5e3d0c;font:700 12px/1.35 system-ui,sans-serif;cursor:pointer}
+          #disprotelAvisoOTInicio:hover{background:#ffefbc}
+          #disprotelAvisoOTInicio .otIcono{font-size:20px}
+          #disprotelAvisoOTInicio small{display:block;color:#785826;font-size:11px;font-weight:500}
+          @media(max-width:700px){#disprotelAvisoOTInicio{top:70px;right:9px}}
+        `;
+        document.head.appendChild(style);
+      }
+      aviso=document.createElement('button');
+      aviso.type='button';aviso.id='disprotelAvisoOTInicio';
+      aviso.setAttribute('aria-live','polite');
+      aviso.addEventListener('click',()=>{
+        const btn=[...document.querySelectorAll('.menuAside button[data-href]')].find(b=>
+          /trabajos-tecnicos\.html/.test(b.dataset.href||'')||
+          norm(b.textContent).includes('AREA TECNICA')
+        );
+        if(btn)btn.click();
+        else location.href='trabajos-tecnicos.html';
+      });
+      document.body.appendChild(aviso);
+    }
+    aviso.innerHTML='<span class="otIcono" aria-hidden="true">🔔</span><span>TRABAJOS POR ACEPTAR: '+total+'<small>Revisar Área técnica →</small></span>';
+    aviso.hidden=false;
+    // Cuando esta viendo trabajos tecnicos, la propia lista ya muestra las OT.
+    const frame=document.querySelector('iframe.menuFrame');
+    const enArea=document.body.classList.contains('moduleOpen')&&
+      /trabajos-tecnicos\.html/.test(frame?.getAttribute('src')||'');
+    aviso.style.display=enArea?'none':'flex';
+  }
+  function applyTechnicalActivity(data){if(isRubi)return;const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=String(Math.max(0,Number(value)||0))},ids=Array.isArray(data?.availableIds)?data.availableIds.map(String):[],key='disprotel_tech_seen_available_'+String(me.id||me.usuario||'tecnico');let previous=null;try{previous=JSON.parse(localStorage.getItem(key)||'null')}catch{}localStorage.setItem(key,JSON.stringify(ids));const hasNew=Array.isArray(previous)&&ids.some(id=>!previous.includes(id));set('dashAvailable',data?.available);set('dashPending',data?.available);set('dashProcess',data?.active);syncAttentionIndicators();mostrarPendientesInicio(data?.available);if(!ids.length||Number(data?.available||0)<=0){document.querySelectorAll('.menuAside button[data-href]').forEach(button=>{if(norm(button.textContent).includes('AREA TECNICA'))button.classList.remove('navNewActivity')})}if(hasNew){soundNewTechnicalActivity();document.querySelectorAll('.menuAside button[data-href]').forEach(button=>{if(norm(button.textContent).includes('AREA TECNICA'))button.classList.add('navNewActivity')})}}
   window.addEventListener('message',event=>{if(event.origin===location.origin&&event.data?.type==='disprotel-tech-counts')applyTechnicalActivity(event.data)});
+  // Actualiza la visibilidad al entrar/salir de los modulos sin descargar datos.
+  document.addEventListener('click',()=>{
+    if(!window.DISPROTEL_OT_RT_PILOT||role!=='TECNICO')return;
+    setTimeout(()=>{
+      const aviso=document.getElementById('disprotelAvisoOTInicio');if(!aviso)return;
+      const frame=document.querySelector('iframe.menuFrame');
+      const enArea=document.body.classList.contains('moduleOpen')&&
+        String(frame?.getAttribute('src')||'').includes('trabajos-tecnicos.html');
+      aviso.style.display=enArea?'none':'flex';
+    },160);
+  },true);
+
   let technicalPollBusy=false,technicalPollPending=false;async function pollTechnicalAttention(){if(isRubi)return;if(technicalPollBusy){technicalPollPending=true;return}technicalPollBusy=true;try{const endpoint='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-ordenes',request=action=>fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_token:me.session_token||'',action})}).then(async response=>{const data=await response.json();if(!response.ok||data.error)throw new Error(data.error||'No disponible');return data}),[available,active]=await Promise.all([request('available-orders'),request('my-active')]),availableRows=available.ordenes||[],activeRows=active.ordenes||[];applyTechnicalActivity({available:availableRows.length,active:activeRows.length,availableIds:availableRows.map(o=>String(o.id)).filter(Boolean)})}catch(e){console.warn('Alerta automática de Área técnica:',e)}finally{technicalPollBusy=false;if(technicalPollPending){technicalPollPending=false;setTimeout(pollTechnicalAttention,350)}}}
   if(!window.DISPROTEL_OT_RT_PILOT){
     setInterval(pollTechnicalAttention,15000);
