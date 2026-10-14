@@ -585,7 +585,7 @@ if(action==='resolve-support-request'){
         const activacionLista=esInst&&!!m?.cliente_registrado&&st.onu?.estado==='CONFIRMADO'&&st.ip?.solicitud?.estado==='ASIGNADA';
         const waitingRemote=st.acceso?.estado==='REQUIERE_CORRECCION'||(activacionLista&&(!st.acceso||st.acceso.estado==='PENDIENTE'));
         const needsAction=(esInst&&!m?.cliente_registrado)||pendingOnu||pendingIp||pendingRemote||pendingBatch;
-        out.push({...o,mesa:m,onu:st.onu,ip:st.ip,acceso:st.acceso,optica:st.optica,servicio_actual,requerimientos:st.requerimientos||[],requiere_accion:needsAction,espera_tecnico:waitingRemote,activacion_lista:activacionLista});
+        out.push({...o,mesa:m,onu:st.onu,ip:st.ip,acceso:st.acceso,optica:st.optica,lectura_huawei:st.lectura_huawei,servicio_actual,requerimientos:st.requerimientos||[],requiere_accion:needsAction,espera_tecnico:waitingRemote,activacion_lista:activacionLista});
       }
       return reply({ok:true,instalaciones:out.filter(x=>String(x.tipo_trabajo||'').startsWith('INSTALACION')),soportes:out.filter(x=>!String(x.tipo_trabajo||'').startsWith('INSTALACION'))});
     }
