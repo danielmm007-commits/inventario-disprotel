@@ -160,7 +160,7 @@ async function latestIp(s:any,ordenId:string){
 }
 // Identidad canónica para Huawei: HWTCxxxxxxxx -> 48575443xxxxxxxx.
 function huaweiSn16(v:any):string|null{
- const sn=String(v||'').toUpperCase().replace(/[\\s:.-]/g,'');
+ const sn=String(v||'').toUpperCase().replace(/[\s:.-]/g,'');
  if(/^[0-9A-F]{16}$/.test(sn))return sn;
  if(/^[A-Z0-9]{4}[A-F0-9]{8}$/.test(sn))
    return [...sn.slice(0,4)].map(c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join('').toUpperCase()+sn.slice(4);
