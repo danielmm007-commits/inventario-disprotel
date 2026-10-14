@@ -3,7 +3,7 @@ if(window.__supAvisosOtV1)return;window.__supAvisosOtV1=true;
 let me={};try{me=JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'{}')}catch{}
 if(me.id!=='986f9610-5144-42d6-b467-cace9ea8983f'||!window.DISPROTEL_OT_RT_PILOT)return;
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim().replace(/[\s-]+/g,'_');
-const recent=new Map(),waiting=[];
+const recent=new Map(),waiting=[],orderDetails=new Map();
 function message(d){
  const state=norm(d.estado),group=String(d.grupo||'Grupo técnico');
  const short=group.toUpperCase().includes('CAMIONETA')?'Grupo Camioneta':group.toUpperCase().includes('FURGONETA')?'Grupo Furgoneta':group;
@@ -38,6 +38,11 @@ function stack(){
  border-left:5px solid #1688bd;border-radius:12px;padding:12px 33px 12px 12px;box-shadow:0 10px 26px #17395435;
  font:600 12px/1.4 system-ui,Arial,sans-serif;animation:otAvisoIn .24s ease-out}
  .supOtAviso b{font-size:13px}.supOtAviso small{display:block;color:#69808e;margin:5px 0 0 30px}
+ .supOtAvisoDetails{border-top:1px solid #dbe7ee;margin-top:8px;padding:7px 0 0 0;
+   display:grid;gap:4px;font-size:11px;color:#31526a;font-weight:500}
+ .supOtAvisoDetails[hidden]{display:none}
+ .supOtAvisoDetails div{overflow-wrap:anywhere}
+ .supOtAvisoDetails strong{color:#163e58;font-weight:750}
  .supOtAviso button{position:absolute;right:5px;top:5px;background:none;border:0;font-size:19px;
  cursor:pointer;color:#546b78}
  @keyframes otAvisoIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
@@ -45,6 +50,45 @@ function stack(){
  `;document.head.append(css);
  root=document.createElement('div');root.id='supOtAvisosFlotantes';document.body.append(root);return root;
 }
+function readableType(raw){
+ const n=norm(raw),labels={
+   SOPORTE_TECNICO:'Soporte técnico',
+   INSTALACION:'Instalación',
+   INSTALACION_NUEVA:'Instalación nueva',
+   REUBICACION:'Reubicación',
+   MUDANZA:'Mudanza',
+   CAMBIO_EQUIPOS:'Cambio de equipos',
+   CAMBIO_EQUIPO:'Cambio de equipo'
+ };
+ return labels[n]||String(raw||'').replace(/_/g,' ').trim().toLocaleLowerCase('es-EC').replace(/^./,c=>c.toLocaleUpperCase('es-EC'));
+}
+function decorate(card){
+ const meta=orderDetails.get(String(card.dataset.otCode||'')),box=card.querySelector('.supOtAvisoDetails');
+ if(!box)return;
+ box.replaceChildren();
+ if(!meta){box.hidden=true;return}
+ const rows=[['Cliente',meta.cliente],['Tipo de trabajo',readableType(meta.tipo)]].filter(x=>x[1]);
+ box.hidden=!rows.length;
+ for(const [label,value] of rows){
+   const line=document.createElement('div'),strong=document.createElement('strong');
+   strong.textContent=label+': ';
+   line.append(strong,document.createTextNode(value));
+   box.append(line);
+ }
+}
+window.addEventListener('disprotel:ot-resumen',event=>{
+ const list=event?.detail?.orders;
+ if(!Array.isArray(list))return;
+ orderDetails.clear();
+ for(const row of list.slice(0,300)){
+   if(!row||!row.ot)continue;
+   orderDetails.set(String(row.ot),{
+     cliente:String(row.cliente||'').trim().slice(0,160),
+     tipo:String(row.tipo||'').trim().slice(0,90)
+   });
+ }
+ document.querySelectorAll('#supOtAvisosFlotantes .supOtAviso').forEach(decorate);
+});
 function show(d){
  const info=message(d);if(!info)return;
  const root=stack(),card=document.createElement('div');card.className='supOtAviso';card.setAttribute('role','status');
@@ -52,7 +96,10 @@ function show(d){
  const sub=document.createElement('small');sub.textContent=String(d.ot||'OT')+' · '+String(d.grupo||'');
  const close=document.createElement('button');close.textContent='×';close.title='Cerrar aviso';close.setAttribute('aria-label','Cerrar aviso');
  let t;close.onclick=()=>{clearTimeout(t);card.remove()};
- card.append(title,sub,close);root.prepend(card);
+ card.dataset.otCode=String(d.ot||'');
+ const details=document.createElement('div');details.className='supOtAvisoDetails';details.hidden=true;
+ card.append(title,sub,details,close);root.prepend(card);
+ decorate(card);
  while(root.children.length>4)root.lastElementChild.remove();
  t=setTimeout(()=>card.remove(),14000);
 }
