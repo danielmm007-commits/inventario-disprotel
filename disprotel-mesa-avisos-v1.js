@@ -15,7 +15,7 @@
  const seen=new Map(),pending=[],orderDetails=new Map(),requests=new Map();
  const STORE='disprotel_mesa_pendientes_fernando_v1';
  const AUDIO_STORE='disprotel_mesa_sonido_v1';
- const REMIND_MS=5*60*1000,WORKING_MS=15*60*1000,MAX_AGE=3*60*60*1000;
+ const REMIND_MS=5*60*1000,WORKING_MS=15*60*1000,MAX_AGE=12*60*60*1000;
  let audio=null,audioRequested=false,lastBeep=0;
  try{audioRequested=sessionStorage.getItem(AUDIO_STORE)==='true'}catch{}
  const keyFor=d=>norm(d.area)+'|'+String(d.solicitud_id||d.ot||'');
@@ -211,6 +211,8 @@
       background:#f1f7fb;color:#184965;font:700 11px system-ui;cursor:pointer}
     .disprotelMesaActions button.primary{background:#156a9d;border-color:#156a9d;color:#fff}
     .disprotelMesaActions button:hover{filter:brightness(.94)}
+    .disprotelMesaSoundEnable{background:#eef6fc;color:#155a84;border:1px solid #c4dde9;
+      border-radius:8px;padding:7px 10px;font:700 11px system-ui;pointer-events:auto;cursor:pointer}
     #disprotelMesaPendientesBadge{padding:7px 10px;background:#fff8db;color:#62460d;
       border:1px solid #e6c775;border-radius:9px;font:700 11px system-ui;pointer-events:auto}
     .disprotelMesaClose{position:absolute;right:5px;top:3px;font-size:22px;line-height:1;
@@ -225,6 +227,11 @@
      root.className='supervisor';
      const badge=document.createElement('div');badge.id='disprotelMesaPendientesBadge';badge.hidden=true;
      root.append(badge);
+   }
+   if(!audioRequested){
+     const enable=document.createElement('button');enable.type='button';
+     enable.textContent='🔊 Activar sonido de Mesa';enable.className='disprotelMesaSoundEnable disprotelMesaEnableSound';
+     enable.onclick=enableAudio;root.append(enable);
    }
    document.body.append(root);updateBadge();return root;
  }
@@ -313,8 +320,9 @@
    checkReminders();
  });
  // Los recordatorios se gestionan SOLO en el navegador y no consultan Supabase.
+ ensure(); // Permite activar el sonido ANTES de que llegue el primer requerimiento.
  if(id===FERNANDO){
    setInterval(checkReminders,15000);
-   if(requests.size){ensure();checkReminders()}
+   if(requests.size)checkReminders();
  }
 })();
