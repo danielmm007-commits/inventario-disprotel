@@ -9,7 +9,7 @@
 <section id="pay" class="tab panel"><h2>Pagos, abonos y excedentes</h2><p class="hint">Aquí vincularemos PDF o imagen de la transferencia, permitiendo distribuir un pago entre varias facturas y varios abonos a una misma factura. Si queda dinero sin aplicar, lo resaltaremos como excedente o anticipo pendiente de conciliación.</p><div id="paylist"></div><p class="hint">El registro de pagos y la carga de documentos todavía están bloqueados hasta completar conciliación, almacenamiento y control de duplicados.</p><button disabled>Registrar pago y adjuntar comprobante · Próximamente</button></section>
 <section id="setup" class="tab panel"><h2>Descarga y clasificación SRI</h2><p class="hint">La descarga automática de comprobantes desde el SRI requiere verificar un mecanismo de acceso soportado y seguro. Prepararemos también importación XML manual para que el trabajo no dependa de la disponibilidad del portal.</p><div id="contributors"></div><p class="hint warn">No se descargarán comprobantes ni se solicitarán credenciales del SRI hasta validar el método de integración.</p><button disabled>Descarga automática · En preparación</button></section>
 <p class="hint" id="status">Cargando información...</p><button id="reload">Actualizar datos</button>
-</main><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script><script>
+</main><script src="vendor/jspdf.umd.min.js?v=1"></script><script src="vendor/jszip.min.js?v=1"></script><script>
 const $=id=>document.getElementById(id);
 const clean=v=>String(v??'').normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'');
 const filename=f=>f.fecha_emision+'_'+f.numero.replace(/[^0-9-]/g,'')+'.pdf';
