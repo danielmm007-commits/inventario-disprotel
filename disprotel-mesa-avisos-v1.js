@@ -12,7 +12,7 @@
  // El panel principal conserva la notificacion cuando un modulo abre en iframe.
  if(window.self!==window.top)return;
  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim().replace(/[\s-]+/g,'_');
- const seen=new Map(),pending=[],orderDetails=new Map(),requests=new Map();
+ const seen=new Map(),pending=[],orderDetails=new Map(),requests=new Map(),recentlyClosed=new Map();
  const STORE='disprotel_mesa_pendientes_fernando_v1';
  const AUDIO_STORE='disprotel_mesa_sonido_v1';
  const REMIND_MS=5*60*1000,WORKING_MS=15*60*1000,MAX_AGE=12*60*60*1000;
@@ -23,7 +23,7 @@
  const keyFor=d=>norm(d.area)+'|'+String(d.solicitud_id||d.ot||'');
  function save(){
    if(id!==FERNANDO)return;
-   try{sessionStorage.setItem(STORE,JSON.stringify([...requests.values()].slice(-30)))}catch{}
+   try{sessionStorage.setItem(STORE,JSON.stringify([...requests.values()].slice(0,500)))}catch{}
  }
  function restore(){
    if(id!==FERNANDO)return;
@@ -62,16 +62,18 @@
      }
    }
    if(norm(d.destino)==='TECNICO'&&status.closed){
+     recentlyClosed.set(key,now);
      if(requests.delete(key))save();
      for(const toast of document.querySelectorAll('#disprotelMesaToastStack .disprotelMesaToast')){
        if(toast.dataset.reqKey===key)toast.remove();
      }
    }
    updateBadge();
+   renderQueue();
  }
  function defer(key,ms,phase){
    const r=requests.get(key);if(!r)return;
-   r.due=Date.now()+ms;r.phase=phase;save();updateBadge();
+   r.due=Date.now()+ms;r.phase=phase;save();updateBadge();renderQueue();
  }
  async function playSound(force=false){
    if(!force&&!audioRequested)return;
@@ -307,15 +309,34 @@
  });
  window.addEventListener('disprotel:mesa-pendientes-snapshot',event=>{
    if(id!==FERNANDO)return;
-   const rows=event?.detail?.requerimientos;if(!Array.isArray(rows))return;
+   const data=event?.detail||{},rows=data.requerimientos;
+   if(!Array.isArray(rows)||!data.completo)return;
+   const open=new Set(),now=Date.now();
    let firstShown=0;
-   for(const d of rows.slice(0,30)){
-     if(!d?.solicitud_id||!d?.orden_uuid||!d?.ot||!keyStatus(d).open)continue;
-     const key=keyFor(d),wasKnown=requests.has(key);
+   for(const d of rows.slice(0,550)){
+     if(!d?.solicitud_id||!d?.orden_uuid||!keyStatus(d).open)continue;
+     const key=keyFor(d);open.add(key);
+     // Solicitudes de la misma tabla y OT distintas tienen claves distintas.
+     // Realtime puede haber resuelto una solicitud MIENTRAS el resumen cargaba.
+     if((recentlyClosed.get(key)||0)>=Number(data.snapshotStartedAt||now))continue;
+     if(!d.ot)continue; // El backend limitó OTs visibles; jamás inventar cliente/ID.
+     const wasKnown=requests.has(key);
      track(d);
-     // Reconocer pendientes existentes al abrir Inicio, sin sonar como nuevos.
      if(!wasKnown&&firstShown++<2&&!document.hidden)show(d);
    }
+   for(const [key,r] of requests){
+     const area=norm(r.data?.area);
+     if(data.completo[area]!==true||open.has(key))continue;
+     // Si llegó un Broadcast DESPUÉS de iniciarse la consulta, no lo eliminar:
+     // la respuesta del dashboard puede ser más antigua que ese evento.
+     if(r.created>=Number(data.snapshotStartedAt||0))continue;
+     requests.delete(key);
+     for(const toast of document.querySelectorAll('#disprotelMesaToastStack .disprotelMesaToast')){
+       if(toast.dataset.reqKey===key)toast.remove();
+     }
+   }
+   for(const [key,at] of recentlyClosed)if(now-at>60000)recentlyClosed.delete(key);
+   save();updateBadge();renderQueue();
  });
  window.addEventListener('disprotel:mesa-hito',event=>{
    const d=event?.detail||{};
