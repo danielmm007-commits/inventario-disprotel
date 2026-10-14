@@ -75,6 +75,24 @@
           const revision=String(raw.revision||'');
           if(revision&&revision===lastRevision)return;
           lastRevision=revision;
+          // Alertas de Mesa Tecnica: SIN refrescar el dashboard por cada evento.
+          // Mensajes sin IP, SN, notas ni datos del cliente, en canal privado.
+          if(raw.fuente==='MESA'){
+            emit('disprotel:mesa-hito',{
+              revision,
+              area:String(raw.area||'').slice(0,20),
+              ot:String(raw.ot||'').slice(0,64),
+              grupo:String(raw.grupo||'').slice(0,120),
+              tipo:String(raw.tipo||'').slice(0,90),
+              estado:String(raw.estado||'').slice(0,50),
+              anterior:String(raw.anterior||'').slice(0,50),
+              actor:String(raw.actor||'').slice(0,60),
+              destino:String(raw.destino||'').slice(0,20),
+              destinatario:String(raw.destinatario||'').slice(0,64),
+              acciones:Array.isArray(raw.acciones)?raw.acciones.map(x=>String(x).slice(0,40)).slice(0,8):[]
+            });
+            return;
+          }
           // Un evento individual por hito para las notificaciones de Fernando.
           // El refresco general permanece agrupado para reducir invocaciones.
           if(raw.ot&&raw.estado){
