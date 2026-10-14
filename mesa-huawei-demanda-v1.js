@@ -25,11 +25,15 @@ last.textContent='Cargando la última medición guardada…';
 const btn=document.createElement('button');btn.type='button';btn.textContent='📡 Consultar potencia Huawei ahora';
 btn.disabled=true;btn.style.marginTop='10px';
 const note=document.createElement('div');note.style.cssText='font-size:12px;color:#476476;margin-top:8px';
-card.append(title,desc,last,btn,note);app.prepend(card);
+const resetBtn=document.createElement('button');
+resetBtn.type='button';
+resetBtn.textContent='🧹 Borrar evidencia de prueba y reiniciar potencia';
+resetBtn.style.cssText='display:none;margin-top:10px;background:#fff0f0;color:#982d2d;border:1px solid #d99';
+card.append(title,desc,last,btn,note,resetBtn);app.prepend(card);
 let busy=false,scheduled=null;
-async function call(action){
+async function call(action,extra={}){
  const r=await fetch(URL,{method:'POST',headers:{'Content-Type':'application/json','x-session':me.session_token},
-   body:JSON.stringify({action,orden_id:ot})});
+   body:JSON.stringify({action,orden_id:ot,...extra})});
  let d={};try{d=await r.json()}catch{}
  if(!r.ok||d.error)throw Error(String(d.error||'No se pudo consultar Mesa Técnica'));
  return d;
@@ -41,6 +45,11 @@ async function refresh(){
  if(busy)return;busy=true;btn.disabled=true;
  try{
   const d=await call('status'),o=d.optica||null,sol=d.lectura_huawei||null;
+  const reqPrueba=ot==='e8ce09af-4a08-4b10-bf9e-459231b1f5cb'?
+    (d.requerimientos||[]).find(r=>r.id==='f871587c-89bc-4aa9-9b68-601f9ac67d68'):null;
+  resetBtn.style.display=reqPrueba?.estado==='ATENDIDO'&&
+    (reqPrueba?.resultado?.evidencia_potencia?.storage_path||reqPrueba?.resultado?.verificacion_potencia)?
+    'inline-block':'none';
   const hasPower=(d.requerimientos||[]).some(r=>r.estado==='PENDIENTE'&&
     Array.isArray(r.acciones)&&r.acciones.includes('VERIFICAR_POTENCIA'));
   last.textContent=o?[
@@ -71,6 +80,19 @@ btn.onclick=async()=>{
     '✅ Solicitud enviada al agente Huawei. Esperando su respuesta.';
  }catch(e){note.textContent='⚠️ '+String(e.message||e).slice(0,190)}
  finally{busy=false;await refresh()}
+};
+resetBtn.onclick=async()=>{
+ if(busy||!confirm('¿Eliminar la captura PNG de prueba y reiniciar SOLO la verificación de potencia de la OT-20261014-93344? El resto de la OT permanece intacto.'))return;
+ busy=true;btn.disabled=true;resetBtn.disabled=true;
+ note.textContent='Borrando captura de prueba en Storage y reiniciando el requerimiento…';
+ try{
+   await call('reset-test-power-evidence',{
+     requerimiento_id:'f871587c-89bc-4aa9-9b68-601f9ac67d68',
+     confirmacion:'RESETEAR PRUEBA'
+   });
+   note.textContent='✅ Evidencia de prueba eliminada y verificación de potencia nuevamente pendiente.';
+ }catch(e){note.textContent='⚠️ No se completó el reinicio: '+String(e.message||e).slice(0,220)}
+ finally{busy=false;resetBtn.disabled=false;await refresh()}
 };
 function onSignal(e){
  if(String(e?.detail?.orden_uuid||'')!==ot)return;
