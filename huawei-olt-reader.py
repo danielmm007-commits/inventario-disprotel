@@ -1330,6 +1330,73 @@ async def multi_olt_service_loop():
         await asyncio.sleep(tick)
 
 
+async def demand_only_loop():
+    """
+    Modo demanda MINIMO para Free Plan.
+    UNA llamada a Edge por ciclo para TODAS las OLT configuradas.
+    Sin inventario, sin autofind, sin test periódico ni telemetría.
+    Los únicos comandos a Huawei son lecturas individuales por SN solicitado.
+    """
+    poll=max(30,min(3600,int(os.environ.get("OLT_DEMAND_POLL_SECONDS","60"))))
+    refresh=max(900,min(86400,int(os.environ.get("OLT_DEMAND_CONFIG_SECONDS","3600"))))
+    olts={}
+    next_config=0.0
+    print(json.dumps({
+        "ok":True,"read_only":True,"on_demand_only":True,
+        "poll_seconds":poll,"config_refresh_seconds":refresh,
+        "message":"Huawei bajo demanda. Sin escaneo periódico de inventario ni autofind."
+    },ensure_ascii=False))
+    while True:
+        now=asyncio.get_running_loop().time()
+        if now>=next_config:
+            next_config=now+refresh
+            try:
+                cfg=olt_config_call("scanner-list") or {}
+                olts={str(x.get("codigo") or "").strip().upper():x
+                      for x in (cfg.get("olts") or [])
+                      if str(x.get("codigo") or "").strip()}
+                print(json.dumps({"ok":True,"read_only":True,
+                    "configured":[*olts],"on_demand_only":True},ensure_ascii=False))
+            except Exception as e:
+                print(json.dumps({"ok":False,"on_demand_only":True,
+                    "config_error":str(e)},ensure_ascii=False))
+        try:
+            if olts:
+                payload=detector_call_for_olt("scanner-live-pending-batch","",
+                                             {"olt_codigos":[*olts]}) or {}
+                # Límite defensivo de trabajo por ciclo, sin lecturas duplicadas.
+                processed=set()
+                for row in (payload.get("solicitudes") or [])[:8]:
+                    req_id=str(row.get("id") or "").strip()
+                    code=str(row.get("olt_codigo") or "").strip().upper()
+                    sn=str(row.get("onu_sn") or "").strip().upper()
+                    if not req_id or not sn or code not in olts:
+                        continue
+                    key=(code,sn)
+                    if key in processed:
+                        continue
+                    processed.add(key)
+                    try:
+                        info=await configured_read_ont_by_sn(olts[code],sn)
+                        detector_call_for_olt("scanner-live-result",code,
+                            {"id":req_id,"ok":True,"resultado":info})
+                        print(json.dumps({"ok":True,"on_demand_only":True,
+                            "id":req_id,"olt":code,"read_only":True,
+                            "found":info.get("found",False)},ensure_ascii=False))
+                    except Exception as e:
+                        try:
+                            detector_call_for_olt("scanner-live-result",code,
+                                {"id":req_id,"ok":False,"error":str(e)[:240]})
+                        except Exception:
+                            pass
+                        print(json.dumps({"ok":False,"on_demand_only":True,
+                            "id":req_id,"olt":code,"error":str(e)[:240]},ensure_ascii=False))
+        except Exception as e:
+            print(json.dumps({"ok":False,"on_demand_only":True,
+                "read_only":True,"error":str(e)[:240]},ensure_ascii=False))
+        await asyncio.sleep(poll)
+
+
 async def service_loop():
     seconds=max(5,int(os.environ.get("OLT_POLL_SECONDS","10")))
     print(json.dumps({
@@ -1424,6 +1491,9 @@ async def main():
         result = self_test_parser()
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("ok") else 1
+    if "--on-demand" in sys.argv or os.environ.get("OLT_ON_DEMAND_ONLY","0")=="1":
+        await demand_only_loop()
+        return 0
     if os.environ.get("OLT_MULTI_MODE","0")=="1":
         await multi_olt_service_loop()
         return 0
