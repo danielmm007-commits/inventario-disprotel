@@ -39,7 +39,7 @@ begin
 
   -- No incluir nombres, telefonos, IP, notas, identificadores de cliente ni OT.
   perform realtime.send(
-    pg_catalog.jsonb_build_object('revision',pg_catalog.extract(epoch from pg_catalog.clock_timestamp())::bigint),
+    pg_catalog.jsonb_build_object('revision',pg_catalog.clock_timestamp()::text),
     'ot_changed',
     'disprotel:ot-eventos',
     true
