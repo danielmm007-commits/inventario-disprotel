@@ -11,7 +11,7 @@
   const SESSION_KEY='disprotel_login_general_v2';
   const CHANNEL='disprotel:ot-eventos';
   const SDK='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.0/dist/umd/supabase.min.js';
-  let client=null,lastRevision='',lastEventAt=0;
+  let client=null,lastRevision='',notifyTimer=null;
   const read=()=>{try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'{}')}catch{return {}}};
   const emit=(type,detail)=>window.dispatchEvent(new CustomEvent(type,{detail}));
   function connection(ok){
@@ -65,12 +65,11 @@
       client.channel(CHANNEL,{config:{private:true}})
         .on('broadcast',{event:'ot_changed'},payload=>{
           const revision=String(payload?.payload?.revision||'');
-          const now=Date.now();
-          // Una unica actualizacion cuando llegan varios eventos juntos.
           if(revision&&revision===lastRevision)return;
-          if(now-lastEventAt<300)return;
-          lastRevision=revision;lastEventAt=now;
-          emit('disprotel:ot-evento',{revision});
+          lastRevision=revision;
+          // Agrupar eventos sucesivos; nunca descartar el ultimo cambio.
+          clearTimeout(notifyTimer);
+          notifyTimer=setTimeout(()=>emit('disprotel:ot-evento',{revision:lastRevision}),400);
         })
         .subscribe(status=>{
           connection(status==='SUBSCRIBED');
