@@ -171,7 +171,13 @@ function renderMesaActions(){
  });
 }
 function mesaReqLine(r){
- const names=(r.acciones||[]).map(x=>MESA_ACTIONS[x]?.[1]||x.replaceAll('_',' ')).join(' · '),res=r.resultado||{},pot=res.verificacion_potencia||null,ev=res.evidencia_potencia||null,ip=res.verificacion_ip||null,onuEv=res.evidencia_onu||null,onuRes=res.activacion_onu||null,done=r.estado==='ATENDIDO';
+ const names=(r.acciones||[]).map(x=>MESA_ACTIONS[x]?.[1]||x.replaceAll('_',' ')).join(' · '),res=r.resultado||{},
+       potGuardada=res.verificacion_potencia||null,lecturaCompartida=MESA_STATE?.optica||null,
+       estaVerificando=(r.acciones||[]).includes('VERIFICAR_POTENCIA'),
+       esMasReciente=estaVerificando&&lecturaCompartida?.leido_at&&
+         (!potGuardada?.leido_at||Date.parse(lecturaCompartida.leido_at)>Date.parse(potGuardada.leido_at)),
+       pot=esMasReciente?lecturaCompartida:potGuardada,
+       ev=res.evidencia_potencia||null,ip=res.verificacion_ip||null,onuEv=res.evidencia_onu||null,onuRes=res.activacion_onu||null,done=r.estado==='ATENDIDO';
  let extra='';
  if(onuEv||onuRes){
    extra+='<div class="mesaMirrorStatus '+(done?'ok':'pending')+'"><div><b>📡 ONU/ONT:</b> '+esc(onuRes?.estado||'CONFIRMADA')+'</div>'+(onuEv?.confirmado_at?'<div><b>Confirmada:</b> '+esc(fmt(onuEv.confirmado_at))+'</div>':'')+(onuEv?.url?'<div style="margin-top:6px"><img src="'+esc(onuEv.url)+'" alt="Evidencia ONU" style="max-width:360px;width:100%;max-height:180px;object-fit:contain;border:1px solid #d8e2e6;border-radius:4px;background:#111" onclick="window.open(this.src,\'_blank\')"></div>':'')+'</div>';
@@ -181,7 +187,10 @@ function mesaReqLine(r){
    extra+='<div class="mesaMirrorStatus '+(done?'ok':'pending')+'"><div><b>🌐 IP actual:</b> '+esc(ip.ip||'—')+'</div><div><b>Router:</b> '+esc(ip.router_nombre||'—')+'</div><div><b>Resultado:</b> '+esc(label)+'</div>'+(ip.respondido_at?'<div class="muted">'+esc(fmt(ip.respondido_at))+'</div>':'')+'</div>';
  }
  if(pot||ev?.url){
-   const vals=pot?[['Estado',pot.estado||'—'],['Rx ONU',pot.rx_onu_dbm!=null?String(pot.rx_onu_dbm)+' dBm':'—'],['Rx OLT',pot.rx_olt_dbm!=null?String(pot.rx_olt_dbm)+' dBm':'—'],['OLT',pot.olt||'—'],['PON',[pot.tarjeta,pot.puerto].filter(Boolean).join('/')||'—'],['ONT-ID',pot.ont_id||'—'],['SN',pot.sn||'—'],['Distancia',pot.distancia_m!=null?String(pot.distancia_m)+' m':'—'],['Fuente',pot.fuente||'SMARTOLT'],['Lectura',pot.leido_at?fmt(pot.leido_at):'—']]:[];
+   const haceMin=pot?.leido_at?Math.max(0,Math.floor((Date.now()-Date.parse(pot.leido_at))/60000)):null;
+   const hist=haceMin===null||!Number.isFinite(haceMin)||haceMin>15;
+   const vals=pot?[['Estado',pot.estado||'—'],['Rx ONU',pot.rx_onu_dbm!=null?String(pot.rx_onu_dbm)+' dBm':'—'],['Rx OLT',pot.rx_olt_dbm!=null?String(pot.rx_olt_dbm)+' dBm':'—'],['OLT',pot.olt||'—'],['PON',[pot.tarjeta,pot.puerto].filter(Boolean).join('/')||'—'],['ONT-ID',pot.ont_id??'—'],['SN',pot.sn||'—'],['Distancia',pot.distancia_m!=null?String(pot.distancia_m)+' m':'—'],['Fuente',pot.fuente||'SIN IDENTIFICAR'],['Lectura',pot.leido_at?fmt(pot.leido_at):'—'],['Vigencia',hist?'HISTÓRICA · '+(haceMin===null?'sin fecha':haceMin+' min'):'Reciente · '+haceMin+' min']]:[];
+   if(esMasReciente&&potGuardada?.leido_at)vals.push(['Verificación anterior',fmt(potGuardada.leido_at)+' · guardada en historial']);
    const data='<div class="powerMirrorData"><div class="muted" style="margin:0 0 5px"><b>📊 LECTURA ÓPTICA</b></div>'+vals.map(v=>'<div style="margin-top:3px"><b>'+esc(v[0])+':</b> '+esc(v[1])+'</div>').join('')+'</div>';
    const evidence='<div class="powerMirrorEvidence"><div class="muted" style="margin:0 0 5px"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+(ev?.url?'<img data-power-evidence="'+esc(r.id)+'" src="'+esc(ev.url)+'" alt="Evidencia potencia SmartOLT" onclick="window.open(this.src,\'_blank\')"><div class="muted">✅ Captura SmartOLT guardada'+(ev.subido_at?' · '+esc(fmt(ev.subido_at)):'')+'</div>':'<div class="muted">Sin captura disponible.</div>')+'</div>';
    extra+='<div class="powerMirrorGrid">'+data+evidence+'</div>';
