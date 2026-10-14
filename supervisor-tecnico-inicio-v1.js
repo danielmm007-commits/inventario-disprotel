@@ -231,6 +231,7 @@
     if(resumenCargando)return resumenCargando;
     resumenCargando=(async()=>{
       try{
+        const snapshotStartedAt=Date.now();
         const r=await fetch(SUPERVISOR_API,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','x-session':me.session_token||''},body:JSON.stringify({action:'dashboard'})});
         const d=await r.json().catch(()=>({}));
         if(!r.ok||d.error)throw new Error(d.error||'No se pudo cargar el resumen');
@@ -245,33 +246,39 @@
               tipo:String(o.tipo_trabajo||'').slice(0,90)
             }))}
           }));
-          // Sembrar recordatorios de requerimientos YA pendientes usando esta
-          // misma respuesta autenticada. NO hay ninguna consulta adicional.
-          // Solo lotes de Mesa con UUID fiable (lote_id) para cerrar al resolver.
-          const pend=[];
-          for(const o of Array.isArray(d.requiere_atencion)?d.requiere_atencion:[]){
-            if(o?.tipo_atencion!=='MESA_TECNICA'||!o.id_orden||!o.id)continue;
-            const groups=new Map();
-            for(const item of Array.isArray(o.mesa_pendientes)?o.mesa_pendientes:[]){
-              if(!item?.lote_id||String(item.estado||'').toUpperCase()!=='PENDIENTE')continue;
-              const k=String(item.lote_id),actions=groups.get(k)||[];
-              actions.push(String(item.tipo||''));groups.set(k,actions);
-            }
-            for(const [solicitud_id,acciones] of groups){
-              pend.push({
-                area:'MESA',ot:String(o.id_orden).slice(0,64),
-                orden_uuid:String(o.id).slice(0,40),
-                solicitud_id:solicitud_id.slice(0,40),
-                grupo:String(o.grupo_asignado||o.grupo_destino||'').slice(0,120),
-                tipo:String(o.tipo_trabajo||'').slice(0,90),
-                estado:'PENDIENTE',actor:'',destino:'SUPERVISOR',
-                acciones:[...new Set(acciones)].slice(0,8)
-              });
-            }
+          // La respuesta YA disponible contiene el estado de cada requerimiento,
+          // incluso cuando distintos grupos solicitan IP, ONU, remoto y Mesa a la vez.
+          // No se llama de nuevo a Supabase. No borrar si la respuesta esta incompleta.
+          const snapshot=d.avisos_snapshot;
+          if(snapshot&&Array.isArray(snapshot.pendientes)){
+            const porId=new Map(orders.map(o=>[String(o.id||''),o]));
+            const pendientes=snapshot.pendientes.slice(0,550).map(x=>{
+              const o=porId.get(String(x.orden_uuid||''))||null;
+              return{
+                area:String(x.area||'').slice(0,20),
+                ot:String(o?.id_orden||'').slice(0,64),
+                orden_uuid:String(x.orden_uuid||'').slice(0,40),
+                solicitud_id:String(x.solicitud_id||'').slice(0,40),
+                grupo:String(o?.grupo_asignado||o?.grupo_destino||'').slice(0,120),
+                tipo:String(o?.tipo_trabajo||'').slice(0,90),
+                estado:String(x.estado||'').slice(0,30),
+                actor:'',destino:'SUPERVISOR',
+                acciones:Array.isArray(x.acciones)?x.acciones.map(v=>String(v).slice(0,40)).slice(0,8):[]
+              }
+            }).filter(x=>x.area&&x.solicitud_id);
+            window.dispatchEvent(new CustomEvent('disprotel:mesa-pendientes-snapshot',{
+              detail:{
+                requerimientos:pendientes,
+                completo:{
+                  IP:snapshot.completo?.IP===true,
+                  ONU:snapshot.completo?.ONU===true,
+                  REMOTO:snapshot.completo?.REMOTO===true,
+                  MESA:snapshot.completo?.MESA===true
+                },
+                snapshotStartedAt
+              }
+            }));
           }
-          window.dispatchEvent(new CustomEvent('disprotel:mesa-pendientes-snapshot',{
-            detail:{requerimientos:pend}
-          }));
         }
         resumenReal={
           pending:orders.filter(o=>estadoPendiente(o.estado)).length,
