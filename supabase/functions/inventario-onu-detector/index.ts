@@ -137,6 +137,14 @@ Deno.serve(async req=>{
        if(hist.error)console.warn('Historial óptico no guardado:',hist.error.message);
      }
    }
+   // Compartir UNA misma respuesta de Huawei con solicitudes simultáneas
+   // de la misma ONU: sin otra lectura física, ni otra llamada Edge del agente.
+   if(q.olt_codigo&&q.onu_sn){
+     const share=await s.from('consulta_red_solicitudes')
+       .update(patch).eq('olt_codigo',q.olt_codigo).eq('onu_sn',q.onu_sn)
+       .eq('olt_estado','PENDIENTE').neq('id',id).gt('expira_at',now);
+     if(share.error)console.warn('No se pudo compartir lectura:',share.error.message);
+   }
    return reply({ok:true,cache_actualizada:ok,lectura_valida:ok});
   }
   if(action==='autofind-read'){
