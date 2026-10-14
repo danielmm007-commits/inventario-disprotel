@@ -70,12 +70,23 @@ function estabilizarUrlsPotencia(data){
 }
 const ACTION_LABELS={VERIFICAR_POTENCIA:'📶 Verificar potencia óptica',ACTIVAR_CAMBIAR_ONU:'📡 Activar / cambiar ONU',CONFIRMAR_IP_ACTUAL:'🌐 Confirmar IP actual',ASIGNAR_NUEVA_IP:'🆕 Asignar nueva IP',VERIFICAR_ACCESO_REMOTO:'🔐 Verificar acceso remoto',REVISAR_RADIO_CPE:'📻 Revisar radio / CPE',VERIFICAR_CONECTIVIDAD:'🔎 Verificar conectividad',OTRA_ACCION:'🧰 Otra acción técnica'};
 function potenciaStep(o,r){
- const v=(r?.resultado||{})?.verificacion_potencia||o.optica||null,done=r?.estado==='ATENDIDO',ev=(r?.resultado||{})?.evidencia_potencia||null;
- if(!v)return '<div class="step"><b>📶 POTENCIA ÓPTICA</b><div class="stepState">⚠️ No hay lectura SmartOLT disponible para este servicio.</div>'+(o.servicio_cliente_id?'<button onclick="consultarPotenciaAhora(\''+o.id+'\',\''+o.servicio_cliente_id+'\')">🔄 CONSULTAR SMARTOLT AHORA</button>':'<div class="stepState">La OT no tiene servicio vinculado.</div>')+'</div>';
+ const archivada=(r?.resultado||{})?.verificacion_potencia||null,lectura=o.optica||null;
+ const v=lectura&&(!archivada?.leido_at||Date.parse(lectura.leido_at)>Date.parse(archivada.leido_at))?lectura:(archivada||lectura);
+ const done=r?.estado==='ATENDIDO',ev=(r?.resultado||{})?.evidencia_potencia||null;
+ const solicitud=o.lectura_huawei||null,pendingHu=solicitud?.estado==='PENDIENTE'&&!solicitud?.expirada;
+ const esPrueba=o.id==='e8ce09af-4a08-4b10-bf9e-459231b1f5cb'&&r.id==='f871587c-89bc-4aa9-9b68-601f9ac67d68';
+ const reset=esPrueba&&done&&(ev?.storage_path||archivada)?
+  '<button type="button" class="secondary" onclick="reiniciarPotenciaPruebaMesa(\''+o.id+'\',\''+r.id+'\')">🧹 BORRAR EVIDENCIA Y REINICIAR PRUEBA</button>':'';
+ const accionHuawei=done?'':pendingHu?
+   '<button type="button" disabled style="opacity:.65;cursor:wait">⏳ ESPERANDO LECTURA HUAWEI</button>':
+   '<button type="button" onclick="solicitarPotenciaHuaweiMesa(\''+o.id+'\')">📡 CONSULTAR POTENCIA HUAWEI AHORA</button>';
+ const estadoHuawei=pendingHu?'<div class="stepState">La lectura individual está solicitada; se compartirá al recibir respuesta de Huawei.</div>':'';
+
+ if(!v)return '<div class="step"><b>📶 POTENCIA ÓPTICA</b><div class="stepState">⚠️ Sin lectura óptica disponible para este servicio.</div>'+accionHuawei+estadoHuawei+reset+'</div>';
  const vals=[
    ['Estado',v.estado||'—'],['Rx ONU',v.rx_onu_dbm!=null?String(v.rx_onu_dbm)+' dBm':'—'],['Rx OLT',v.rx_olt_dbm!=null?String(v.rx_olt_dbm)+' dBm':'—'],
    ['OLT',v.olt||'—'],['PON',[v.tarjeta,v.puerto].filter(Boolean).join('/')||'—'],['ONT-ID',v.ont_id||'—'],['SN',v.sn||'—'],
-   ['Distancia',v.distancia_m!=null?String(v.distancia_m)+' m':'—'],['Fuente',v.fuente||'SMARTOLT'],['Lectura',v.leido_at?fmt(v.leido_at):'—']
+   ['Distancia',v.distancia_m!=null?String(v.distancia_m)+' m':'—'],['Fuente',v.fuente||'SMARTOLT'],['Lectura',v.leido_at?fmt(v.leido_at):'—'],['Vigencia',v.leido_at&&Date.now()-Date.parse(v.leido_at)<=15*60000?'Reciente':'HISTÓRICA (sin lectura reciente)']
  ];
  const data='<div class="powerMirrorData"><div class="stepState" style="margin-top:0"><b>📊 LECTURA ÓPTICA</b></div>'+vals.map(x=>'<div style="margin-top:3px"><b>'+esc(x[0])+':</b> '+esc(x[1])+'</div>').join('')+'</div>';
  const evidenceBody=ev?.url
@@ -84,7 +95,7 @@ function potenciaStep(o,r){
  const controls=done?'':'<div class="remoteTools"><label class="btnMini">🖼️ CARGAR ARCHIVO<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="seleccionarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')"></label><div class="remotePaste" tabindex="0" contenteditable="true" spellcheck="false" onclick="this.focus()" onkeydown="if(event.key!==\'v\'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')">📋 PEGAR CAPTURA Ctrl+V</div></div>';
  const evidence='<div class="powerMirrorEvidence"><div class="stepState" style="margin-top:0"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+evidenceBody+controls+'</div>';
  const confirmar=done?'':'<button class="remoteOk" '+(ev?.url?'':'disabled style="opacity:.45;cursor:not-allowed"')+' onclick="confirmarPotenciaMesa(\''+o.id+'\',\''+r.id+'\')">✅ CONFIRMAR LECTURA ÓPTICA</button>';
- return '<div class="step"><b>📶 POTENCIA ÓPTICA</b><div class="stepState">'+(done?'✅ Lectura y evidencia confirmadas':'🟡 Lectura disponible para verificar')+'</div><div class="powerMirrorGrid">'+data+evidence+'</div>'+confirmar+'</div>';
+ return '<div class="step"><b>📶 POTENCIA ÓPTICA</b><div class="stepState">'+(done?'✅ Lectura y evidencia confirmadas':'🟡 Lectura disponible para verificar')+'</div><div class="powerMirrorGrid">'+data+evidence+'</div>'+accionHuawei+estadoHuawei+confirmar+reset+'</div>';
 }
 function ipActualStep(o,r){
  const done=r?.estado==='ATENDIDO',v=(r?.resultado||{})?.verificacion_ip||{},sv=o?.servicio_actual||{},ip=v.ip||sv.ip||o.ip_creacion_registrada||'—',router=v.router_nombre||sv.router_nombre||'—',servicio=v.codigo_servicio||sv.codigo_servicio||'—',tipo=v.tipo_conexion||sv.tipo_conexion||'—',estado=String(v.estado||'SIN_CONSULTAR').toUpperCase(),encontrada=v.encontrada===true,ambigua=sv.requiere_seleccion_servicio===true;
@@ -106,6 +117,24 @@ window.verificarIpActualMesa=async(id,rid)=>{try{await mesa('verify-current-ip',
 window.consultarPotenciaAhora=async(id,servicioId)=>{try{const s=ses(),token=s.session_token||'';if(!token)throw new Error('Sesión no disponible');const r=await fetch(SMARTOLT_DIAG+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'live-diagnostic',session_token:token,servicio_id:servicioId})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'No se pudo consultar SmartOLT');await cargar(true)}catch(e){alert(e.message)}};
 window.seleccionarPotenciaMesa=async(e,id,rid)=>{const f=e.target.files?.[0];if(!f)return;try{await mesa('power-evidence-upload',{orden_id:id,requerimiento_id:rid,mime_type:f.type||'image/jpeg',base64:await dataUrl(f)});await cargar(true)}catch(err){alert(err.message)}finally{e.target.value=''}};
 window.pegarPotenciaMesa=async(e,id,rid)=>{e.preventDefault();const items=[...(e.clipboardData?.items||[])],it=items.find(x=>String(x.type||'').startsWith('image/'));if(!it){alert('El portapapeles no contiene una imagen.');return}const f=it.getAsFile();if(!f)return;try{await mesa('power-evidence-upload',{orden_id:id,requerimiento_id:rid,mime_type:f.type||'image/png',base64:await dataUrl(f)});await cargar(true)}catch(err){alert(err.message)}};
+window.reiniciarPotenciaPruebaMesa=async(id,rid)=>{
+ if(id!=='e8ce09af-4a08-4b10-bf9e-459231b1f5cb'||
+   rid!=='f871587c-89bc-4aa9-9b68-601f9ac67d68')return;
+ if(!confirm('¿Eliminar físicamente la captura de prueba y reiniciar SOLO la verificación de potencia de OT-20261014-93344?'))return;
+ try{
+   await mesa('reset-test-power-evidence',{orden_id:id,requerimiento_id:rid,confirmacion:'RESETEAR PRUEBA'});
+   alert('✅ Captura de prueba eliminada. Verificación de potencia nuevamente PENDIENTE.');
+   await cargar(true);
+ }catch(e){alert('No se completó el reinicio: '+e.message)}
+};
+window.solicitarPotenciaHuaweiMesa=async id=>{
+ if(!confirm('¿Solicitar una lectura Huawei individual? Se reutilizará si ya existe una solicitud pendiente.'))return;
+ try{
+   const r=await mesa('request-huawei-optical',{orden_id:id});
+   alert(r.reutilizada?'⏳ Se reutilizó la lectura pendiente de esta ONU.':'✅ Lectura Huawei solicitada; resultado compartido con el técnico.');
+   await cargar(true);
+ }catch(e){alert('No se pudo solicitar Huawei: '+e.message)}
+};
 window.confirmarPotenciaMesa=async(id,rid)=>{if(!confirm('¿Confirmar la lectura óptica junto con la captura de SmartOLT?'))return;try{await mesa('confirm-power-check',{orden_id:id,requerimiento_id:rid});await cargar(true)}catch(e){alert(e.message)}};
 window.resolverReqMesa=async(id,rid)=>{if(!confirm('¿Marcar este requerimiento completo como atendido?'))return;try{await mesa('resolve-support-request',{orden_id:id,requerimiento_id:rid,canal_resolucion:'SISTEMA'});await cargar(true)}catch(e){alert(e.message)}};
 window.confirmarClienteMesa=async id=>{if(!confirm('¿Confirmar que el cliente/servicio ya fue registrado o activado en el sistema?'))return;try{await mesa('confirm-client',{orden_id:id});await cargar(true)}catch(e){alert(e.message)}};
@@ -207,5 +236,17 @@ window.addEventListener('disprotel:remote-updated',()=>cargar(true));
 const obs=new MutationObserver(()=>{ocultarLegacy();if(!$('app')?.classList.contains('hidden'))crear()});
 const iniciar=()=>{obs.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});setTimeout(crear,220)};
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',iniciar):iniciar();
-setInterval(()=>{ocultarLegacy();const box=$('mesaTecnicaFernando');if(box&&box.style.display!=='none')cargar(false)},7000);
+// El panel se actualiza por eventos privados; respaldo espaciado en lugar de 7 s.
+let mesaEventTimer=null;
+function mesaEventoActualizado(){
+ if(document.hidden||!$('mesaTecnicaFernando')||$('mesaTecnicaFernando').style.display==='none')return;
+ clearTimeout(mesaEventTimer);
+ mesaEventTimer=setTimeout(()=>cargar(true),800);
+}
+window.addEventListener('disprotel:mesa-hito',mesaEventoActualizado);
+window.addEventListener('disprotel:mesa-dato',mesaEventoActualizado);
+window.addEventListener('disprotel:huawei-resultado',mesaEventoActualizado);
+window.addEventListener('disprotel:ot-sincronizar',mesaEventoActualizado);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)mesaEventoActualizado()});
+setInterval(()=>{const box=$('mesaTecnicaFernando');if(!document.hidden&&box&&box.style.display!=='none')cargar(false)},120000);
 })();
