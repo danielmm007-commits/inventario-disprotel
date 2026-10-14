@@ -15,7 +15,7 @@
     '8c68e659-bc2d-4ee9-a435-cd0cb5691b12'
   ]);
   const CHANNEL='disprotel:ot-eventos';
-  const SDK='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.0/dist/umd/supabase.min.js';
+  const SDK='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
   let client=null,lastRevision='',notifyTimer=null;
   const read=()=>{try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'{}')}catch{return {}}};
   window.DISPROTEL_OT_RT_PILOT=PILOT_IDS.has(String(read().id||''));
