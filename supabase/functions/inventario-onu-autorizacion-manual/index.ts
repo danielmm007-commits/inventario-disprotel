@@ -37,10 +37,6 @@ Deno.serve(async req=>{
    const models=modelKeys.length?await db.from('onu_modelos_catalogo').select('modelo_clave,pon_tipo,ethernet_puertos,wifi_puertos,voip_puertos,catv,capacidad,es_generico').in('modelo_clave',modelKeys):{data:[],error:null};
    if(models.error)throw models.error;
    const modelMap=new Map((models.data||[]).map((m:any)=>[m.modelo_clave,m]));
-   const codes=[...new Set(found.map((r:any)=>r.olt_codigo).filter(Boolean))];
-   const refs=(codes.length&&modelKeys.length)?await db.from('onu_referencias_smartolt').select('olt_codigo,modelo_clave,modo_onu,line_profile_nombre,service_profile_nombre,vlan_internet_mostrada,mapa_gem_texto,velocidad_bajada,velocidad_subida,validado_en_huawei').in('olt_codigo',codes).in('modelo_clave',modelKeys):{data:[],error:null};
-   if(refs.error)throw refs.error;
-   const refMap=new Map((refs.data||[]).map((r:any)=>[r.olt_codigo+'|'+r.modelo_clave,r]));
    const items=found.map((r:any)=>{
     const linked=(assoc.data||[]).filter((a:any)=>a.olt_codigo===r.olt_codigo&&a.onu_sn===r.onu_sn&&a.onu_pon===r.pon&&alive.has(a.orden_id));
     // Si dos OT reclaman el mismo serial, no autorizar por ambigüedad.
@@ -48,7 +44,7 @@ Deno.serve(async req=>{
     const ot=selected?alive.get(selected.orden_id):null;
     const registered=(registeredAll.data||[]).find((a:any)=>a.olt_codigo===r.olt_codigo&&a.onu_sn===r.onu_sn)||null;
     return {olt_codigo:r.olt_codigo,olt_nombre:r.olt_nombre,onu_sn:r.onu_sn,onu_sn_display:r.onu_sn_display,pon:r.pon,
-      modelo:r.modelo,modelo_catalogo:modelMap.get(normalize(r.modelo).replace(/[^A-Z0-9_.-]/g,''))||null,referencia_smartolt:refMap.get(r.olt_codigo+'|'+normalize(r.modelo).replace(/[^A-Z0-9_.-]/g,''))||null,vendor:r.vendor,version:r.version,software:r.software,detectada_at:r.detectada_at,
+      modelo:r.modelo,modelo_catalogo:modelMap.get(normalize(r.modelo).replace(/[^A-Z0-9_.-]/g,''))||null,vendor:r.vendor,version:r.version,software:r.software,detectada_at:r.detectada_at,
       ultima_lectura_at:r.ultima_lectura_at,orden_id:registered?.orden_id||ot?.id||null,orden_numero:ot?.id_orden||null,
       conflicto_ot:linked.length>1,estado_aprobacion:registered?.estado||null,nombre:registered?.nombre||null,
       nap:registered?.nap||null,zona:registered?.zona||null,ip_administrativa:registered?.ip_administrativa||null};
