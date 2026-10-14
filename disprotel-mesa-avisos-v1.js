@@ -16,7 +16,7 @@
  const STORE='disprotel_mesa_pendientes_fernando_v1';
  const AUDIO_STORE='disprotel_mesa_sonido_v1';
  const REMIND_MS=5*60*1000,WORKING_MS=15*60*1000,MAX_AGE=12*60*60*1000;
- let audio=null,audioRequested=false,audioPreferred=false,lastBeep=0;
+ let audio=null,audioRequested=false,audioPreferred=false,lastBeep=0,lastReminderBatchAt=0;
  // Una preferencia anterior NO significa que el navegador haya liberado el audio
  // tras recargar: cada nuevo contexto espera un gesto permitido por Edge.
  try{audioPreferred=sessionStorage.getItem(AUDIO_STORE)==='true'}catch{}
@@ -125,22 +125,72 @@
  function updateBadge(){
    const badge=document.getElementById('disprotelMesaPendientesBadge');
    if(!badge)return;
-   if(id!==FERNANDO||!requests.size){badge.hidden=true;return}
-   const count=[...requests.values()].filter(r=>r.phase!=='en_gestion').length;
-   badge.textContent='🔔 Mesa: '+requests.size+' sin resolver'+(count?' · '+count+' por atender':' · en gestión');
+   if(id!==FERNANDO||!requests.size){
+     badge.hidden=true;
+     const panel=document.getElementById('disprotelMesaPendingPanel');
+     if(panel)panel.hidden=true;
+     return;
+   }
+   const list=[...requests.values()];
+   const porAtender=list.filter(r=>r.phase!=='en_gestion').length;
+   const groups=new Set(list.map(r=>norm(r.data?.grupo||'SIN GRUPO')));
+   badge.textContent='🔔 Mesa: '+list.length+' solicitudes · '+groups.size+
+       ' grupo'+(groups.size===1?'':'s')+
+       (porAtender?' · '+porAtender+' por atender':' · todas en gestión')+' ▾';
    badge.hidden=false;
+ }
+ function renderQueue(){
+   const panel=document.getElementById('disprotelMesaPendingPanel');
+   if(!panel||panel.hidden)return;
+   panel.replaceChildren();
+   const header=document.createElement('div');header.className='disprotelMesaQueueHeader';
+   const title=document.createElement('strong');title.textContent='Solicitudes de grupos técnicos';
+   const close=document.createElement('button');close.type='button';
+   close.textContent='×';close.setAttribute('aria-label','Cerrar lista');close.onclick=()=>{panel.hidden=true};
+   header.append(title,close);panel.append(header);
+   const sorted=[...requests.values()].sort((a,b)=>a.created-b.created);
+   for(const r of sorted.slice(0,200)){
+     const d=r.data||{},item=document.createElement('div');item.className='disprotelMesaQueueItem';
+     const groupEl=document.createElement('strong');groupEl.textContent=String(d.grupo||'Grupo no indicado');
+     const meta=document.createElement('div');meta.textContent=String(d.ot||'OT')+
+       ' · '+String(d.area||'Mesa')+
+       ' · '+(r.phase==='en_gestion'?'En gestión':'Por atender');
+     const actionInfo=Array.isArray(d.acciones)?d.acciones.join(' · '):'';
+     if(actionInfo){
+       const actionEl=document.createElement('div');actionEl.className='disprotelMesaQueueAction';
+       actionEl.textContent=actionInfo;item.append(groupEl,meta,actionEl);
+     }else item.append(groupEl,meta);
+     const actions=document.createElement('div');actions.className='disprotelMesaActions';
+     const mk=(label,handler)=>{
+       const b=document.createElement('button');b.type='button';b.textContent=label;
+       b.onclick=handler;actions.append(b);
+     };
+     mk('Atender →',()=>{defer(r.key,WORKING_MS,'en_gestion');panel.hidden=true;openRequirement(d)});
+     mk('En gestión',()=>{defer(r.key,WORKING_MS,'en_gestion')});
+     mk('Recordar 5 min',()=>{defer(r.key,REMIND_MS,'pendiente')});
+     item.append(actions);panel.append(item);
+   }
+   if(sorted.length>200){
+     const more=document.createElement('div');more.textContent='Hay más solicitudes; se muestran las primeras 200.';
+     panel.append(more);
+   }
  }
  function checkReminders(){
    if(id!==FERNANDO)return;
    const now=Date.now();let shown=0,dirty=false;
-   for(const [key,r] of requests){
-     if(now-r.created>MAX_AGE){requests.delete(key);dirty=true;continue}
-     if(now<r.due||document.hidden)continue;
+   // Si llegan 20 solicitudes simultáneas, avisar de a dos y mantener una
+   // cola visible, evitando tormentas de ventanas/sonidos.
+   const canNotify=now-lastReminderBatchAt>=45000;
+   const due=[...requests.values()].sort((a,b)=>a.due-b.due);
+   for(const r of due){
+     if(now-r.created>MAX_AGE){requests.delete(r.key);dirty=true;continue}
+     if(now<r.due||document.hidden||!canNotify||shown>=2)continue;
      r.due=now+(r.phase==='en_gestion'?WORKING_MS:REMIND_MS);
-     if(shown++<2){show(r.data,true);playSound()}
-     dirty=true;
+     show(r.data,true);playSound();
+     shown++;dirty=true;
    }
-   if(dirty)save();updateBadge();
+   if(shown)lastReminderBatchAt=now;
+   if(dirty)save();updateBadge();renderQueue();
  }
  restore();
  const actionLabels={
@@ -218,7 +268,17 @@
     .disprotelMesaSoundEnable{background:#eef6fc;color:#155a84;border:1px solid #c4dde9;
       border-radius:8px;padding:7px 10px;font:700 11px system-ui;pointer-events:auto;cursor:pointer}
     #disprotelMesaPendientesBadge{padding:7px 10px;background:#fff8db;color:#62460d;
-      border:1px solid #e6c775;border-radius:9px;font:700 11px system-ui;pointer-events:auto}
+      border:1px solid #e6c775;border-radius:9px;font:700 11px system-ui;pointer-events:auto;cursor:pointer}
+    .disprotelMesaQueue[hidden]{display:none!important}
+    .disprotelMesaQueue{background:white;border:1px solid #bfdae8;border-radius:12px;
+      max-height:min(60vh,490px);overflow:auto;pointer-events:auto;padding:10px;
+      box-shadow:0 12px 28px #19395538;display:grid;gap:8px}
+    .disprotelMesaQueueHeader{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .disprotelMesaQueueHeader button{background:transparent;border:0;font-size:22px;cursor:pointer}
+    .disprotelMesaQueueItem{border:1px solid #d7e6ee;border-radius:9px;padding:9px;
+      font:500 11px system-ui;color:#214761;display:grid;gap:3px}
+    .disprotelMesaQueueItem strong{font-size:12px}
+    .disprotelMesaQueueAction{color:#607e90;overflow-wrap:anywhere}
     .disprotelMesaClose{position:absolute;right:5px;top:3px;font-size:22px;line-height:1;
       background:transparent;border:0;padding:5px 8px;cursor:pointer;color:#587080}
     @keyframes disprotelMesaIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
@@ -229,8 +289,17 @@
    root.setAttribute('aria-label','Notificaciones de Mesa Técnica');
    if(id===FERNANDO){
      root.className='supervisor';
-     const badge=document.createElement('div');badge.id='disprotelMesaPendientesBadge';badge.hidden=true;
-     root.append(badge);
+     const badge=document.createElement('button');badge.type='button';
+     badge.id='disprotelMesaPendientesBadge';badge.hidden=true;
+     badge.onclick=()=>{
+       const panel=document.getElementById('disprotelMesaPendingPanel');
+       if(!panel)return;
+       panel.hidden=!panel.hidden;renderQueue();
+     };
+     const panel=document.createElement('section');panel.id='disprotelMesaPendingPanel';
+     panel.className='disprotelMesaQueue';panel.hidden=true;
+     panel.setAttribute('aria-label','Cola de solicitudes pendientes de Mesa Técnica');
+     root.append(badge,panel);
    }
    if(!audioRequested){
      const enable=document.createElement('button');enable.type='button';
