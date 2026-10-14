@@ -235,6 +235,17 @@
         const d=await r.json().catch(()=>({}));
         if(!r.ok||d.error)throw new Error(d.error||'No se pudo cargar el resumen');
         const orders=Array.isArray(d.orders)?d.orders:[];
+        // Solo Fernando: los datos del cliente viajan en la respuesta
+        // autenticada que YA consulta el supervisor, NUNCA por Broadcast.
+        if(window.DISPROTEL_OT_RT_PILOT&&String(me.id||'')==='986f9610-5144-42d6-b467-cace9ea8983f'){
+          window.dispatchEvent(new CustomEvent('disprotel:ot-resumen',{
+            detail:{orders:orders.map(o=>({
+              ot:String(o.id_orden||'').slice(0,64),
+              cliente:String(o.cliente_nombre||'').slice(0,160),
+              tipo:String(o.tipo_trabajo||'').slice(0,90)
+            }))}
+          }));
+        }
         resumenReal={
           pending:orders.filter(o=>estadoPendiente(o.estado)).length,
           field:orders.filter(o=>!estadoFinal(o.estado)&&!estadoPendiente(o.estado)).length,
