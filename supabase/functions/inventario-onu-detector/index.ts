@@ -78,7 +78,7 @@ Deno.serve(async req=>{
    const q=req.data;if(!q)return reply({ok:true,ignorada:true});
    const demanda=q.mikrotik_estado==='NO_APLICA'&&!!q.orden_id;
    const normal=(v:any)=>{
-     const sn=String(v||'').toUpperCase().replace(/[\\s:.-]/g,'');
+     const sn=String(v||'').toUpperCase().replace(/[\s:.-]/g,'');
      if(/^[0-9A-F]{16}$/.test(sn))return sn;
      if(/^[A-Z0-9]{4}[A-F0-9]{8}$/.test(sn))
        return [...sn.slice(0,4)].map(c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join('').toUpperCase()+sn.slice(4);
