@@ -9,10 +9,16 @@
   const URL='https://ajnbswrwnjpjypjiorye.supabase.co';
   const KEY="sb_publishable_PUj8G-mCFGniennS16O7UQ_eIeL482Y";
   const SESSION_KEY='disprotel_login_general_v2';
+  // Piloto habilitado exclusivamente para los perfiles seleccionados.
+  const PILOT_IDS=new Set([
+    '986f9610-5144-42d6-b467-cace9ea8983f',
+    '8c68e659-bc2d-4ee9-a435-cd0cb5691b12'
+  ]);
   const CHANNEL='disprotel:ot-eventos';
   const SDK='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.0/dist/umd/supabase.min.js';
   let client=null,lastRevision='',notifyTimer=null;
   const read=()=>{try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'{}')}catch{return {}}};
+  window.DISPROTEL_OT_RT_PILOT=PILOT_IDS.has(String(read().id||''));
   const emit=(type,detail)=>window.dispatchEvent(new CustomEvent(type,{detail}));
   function connection(ok){
     const previous=window.DISPROTEL_OT_RT_CONNECTED;
@@ -42,6 +48,7 @@
     }));
   }
   async function init(){
+    if(!window.DISPROTEL_OT_RT_PILOT)return;
     const initial=read();
     const tokens=initial.ot_auth_session;
     if(!initial.session_token||!tokens?.access_token||!tokens?.refresh_token)return;
