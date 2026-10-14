@@ -7,7 +7,7 @@
 <section id="fact" class="tab on panel"><h2>Facturas recibidas</h2><p class="hint">Haz clic en cualquier factura para desplegar sus productos o servicios.</p><p class="hint">Todas las facturas entrarán inicialmente pendientes de clasificación. Las compras menores podrán marcarse como pagadas al instante; las compras de materiales podrán pagarse al contado o a crédito.</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0"><label>Mes <input id="pdfmes" type="month" value="2026-09" style="padding:9px;border:1px solid #cbdde8;border-radius:8px"></label><button id="pdfseleccion" disabled title="Se habilitará con la nueva plantilla RIDE">Descargar seleccionadas (ZIP)</button><button id="pdftodas" disabled title="Se habilitará con la nueva plantilla RIDE">Descargar mes (ZIP)</button><span class="hint" id="pdfestado">Primero validaremos la nueva plantilla en Vista previa; ZIP temporalmente deshabilitado.</span></div><div class="tablewrap"><table><thead><tr><th><input type="checkbox" id="checkAll" title="Seleccionar todas las visibles"></th><th>Emisión</th><th>Proveedor</th><th>Factura</th><th>Total</th><th>Revisión</th><th>PDF</th></tr></thead><tbody id="factrows"></tbody></table></div></section>
 <section id="prov" class="tab panel"><h2>Proveedores</h2><div id="provlist"></div></section>
 <section id="pay" class="tab panel"><h2>Pagos, abonos y excedentes</h2><p class="hint">Aquí vincularemos PDF o imagen de la transferencia, permitiendo distribuir un pago entre varias facturas y varios abonos a una misma factura. Si queda dinero sin aplicar, lo resaltaremos como excedente o anticipo pendiente de conciliación.</p><div id="paylist"></div><p class="hint">El registro de pagos y la carga de documentos todavía están bloqueados hasta completar conciliación, almacenamiento y control de duplicados.</p><button disabled>Registrar pago y adjuntar comprobante · Próximamente</button></section>
-<section id="setup" class="tab panel"><h2>Descarga y clasificación SRI</h2><div class="panel" style="background:#f6f9fc;margin:12px 0"><h2>Importar XML autorizado</h2><p class="hint">Selecciona uno o varios archivos XML de autorización descargados del SRI. Se guardan en almacenamiento privado y se comprueban claves duplicadas. No se consulta al SRI.</p><input id="xmlInput" type="file" accept=".xml,application/xml,text/xml" multiple><button id="xmlUpload" style="margin-left:8px">Importar XML</button><div id="xmlResult" class="hint" style="margin-top:9px" role="status"></div></div><p class="hint">La descarga automática de comprobantes desde el SRI requiere verificar un mecanismo de acceso soportado y seguro. Prepararemos también importación XML manual para que el trabajo no dependa de la disponibilidad del portal.</p><div id="contributors"></div><p class="hint warn">No se descargarán comprobantes ni se solicitarán credenciales del SRI hasta validar el método de integración.</p><button disabled>Descarga automática · En preparación</button></section>
+<section id="setup" class="tab panel"><h2>Descarga y clasificación SRI</h2><div class="panel" style="background:#f0f7ff;margin:12px 0"><h2>1 · Revisar listado mensual TXT del SRI</h2><p class="hint">Selecciona el TXT de comprobantes recibidos. El sistema revisa sus claves, importes y duplicados locales sin consultar al SRI ni registrar facturas incompletas.</p><input id="txtInput" type="file" accept=".txt,text/plain,text/tab-separated-values"><button id="txtReview" style="margin-left:8px">Revisar TXT</button><div id="txtResult" class="hint" style="margin-top:9px" role="status"></div></div><div class="panel" style="background:#f6f9fc;margin:12px 0"><h2>2 · Importar XML autorizado</h2><p class="hint">Selecciona uno o varios archivos XML de autorización descargados del SRI. Se guardan en almacenamiento privado y se comprueban claves duplicadas. No se consulta al SRI.</p><input id="xmlInput" type="file" accept=".xml,application/xml,text/xml" multiple><button id="xmlUpload" style="margin-left:8px">Importar XML</button><div id="xmlResult" class="hint" style="margin-top:9px" role="status"></div></div><p class="hint">La descarga automática de comprobantes desde el SRI requiere verificar un mecanismo de acceso soportado y seguro. Prepararemos también importación XML manual para que el trabajo no dependa de la disponibilidad del portal.</p><div id="contributors"></div><p class="hint warn">No se descargarán comprobantes ni se solicitarán credenciales del SRI hasta validar el método de integración.</p><button disabled>Descarga automática · En preparación</button></section>
 <p class="hint" id="status">Cargando información...</p><button id="reload">Actualizar datos</button>
 </main><div class="previewOverlay" id="previewOverlay" role="dialog" aria-modal="true" aria-label="Vista previa de factura"><div class="previewDialog"><div class="previewHead"><strong id="previewTitle">Vista previa</strong><div class="previewActions"><button id="previewDownload">Imprimir / Guardar PDF</button><button id="previewClose">Cerrar ✕</button></div></div><iframe id="previewFrame" class="previewFrame" title="Factura en PDF"></iframe></div></div><script src="vendor/jspdf.umd.min.js?v=20261014-3"></script><script>
 const $=id=>document.getElementById(id);
@@ -107,6 +107,38 @@ $('pdfseleccion').onclick=async()=>{try{const ids=new Set([...document.querySele
 $('pdftodas').onclick=async()=>{try{await pdfZip(filtered())}catch(e){$('pdfestado').textContent=e.message}};
 
 
+
+function parseSRIReport(textContent){
+ const t=textContent.replace(/^\uFEFF/,'').trim();
+ const lines=t.split(/\r?\n/).filter(Boolean), header=lines.shift()?.split('\t').map(x=>x.trim())||[];
+ const required=['CLAVE_ACCESO','RUC_EMISOR','FECHA_EMISION','IMPORTE_TOTAL','IDENTIFICACION_RECEPTOR'];
+ if(required.some(x=>!header.includes(x)))throw Error('El archivo no tiene las columnas esperadas del listado TXT del SRI.');
+ const entries=[],seen=new Set();let invalid=0,duplicates=0;
+ for(const line of lines){
+  const vals=line.split('\t');const obj={};header.forEach((key,i)=>obj[key]=(vals[i]||'').trim());
+  const key=obj.CLAVE_ACCESO;
+  if(!/^\d{49}$/.test(key)||!Number.isFinite(Number(obj.IMPORTE_TOTAL))||Number(obj.IMPORTE_TOTAL)<0){invalid++;continue}
+  if(seen.has(key)){duplicates++;continue}
+  seen.add(key);entries.push(obj);
+ }
+ return {entries,invalid,duplicates};
+}
+$('txtReview').onclick=async()=>{
+ const file=$('txtInput').files?.[0],result=$('txtResult');if(!file){result.textContent='Selecciona un archivo TXT.';return}
+ if(file.size>2000000){result.textContent='El listado supera el límite de 2 MB.';return}
+ try{
+  const report=parseSRIReport(await file.text()),registered=new Set((window.sriData?.facturas||[]).map(x=>x.clave_acceso));
+  const already=report.entries.filter(x=>registered.has(x.CLAVE_ACCESO)).length;
+  const toGet=report.entries.length-already;
+  const receivers=[...new Set(report.entries.map(x=>x.IDENTIFICACION_RECEPTOR))];
+  const totals=report.entries.reduce((a,x)=>a+Number(x.IMPORTE_TOTAL),0);
+  const fmt=n=>new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format(n);
+  result.replaceChildren();const out=document.createElement('div');
+  out.textContent='Facturas: '+report.entries.length+' · Ya cargadas (entre las consultadas): '+already+' · Faltan XML: '+toGet+' · Filas inválidas: '+report.invalid+' · Duplicadas en TXT: '+report.duplicates+' · Total: '+fmt(totals)+'.';
+  result.append(out);
+  const sub=document.createElement('p');sub.textContent='Identificaciones receptoras presentes: '+receivers.join(', ')+'. Este análisis se hizo en tu navegador: todavía no consulta ni descarga XML del SRI.';result.append(sub);
+ }catch(e){result.textContent='No se pudo leer el reporte: '+e.message}
+};
 async function uploadXmlFiles(){
  const input=$('xmlInput'),files=[...input.files],label=$('xmlResult');
  if(!files.length){label.textContent='Selecciona archivos XML para importar.';return}
