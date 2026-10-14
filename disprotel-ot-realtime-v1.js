@@ -75,6 +75,17 @@
           const revision=String(raw.revision||'');
           if(revision&&revision===lastRevision)return;
           lastRevision=revision;
+          // Lectura óptica finalizada o evidencia nueva: metadata mínima.
+          // Cada módulo autorizado consulta una sola vez al recibir el aviso.
+          if(raw.fuente==='MESA_DATO'||raw.fuente==='HUAWEI_DEMANDA'){
+            emit(raw.fuente==='HUAWEI_DEMANDA'?'disprotel:huawei-resultado':'disprotel:mesa-dato',{
+              revision,ot:String(raw.ot||'').slice(0,64),
+              orden_uuid:String(raw.orden_uuid||'').slice(0,40),
+              solicitud_id:String(raw.solicitud_id||'').slice(0,40),
+              estado:String(raw.estado||'').slice(0,30)
+            });
+            return;
+          }
           // Alertas de Mesa Tecnica: SIN refrescar el dashboard por cada evento.
           // Mensajes sin IP, SN, notas ni datos del cliente, en canal privado.
           if(raw.fuente==='MESA'){
