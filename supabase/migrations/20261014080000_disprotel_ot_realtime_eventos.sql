@@ -9,6 +9,11 @@ as $$
     where r.auth_user_id = (select auth.uid())
       and r.activo is true
       and r.setup_visible is true
+      -- PILOTO ESTRICTO: Fernando (supervisor) y Bryan (tecnico).
+      and r.auth_user_id in (
+        '69c64620-0d12-498c-b27c-525be5a458c6'::uuid,
+        '616fe58d-406f-40b1-8853-b10985ba7bc3'::uuid
+      )
   );
 $$;
 
