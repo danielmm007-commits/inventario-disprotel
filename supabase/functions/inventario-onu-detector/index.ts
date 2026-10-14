@@ -142,7 +142,8 @@ Deno.serve(async req=>{
    if(q.olt_codigo&&q.onu_sn){
      const share=await s.from('consulta_red_solicitudes')
        .update(patch).eq('olt_codigo',q.olt_codigo).eq('onu_sn',q.onu_sn)
-       .eq('olt_estado','PENDIENTE').neq('id',id).gt('expira_at',now);
+       .eq('olt_estado','PENDIENTE').eq('mikrotik_estado','NO_APLICA')
+       .eq('origen_consulta','SERVICIO').neq('id',id).gt('expira_at',now);
      if(share.error)console.warn('No se pudo compartir lectura:',share.error.message);
    }
    return reply({ok:true,cache_actualizada:ok,lectura_valida:ok});
