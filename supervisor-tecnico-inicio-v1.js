@@ -245,6 +245,33 @@
               tipo:String(o.tipo_trabajo||'').slice(0,90)
             }))}
           }));
+          // Sembrar recordatorios de requerimientos YA pendientes usando esta
+          // misma respuesta autenticada. NO hay ninguna consulta adicional.
+          // Solo lotes de Mesa con UUID fiable (lote_id) para cerrar al resolver.
+          const pend=[];
+          for(const o of Array.isArray(d.requiere_atencion)?d.requiere_atencion:[]){
+            if(o?.tipo_atencion!=='MESA_TECNICA'||!o.id_orden||!o.id)continue;
+            const groups=new Map();
+            for(const item of Array.isArray(o.mesa_pendientes)?o.mesa_pendientes:[]){
+              if(!item?.lote_id||String(item.estado||'').toUpperCase()!=='PENDIENTE')continue;
+              const k=String(item.lote_id),actions=groups.get(k)||[];
+              actions.push(String(item.tipo||''));groups.set(k,actions);
+            }
+            for(const [solicitud_id,acciones] of groups){
+              pend.push({
+                area:'MESA',ot:String(o.id_orden).slice(0,64),
+                orden_uuid:String(o.id).slice(0,40),
+                solicitud_id:solicitud_id.slice(0,40),
+                grupo:String(o.grupo_asignado||o.grupo_destino||'').slice(0,120),
+                tipo:String(o.tipo_trabajo||'').slice(0,90),
+                estado:'PENDIENTE',actor:'',destino:'SUPERVISOR',
+                acciones:[...new Set(acciones)].slice(0,8)
+              });
+            }
+          }
+          window.dispatchEvent(new CustomEvent('disprotel:mesa-pendientes-snapshot',{
+            detail:{requerimientos:pend}
+          }));
         }
         resumenReal={
           pending:orders.filter(o=>estadoPendiente(o.estado)).length,
