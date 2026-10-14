@@ -38,12 +38,17 @@ begin
   end if;
 
   -- No incluir nombres, telefonos, IP, notas, identificadores de cliente ni OT.
-  perform realtime.send(
-    pg_catalog.jsonb_build_object('revision',pg_catalog.clock_timestamp()::text),
-    'ot_changed',
-    'disprotel:ot-eventos',
-    true
-  );
+  -- Si Realtime falla, NUNCA bloquear la creacion/aceptacion/cierre de una OT.
+  begin
+    perform realtime.send(
+      pg_catalog.jsonb_build_object('revision',pg_catalog.clock_timestamp()::text),
+      'ot_changed',
+      'disprotel:ot-eventos',
+      true
+    );
+  exception when others then
+    raise warning 'DISPROTEL: aviso de OT no enviado (SQLSTATE %)', SQLSTATE;
+  end;
 
   if TG_OP = 'DELETE' then return old; end if;
   return new;
