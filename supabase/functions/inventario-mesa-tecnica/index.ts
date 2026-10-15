@@ -168,13 +168,14 @@ function huaweiSn16(v:any):string|null{
 }
 async function huaweiSolicitudEstado(s:any,ordenId:string){
  const q=await s.from('consulta_red_solicitudes')
-   .select('id,olt_codigo,olt_estado,solicitado_at,expira_at,olt_respondido_at')
+   .select('id,olt_codigo,olt_estado,solicitado_at,expira_at,olt_respondido_at,olt_resultado')
    .eq('orden_id',ordenId).eq('mikrotik_estado','NO_APLICA')
    .not('olt_codigo','is',null).order('solicitado_at',{ascending:false}).limit(1).maybeSingle();
  if(q.error)throw q.error;
  const x=q.data;if(!x)return null;
  return {id:x.id,olt_codigo:x.olt_codigo,estado:x.olt_estado,
    solicitado_at:x.solicitado_at,expira_at:x.expira_at,respondido_at:x.olt_respondido_at,
+   error:x.olt_estado==='ERROR'?String(x.olt_resultado?.error||'Lectura no validada').slice(0,180):null,
    expirada:x.olt_estado==='PENDIENTE'&&new Date(x.expira_at).getTime()<=Date.now()};
 }
 async function state(s:any,o:any){
