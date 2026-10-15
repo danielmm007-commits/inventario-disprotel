@@ -216,7 +216,8 @@ function mesaReqLine(r){
    extra+='<div class="mesaMirrorStatus '+(done?'ok':'pending')+'"><div><b>🌐 IP actual:</b> '+esc(ip.ip||'—')+'</div><div><b>Router:</b> '+esc(ip.router_nombre||'—')+'</div><div><b>Resultado:</b> '+esc(label)+'</div>'+(ip.respondido_at?'<div class="muted">'+esc(fmt(ip.respondido_at))+'</div>':'')+'</div>';
  }
  if((r.acciones||[]).includes('VERIFICAR_ACCESO_REMOTO')){
- const ar=MESA_STATE?.acceso||null,rh=res.verificacion_acceso_remoto||null,er=ar?.evidencia||null;
+ const ar=MESA_STATE?.acceso||null,rh=res.verificacion_acceso_remoto||null,erActual=ar?.evidencia||null;
+ const er=erActual?.id&&String(erActual.id)===String(rh?.evidencia_id)?erActual:res.evidencia_acceso_remoto_historica||null;
  const evidenceMatches=!!er?.id&&!!rh?.evidencia_id&&String(er.id)===String(rh.evidencia_id);
  const isCurrent=r.estado==='PENDIENTE'||(r.estado==='ATENDIDO'&&evidenceMatches);
  const visible=isCurrent?er:null;

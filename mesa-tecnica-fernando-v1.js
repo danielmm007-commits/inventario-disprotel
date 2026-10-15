@@ -142,12 +142,13 @@ function potenciaStep(o,r){
    :'<div class="stepState" style="margin-top:0">📎 Falta captura de SmartOLT. Pega un recorte o carga la imagen antes de confirmar.</div>';
  const controls=done||revision?.estado==='REQUIERE_CORRECCION'?'':'<div class="remoteTools"><label class="btnMini">🖼️ CARGAR ARCHIVO<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="seleccionarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')"></label><div class="remotePaste" tabindex="0" contenteditable="true" spellcheck="false" onclick="this.focus()" onkeydown="if(event.key!==\'v\'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')">📋 PEGAR CAPTURA Ctrl+V</div></div>';
  const evidence='<div class="powerMirrorEvidence"><div class="stepState" style="margin-top:0"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+evidenceBody+controls+'</div>';
+ const repetir=done&&puedeRepetirVerificacion(o,r,'VERIFICAR_POTENCIA')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REPETIR VERIFICACIÓN DE POTENCIA</button>':'';
  const rectificar=done&&ev?.storage_path?
   '<div class="stepState">Puedes sustituir la captura sin alterar la lectura ni el estado ATENDIDO.</div>'+
   '<label class="mesaRectifyControl">✏️ RECTIFICAR CAPTURA ÓPTICA<input type="file" accept="image/jpeg,image/png,image/webp" onchange="rectificarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')"></label>'+
   (ev.rectificada?'<div class="rectificationNote">📑 Evidencia rectificada; la anterior sigue en historial.</div>':''):''; 
  const confirmar=done?'':revision?.estado==='REQUIERE_CORRECCION'?'<div class="stepState" style="color:#a54b00">⏳ Esperando que Bryan corrija la potencia.</div>':'<button class="remoteOk" '+(ev?.url?'':'disabled style="opacity:.45;cursor:not-allowed"')+' onclick="confirmarPotenciaMesa(\''+o.id+'\',\''+r.id+'\')">✅ CONFIRMAR LECTURA ÓPTICA</button>';
- return '<div class="step"><b>📶 POTENCIA ÓPTICA</b><div class="stepState">'+(done?'✅ Lectura y evidencia confirmadas':'🟡 Lectura disponible para verificar')+'</div><div class="powerMirrorGrid">'+data+evidence+'</div>'+sugerenciaPotencia(v)+avisoPotenciaHtml(o,r)+accionHuawei+estadoHuawei+confirmar+rectificar+reset+'</div>';
+ return '<div class="step"><b>📶 POTENCIA ÓPTICA</b><div class="stepState">'+(done?'✅ Lectura y evidencia confirmadas':'🟡 Lectura disponible para verificar')+'</div><div class="powerMirrorGrid">'+data+evidence+'</div>'+sugerenciaPotencia(v)+avisoPotenciaHtml(o,r)+accionHuawei+estadoHuawei+confirmar+rectificar+repetir+reset+'</div>';
 }
 function ipActualStep(o,r){
  const done=r?.estado==='ATENDIDO',v=(r?.resultado||{})?.verificacion_ip||{},sv=o?.servicio_actual||{},ip=v.ip||sv.ip||o.ip_creacion_registrada||'—',router=v.router_nombre||sv.router_nombre||'—',servicio=v.codigo_servicio||sv.codigo_servicio||'—',tipo=v.tipo_conexion||sv.tipo_conexion||'—',estado=String(v.estado||'SIN_CONSULTAR').toUpperCase(),encontrada=v.encontrada===true,ambigua=sv.requiere_seleccion_servicio===true;
@@ -162,8 +163,18 @@ function ipActualStep(o,r){
 function ordenarRequerimientosMesa(rows){
  return [...(rows||[])].sort((a,b)=>(Date.parse(a.solicitado_at)||0)-(Date.parse(b.solicitado_at)||0));
 }
+function puedeRepetirVerificacion(o,r,code){
+ if(!r||r.estado!=='ATENDIDO'||r.acciones?.length!==1||r.acciones[0]!==code)return false;
+ const filas=(o?.requerimientos||[]).filter(x=>x.acciones?.length===1&&x.acciones[0]===code)
+ .slice().sort((a,b)=>(Date.parse(b.solicitado_at)||0)-(Date.parse(a.solicitado_at)||0));
+ if(filas[0]?.id!==r.id||filas.some(x=>x.estado==='PENDIENTE'))return false;
+ if(code==='VERIFICAR_ACCESO_REMOTO')return o.acceso?.estado==='CONFIRMADO'&&!!r.resultado?.verificacion_acceso_remoto?.evidencia_id;
+ if(code==='VERIFICAR_POTENCIA')return !!r.resultado?.verificacion_potencia&&!!r.resultado?.evidencia_potencia?.storage_path;
+ return false;
+}
 function evidenciaAccesoEnRequerimiento(o,r){
- const comprobante=r?.resultado?.verificacion_acceso_remoto||null,ev=o?.acceso?.evidencia||null;
+ const comprobante=r?.resultado?.verificacion_acceso_remoto||null,actual=o?.acceso?.evidencia||null,historica=r?.resultado?.evidencia_acceso_remoto_historica||null;
+ const ev=actual?.id&&String(actual.id)===String(comprobante?.evidencia_id)?actual:historica;
  // Cada solicitud solo puede mostrar la evidencia que efectivamente confirmo esa solicitud.
  // No asociar una captura posterior o de otra solicitud a un hito anterior.
  if(comprobante?.estado!=='CONFIRMADO')return '<div class="stepState">✅ Atendido. Captura histórica no vinculada en este requerimiento.</div>';
@@ -176,7 +187,8 @@ function evidenciaAccesoEnRequerimiento(o,r){
    '<div class="mesaReqRemoteMeta"><b>📷 EVIDENCIA DE ACCESO REMOTO</b>'+
      '<div class="stepState">✅ Captura confirmada por Mesa Técnica</div>'+
      (comprobante.confirmado_at?'<div class="stepState">'+esc(fmt(comprobante.confirmado_at))+'</div>':'')+
-     '<div class="stepState">Toca la miniatura para verla completa.</div>'+(comprobante.rectificada_at?'<div class="rectificationNote">✏️ Captura rectificada: '+esc(fmt(comprobante.rectificada_at))+'</div>':'')+'<label class="mesaRectifyControl">✏️ RECTIFICAR CAPTURA<input type="file" accept="image/jpeg,image/png,image/webp" onchange="rectificarAccesoRemotoMesa(event,\''+o.id+'\')"></label></div></div>';
+     '<div class="stepState">Toca la miniatura para verla completa.</div>'+(comprobante.rectificada_at?'<div class="rectificationNote">✏️ Captura rectificada: '+esc(fmt(comprobante.rectificada_at))+'</div>':'')+(puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REPETIR COMPROBACIÓN DE ACCESO</button>':'')+
+ (puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<label class="mesaRectifyControl">✏️ RECTIFICAR CAPTURA<input type="file" accept="image/jpeg,image/png,image/webp" onchange="rectificarAccesoRemotoMesa(event,\''+o.id+'\')"></label>':'')+'</div></div>';
 }
 function batchHtml(o){
  const rs=ordenarRequerimientosMesa(o.requerimientos||[]);
@@ -242,6 +254,11 @@ window.solicitarPotenciaHuaweiMesa=async id=>{
    alert(r.reutilizada?'⏳ Se reutilizó la lectura pendiente de esta ONU.':'✅ Lectura Huawei solicitada; resultado compartido con el técnico.');
    await cargar(true);
  }catch(e){alert('No se pudo solicitar Huawei: '+e.message)}
+};
+window.repetirVerificacionMesa=async(id,rid)=>{
+ if(!confirm('¿Iniciar otra verificación? Se conservará la anterior como ATENDIDA, con su evidencia; no se altera la IP, la ONU ni la OT.'))return;
+ try{await mesa('repeat-support-check',{orden_id:id,requerimiento_id:rid,confirmacion:'REPETIR VERIFICACION'});await cargar(true)}
+ catch(err){alert('No se pudo iniciar otra verificación: '+err.message)}
 };
 window.rectificarAccesoRemotoMesa=async(e,id)=>{
  const file=e.target.files?.[0];if(!file)return;
