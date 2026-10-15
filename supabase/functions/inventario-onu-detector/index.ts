@@ -90,7 +90,7 @@ Deno.serve(async req=>{
    // Confirmar TODOS los formatos explícitos de la misma respuesta.
    // Nunca aceptar texto extra ni omitir una discrepancia entre las dos formas.
    const serialDevuelto=String(resultado.reported_sn||'').trim().toUpperCase();
-   const matchSerial=/^([0-9A-F]{16}|[A-Z0-9]{4}-?[0-9A-F]{8})(?:\\s*\\(\\s*([0-9A-F]{16}|[A-Z0-9]{4}-?[0-9A-F]{8})\\s*\\))?$/.exec(serialDevuelto);
+   const matchSerial=/^([0-9A-F]{16}|[A-Z0-9]{4}-?[0-9A-F]{8})(?:\s*\(\s*([0-9A-F]{16}|[A-Z0-9]{4}-?[0-9A-F]{8})\s*\))?$/.exec(serialDevuelto);
    const serialesReportados=matchSerial?[matchSerial[1],matchSerial[2]].filter(Boolean).map(normal):null;
    const serialValido=!demanda||!!serialesReportados&&
      serialesReportados.every((sn:string)=>sn===normal(q.onu_sn));
