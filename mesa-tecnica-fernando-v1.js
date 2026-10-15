@@ -20,7 +20,7 @@ function css(){if($('mesaCampoV7Style'))return;const s=document.createElement('s
 .otMesa{background:#fff;border:1px solid #d7e1e5;border-radius:14px;margin-top:10px;overflow:hidden}.otMesa.need{border-left:5px solid #e68a00}.otMesa.wait{border-left:5px solid #8ba0aa}
 .otHead{padding:12px 13px;display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}.otTitle{font-weight:1000;font-size:15px}.otMeta{font-size:10px;color:#60737c;margin-top:4px}.statusBadge{font-size:9px;font-weight:1000;border-radius:999px;padding:5px 8px;background:#fff1d9;color:#925900}.statusBadge.ok{background:#e8f6ed;color:#17643e}.statusBadge.wait{background:#edf1f3;color:#5f6f77}
 .otSteps{border-top:1px solid #e3eaee;display:grid;grid-template-columns:repeat(4,1fr)}.step{padding:11px;border-right:1px solid #e3eaee;min-height:94px}.step:last-child{border-right:0}.step b{font-size:11px}.stepState{font-size:10px;color:#60737c;margin-top:6px;line-height:1.4}.step button,.step label.btnMini{width:100%;border:0;border-radius:8px;padding:8px;margin-top:7px;background:#17313d;color:#fff;font-size:10px;font-weight:900;cursor:pointer;text-align:center;display:block}.step button.secondary{background:#e8eef1!important;color:#17313d!important}.step img{width:80px;height:55px;object-fit:cover;border-radius:7px;border:1px solid #ccd8de;margin-top:6px;cursor:pointer}
-.ipCandidate{padding:7px;border:1px solid #d5e2e8;border-radius:8px;margin-top:6px;background:#f8fbfc}.ipCandidate strong{font-size:15px}.mesaReqs{padding:10px 12px;border-top:1px solid #e3eaee;background:#fbfdfe}.mesaReq{border:1px solid #d8e4ea;border-radius:10px;padding:9px;margin-top:7px;background:#fff}.mesaReq:first-child{margin-top:0}.mesaReq.done{background:#f1faf4;border-color:#b9e5ca}.mesaReqTop{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap}.mesaReqActions{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.mesaActionChip{display:inline-block;padding:5px 7px;border-radius:999px;background:#eaf3f8;color:#17313d;font-size:9px;font-weight:900}.mesaReq button{width:auto;margin-top:8px;padding:7px 10px;font-size:10px}.mesaReqRemoteProof{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:9px;padding:10px;border:1px solid #bbdfcd;background:#f7fcf9;border-radius:10px}
+.ipCandidate{padding:7px;border:1px solid #d5e2e8;border-radius:8px;margin-top:6px;background:#f8fbfc}.ipCandidate strong{font-size:15px}.mesaReqs{padding:10px 12px;border-top:1px solid #e3eaee;background:#fbfdfe}.mesaReq{border:1px solid #d8e4ea;border-radius:10px;padding:9px;margin-top:7px;background:#fff}.mesaReq:first-child{margin-top:0}.mesaReq.done{background:#f1faf4;border-color:#b9e5ca}.mesaReqTop{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap}.mesaReqActions{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.mesaActionChip{display:inline-block;padding:5px 7px;border-radius:999px;background:#eaf3f8;color:#17313d;font-size:9px;font-weight:900}.mesaReq button{width:auto;margin-top:8px;padding:7px 10px;font-size:10px}.mesaRectifyControl{display:inline-block;padding:9px 12px;margin:9px 0 4px;border-radius:8px;color:#fff;background:#20577b;font-size:11px;font-weight:850;cursor:pointer;line-height:1.3}.mesaRectifyControl input{display:none}.mesaReqRemoteMeta .mesaRectifyControl{margin-top:10px}.rectificationNote{font-size:10px;color:#375a4c;margin-top:7px}.mesaReqRemoteProof{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:9px;padding:10px;border:1px solid #bbdfcd;background:#f7fcf9;border-radius:10px}
 .mesaReqRemotePreview{display:block;flex:0 0 auto;width:min(230px,100%);max-width:100%;border:1px solid #c4d9d2;border-radius:8px;background:#111;overflow:hidden;line-height:0;cursor:zoom-in}
 .mesaReqRemotePreview img{display:block;width:100%;height:126px;object-fit:contain}
 .mesaReqRemoteMeta{flex:1;min-width:135px;font-size:11px;color:#214e3f}
@@ -142,8 +142,12 @@ function potenciaStep(o,r){
    :'<div class="stepState" style="margin-top:0">📎 Falta captura de SmartOLT. Pega un recorte o carga la imagen antes de confirmar.</div>';
  const controls=done||revision?.estado==='REQUIERE_CORRECCION'?'':'<div class="remoteTools"><label class="btnMini">🖼️ CARGAR ARCHIVO<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="seleccionarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')"></label><div class="remotePaste" tabindex="0" contenteditable="true" spellcheck="false" onclick="this.focus()" onkeydown="if(event.key!==\'v\'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')">📋 PEGAR CAPTURA Ctrl+V</div></div>';
  const evidence='<div class="powerMirrorEvidence"><div class="stepState" style="margin-top:0"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+evidenceBody+controls+'</div>';
+ const rectificar=done&&ev?.storage_path?
+  '<div class="stepState">Puedes sustituir la captura sin alterar la lectura ni el estado ATENDIDO.</div>'+
+  '<label class="mesaRectifyControl">✏️ RECTIFICAR CAPTURA ÓPTICA<input type="file" accept="image/jpeg,image/png,image/webp" onchange="rectificarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')"></label>'+
+  (ev.rectificada?'<div class="rectificationNote">📑 Evidencia rectificada; la anterior sigue en historial.</div>':''):''; 
  const confirmar=done?'':revision?.estado==='REQUIERE_CORRECCION'?'<div class="stepState" style="color:#a54b00">⏳ Esperando que Bryan corrija la potencia.</div>':'<button class="remoteOk" '+(ev?.url?'':'disabled style="opacity:.45;cursor:not-allowed"')+' onclick="confirmarPotenciaMesa(\''+o.id+'\',\''+r.id+'\')">✅ CONFIRMAR LECTURA ÓPTICA</button>';
- return '<div class="step"><b>📶 POTENCIA ÓPTICA</b><div class="stepState">'+(done?'✅ Lectura y evidencia confirmadas':'🟡 Lectura disponible para verificar')+'</div><div class="powerMirrorGrid">'+data+evidence+'</div>'+sugerenciaPotencia(v)+avisoPotenciaHtml(o,r)+accionHuawei+estadoHuawei+confirmar+reset+'</div>';
+ return '<div class="step"><b>📶 POTENCIA ÓPTICA</b><div class="stepState">'+(done?'✅ Lectura y evidencia confirmadas':'🟡 Lectura disponible para verificar')+'</div><div class="powerMirrorGrid">'+data+evidence+'</div>'+sugerenciaPotencia(v)+avisoPotenciaHtml(o,r)+accionHuawei+estadoHuawei+confirmar+rectificar+reset+'</div>';
 }
 function ipActualStep(o,r){
  const done=r?.estado==='ATENDIDO',v=(r?.resultado||{})?.verificacion_ip||{},sv=o?.servicio_actual||{},ip=v.ip||sv.ip||o.ip_creacion_registrada||'—',router=v.router_nombre||sv.router_nombre||'—',servicio=v.codigo_servicio||sv.codigo_servicio||'—',tipo=v.tipo_conexion||sv.tipo_conexion||'—',estado=String(v.estado||'SIN_CONSULTAR').toUpperCase(),encontrada=v.encontrada===true,ambigua=sv.requiere_seleccion_servicio===true;
@@ -172,7 +176,7 @@ function evidenciaAccesoEnRequerimiento(o,r){
    '<div class="mesaReqRemoteMeta"><b>📷 EVIDENCIA DE ACCESO REMOTO</b>'+
      '<div class="stepState">✅ Captura confirmada por Mesa Técnica</div>'+
      (comprobante.confirmado_at?'<div class="stepState">'+esc(fmt(comprobante.confirmado_at))+'</div>':'')+
-     '<div class="stepState">Toca la miniatura para verla completa.</div></div></div>';
+     '<div class="stepState">Toca la miniatura para verla completa.</div>'+(comprobante.rectificada_at?'<div class="rectificationNote">✏️ Captura rectificada: '+esc(fmt(comprobante.rectificada_at))+'</div>':'')+'<label class="mesaRectifyControl">✏️ RECTIFICAR CAPTURA<input type="file" accept="image/jpeg,image/png,image/webp" onchange="rectificarAccesoRemotoMesa(event,\''+o.id+'\')"></label></div></div>';
 }
 function batchHtml(o){
  const rs=ordenarRequerimientosMesa(o.requerimientos||[]);
@@ -238,6 +242,22 @@ window.solicitarPotenciaHuaweiMesa=async id=>{
    alert(r.reutilizada?'⏳ Se reutilizó la lectura pendiente de esta ONU.':'✅ Lectura Huawei solicitada; resultado compartido con el técnico.');
    await cargar(true);
  }catch(e){alert('No se pudo solicitar Huawei: '+e.message)}
+};
+window.rectificarAccesoRemotoMesa=async(e,id)=>{
+ const file=e.target.files?.[0];if(!file)return;
+ const motivo=prompt('¿Por qué reemplazas la captura de acceso remoto?','Subí una captura equivocada');
+ if(!motivo?.trim())return;
+ if(!confirm('Se conservará la imagen anterior en el historial y Bryan verá la nueva. ¿Continuar?'))return;
+ try{await arApi('replace-confirmed-evidence',{orden_id:id,motivo:motivo.trim(),mime_type:file.type||'image/jpeg',base64:await dataUrl(file)});await cargar(true)}
+ catch(err){alert('No se pudo rectificar la captura: '+err.message)}finally{e.target.value=''}
+};
+window.rectificarPotenciaMesa=async(e,id,rid)=>{
+ const file=e.target.files?.[0];if(!file)return;
+ const motivo=prompt('¿Por qué reemplazas la captura de potencia?','Subí una captura equivocada');
+ if(!motivo?.trim())return;
+ if(!confirm('Se conservará la imagen anterior. No cambiarán la lectura ni el estado ATENDIDO. ¿Continuar?'))return;
+ try{await mesa('power-evidence-rectify',{orden_id:id,requerimiento_id:rid,motivo:motivo.trim(),mime_type:file.type||'image/jpeg',base64:await dataUrl(file)});await cargar(true)}
+ catch(err){alert('No se pudo rectificar la captura óptica: '+err.message)}finally{e.target.value=''}
 };
 window.confirmarPotenciaMesa=async(id,rid)=>{if(!confirm('¿Confirmar la lectura óptica junto con la captura de SmartOLT?'))return;try{await mesa('confirm-power-check',{orden_id:id,requerimiento_id:rid});await cargar(true)}catch(e){alert(e.message)}};
 window.resolverReqMesa=async(id,rid)=>{if(!confirm('¿Marcar este requerimiento completo como atendido?'))return;try{await mesa('resolve-support-request',{orden_id:id,requerimiento_id:rid,canal_resolucion:'SISTEMA'});await cargar(true)}catch(e){alert(e.message)}};

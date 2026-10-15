@@ -223,7 +223,7 @@ function mesaReqLine(r){
  const remoteOk=rh?.estado==='CONFIRMADO'||(isCurrent&&ar?.estado==='CONFIRMADO');
  const label=remoteOk?'✅ Acceso remoto confirmado':visible?.url?'📷 Evidencia recibida, pendiente confirmación':'⏳ Esperando confirmación de acceso remoto';
  extra+='<div class="mesaMirrorStatus '+(remoteOk?'ok':'pending')+'"><b>🔐 '+label+'</b>'+
-  (rh?.confirmado_at?'<div>Confirmado: '+esc(fmt(rh.confirmado_at))+'</div>':'')+
+  (rh?.confirmado_at?'<div>Confirmado: '+esc(fmt(rh.confirmado_at))+'</div>':'')+(rh?.rectificada_at?'<div>✏️ Captura rectificada: '+esc(fmt(rh.rectificada_at))+'</div>':'')+
   (visible?.url?'<div class="mesaRemoteEvidence"><img src="'+esc(visible.url)+'" alt="Evidencia de acceso remoto" onclick="window.open(this.src,\'_blank\')"></div>':'')+'</div>';
 }
  if(estaVerificando&&res.revision_potencia){
@@ -243,7 +243,7 @@ function mesaReqLine(r){
    const vals=pot?[['Estado',pot.estado||'—'],['Rx ONU',pot.rx_onu_dbm!=null?String(pot.rx_onu_dbm)+' dBm':'—'],['Rx OLT',pot.rx_olt_dbm!=null?String(pot.rx_olt_dbm)+' dBm':'—'],['OLT',pot.olt||'—'],['PON',[pot.tarjeta,pot.puerto].filter(Boolean).join('/')||'—'],['ONT-ID',pot.ont_id??'—'],['SN',pot.sn||'—'],['Distancia',pot.distancia_m!=null?String(pot.distancia_m)+' m':'—'],['Fuente',pot.fuente||'SIN IDENTIFICAR'],['Lectura',pot.leido_at?fmt(pot.leido_at):'—'],['Vigencia',hist?'HISTÓRICA · '+(haceMin===null?'sin fecha':haceMin+' min'):'Reciente · '+haceMin+' min']]:[];
    if(esMasReciente&&potGuardada?.leido_at)vals.push(['Verificación anterior',fmt(potGuardada.leido_at)+' · guardada en historial']);
    const data='<div class="powerMirrorData"><div class="muted" style="margin:0 0 5px"><b>📊 LECTURA ÓPTICA</b></div>'+vals.map(v=>'<div style="margin-top:3px"><b>'+esc(v[0])+':</b> '+esc(v[1])+'</div>').join('')+'</div>';
-   const evidence='<div class="powerMirrorEvidence"><div class="muted" style="margin:0 0 5px"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+(ev?.url?'<img data-power-evidence="'+esc(r.id)+'" src="'+esc(ev.url)+'" alt="Evidencia potencia SmartOLT" onclick="window.open(this.src,\'_blank\')"><div class="muted">✅ Captura SmartOLT guardada'+(ev.subido_at?' · '+esc(fmt(ev.subido_at)):'')+'</div>':'<div class="muted">Sin captura disponible.</div>')+'</div>';
+   const evidence='<div class="powerMirrorEvidence"><div class="muted" style="margin:0 0 5px"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+(ev?.url?'<img data-power-evidence="'+esc(r.id)+'" src="'+esc(ev.url)+'" alt="Evidencia potencia SmartOLT" onclick="window.open(this.src,\'_blank\')"><div class="muted">✅ Captura SmartOLT guardada'+(ev.rectificada?' · ✏️ rectificada':'')+(ev.subido_at?' · '+esc(fmt(ev.subido_at)):'')+'</div>':'<div class="muted">Sin captura disponible.</div>')+'</div>';
    extra+='<div class="powerMirrorGrid">'+data+evidence+'</div>';
  }
  return '<div class="mesaMirrorReq '+(done?'done':'pending')+'"><div class="mesaMirrorReqHead"><b>'+(done?'✅ ATENDIDO':'⏳ ESPERANDO MESA TÉCNICA')+' · '+esc(names)+'</b><span>'+(done?'ATENDIDO':'PENDIENTE')+'</span></div><div class="muted">'+esc(fmt(r.solicitado_at))+(done&&r.atendido_at?' · atendido '+esc(fmt(r.atendido_at)):'')+'</div>'+extra+'</div>'
