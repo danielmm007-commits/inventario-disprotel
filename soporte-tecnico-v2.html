@@ -147,14 +147,27 @@ function mesaEtapaOpciones(){
  if(!fibra&&!radio)return {bloqueada:true,codes:[],recomendadas:[],perfil,texto:'⚠️ Tecnología FIBRA/RADIO no identificada en el servicio. Revisar el perfil.'};
  const disponibles=fibra?['ACTIVAR_CAMBIAR_ONU','VERIFICAR_POTENCIA','CONFIRMAR_IP_ACTUAL','ASIGNAR_NUEVA_IP','VERIFICAR_ACCESO_REMOTO']:
  ['CONFIRMAR_IP_ACTUAL','ASIGNAR_NUEVA_IP','VERIFICAR_ACCESO_REMOTO'];
- // El backend todavía bloquea repetir acciones atendidas: no ofrecer selecciones que devuelvan error.
+ // Una consulta o asignación de IP debe concluir antes del acceso remoto.
+ // Si el acceso ya se pidió, el equipo que porta la IP se considera configurado.
+ const accionesIp=['CONFIRMAR_IP_ACTUAL','ASIGNAR_NUEVA_IP'];
+ const remotoSolicitado=solicitadas.has('VERIFICAR_ACCESO_REMOTO')||!!MESA_STATE?.acceso?.solicitado_at;
+ const ipPendiente=rs.some(r=>r.estado==='PENDIENTE'&&Array.isArray(r.acciones)&&r.acciones.some(x=>accionesIp.includes(x)))
+   ||MESA_STATE?.ip?.solicitud?.estado==='PENDIENTE';
  const potenciaYaSolicitada=solicitadas.has('VERIFICAR_POTENCIA'),onuEnProceso=['SOLICITADO','REQUIERE_CORRECCION'].includes(MESA_STATE?.onu?.estado);
- const codes=disponibles.filter(x=>!solicitadas.has(x)&&!(x==='ACTIVAR_CAMBIAR_ONU'&&potenciaYaSolicitada)&&!(x==='VERIFICAR_POTENCIA'&&onuEnProceso)), auto=DATA?.reporte?.automatismos?.mesa||[];
+ const codes=disponibles.filter(x=>!solicitadas.has(x)
+   &&!(x==='ACTIVAR_CAMBIAR_ONU'&&potenciaYaSolicitada)
+   &&!(x==='VERIFICAR_POTENCIA'&&onuEnProceso)
+   &&!(accionesIp.includes(x)&&remotoSolicitado)
+   &&!(x==='VERIFICAR_ACCESO_REMOTO'&&(ipPendiente||remotoSolicitado)));
+ const auto=DATA?.reporte?.automatismos?.mesa||[];
  const recomendadas=Array.isArray(auto)?[...new Set(auto)].filter(x=>codes.includes(x)):[];
  const hayPendiente=rs.some(r=>r.estado==='PENDIENTE');
- return {bloqueada:false,codes,recomendadas,perfil,texto:codes.length?
-  (radio?'📡 RADIO · IP en antena; acceso WiFi con puerto 5000.':'🌐 FIBRA · ONU Bridge/CATV; IP del cliente en WiFi.')+
-  (hayPendiente?' Otras solicitudes siguen pendientes.':''):'✅ No quedan acciones nuevas; revisa los resultados de las solicitudes existentes.'};
+ const contexto=radio?'📡 RADIO · IP en antena; acceso WiFi con puerto 5000.':'🌐 FIBRA · ONU Bridge/CATV; IP del cliente en WiFi.';
+ const regla=remotoSolicitado?' Acceso remoto ya solicitado: no corresponde pedir IP después.':
+   ipPendiente?' Fernando debe confirmar la IP antes de solicitar acceso remoto.':
+   ' Si necesitas confirmar o asignar IP, solicítala antes del acceso remoto.';
+ return {bloqueada:false,codes,recomendadas,perfil,texto:codes.length?contexto+regla+
+  (hayPendiente?' Otras solicitudes siguen pendientes.':''):'✅ No quedan intervenciones nuevas en esta etapa.'+regla};
 }
 function mesaLabelContextual(code,tipo){
  if(code==='CONFIRMAR_IP_ACTUAL')return ['🌐','Ayúdame con la IP actual','Consulta la dirección existente en ERP/MikroTik. No cambia ni asigna la IP.'];
