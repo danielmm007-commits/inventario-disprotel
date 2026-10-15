@@ -95,13 +95,26 @@ Deno.serve(async req=>{
    const captura=Date.parse(String(resultado.optica_leida_at||'')),requestMs=Date.parse(String(q.expira_at||''))-600000;
    const fresh=Number.isFinite(captura)&&captura<=Date.now()+300000&&captura>=requestMs-300000;
    let ok=body.ok!==false;
+   // Diagnóstico explícito: una lectura rechazada NO pisa la caché,
+   // y la razón se conserva sin exponer SN, IP, credenciales ni respuestas raw.
+   const fallos:string[]=[];
    if(demanda){
-     ok=ok&&resultado.found===true&&serialValido&&optico&&fresh&&new Date(q.expira_at).getTime()>Date.now();
+     if(body.ok===false)fallos.push('ERROR_AGENTE');
+     if(resultado.found!==true)fallos.push('ONU_NO_CONFIRMADA');
+     if(!serialDevuelto)fallos.push('SN_NO_REPORTADO');
+     else if(!serialValido)fallos.push('SN_NO_COINCIDE');
+     if(!optico)fallos.push('POTENCIA_NO_DISPONIBLE');
+     if(!fresh)fallos.push('FECHA_OPTICA_NO_VALIDA');
+     if(!(new Date(q.expira_at).getTime()>Date.now()))fallos.push('SOLICITUD_EXPIRADA');
+     ok=ok&&fallos.length===0;
+     if(!ok)console.warn('DISPROTEL_HUAWEI_DEMANDA_RECHAZADA',
+       {solicitud_id:id,razones:fallos}); // Nunca registrar resultado completo
    }
    const patch:any={
      olt_estado:ok?'OK':'ERROR',olt_resultado:ok?resultado:{
-       error:demanda?'Lectura no válida: ONU, serial, señal o fecha no confirmados':
-          String(body.error||resultado.error||'Error de consulta OLT')
+       error:demanda?'Lectura no validada: '+(fallos.join(', ')||'ERROR_AGENTE'):
+         String(body.error||resultado.error||'Error de consulta OLT'),
+       codigos:demanda?fallos:[]
      },olt_respondido_at:now
    };
    const u=await s.from('consulta_red_solicitudes').update(patch)
@@ -150,7 +163,7 @@ Deno.serve(async req=>{
        .eq('origen_consulta','SERVICIO').neq('id',id).gt('expira_at',now);
      if(share.error)console.warn('No se pudo compartir lectura:',share.error.message);
    }
-   return reply({ok:true,cache_actualizada:ok,lectura_valida:ok});
+   return reply({ok:true,cache_actualizada:ok,lectura_valida:ok,diagnostico:demanda&&!ok?fallos:[]});
   }
   if(action==='autofind-read'){
    await sessionUser(s,req,body);
