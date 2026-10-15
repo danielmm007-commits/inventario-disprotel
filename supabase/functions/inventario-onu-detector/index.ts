@@ -86,10 +86,14 @@ Deno.serve(async req=>{
        return [...sn.slice(0,4)].map(c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join('').toUpperCase()+sn.slice(4);
      return sn;
    };
-   // 'onu_sn' del agente refleja el serial SOLICITADO; el SN que
-   // realmente reportó la OLT se recibe en 'reported_sn'.
-   const serialDevuelto=resultado.reported_sn||null;
-   const serialValido=!demanda||!!serialDevuelto&&normal(serialDevuelto)===normal(q.onu_sn);
+   // Huawei puede devolver "485754434300C79B (HWTC-4300C79B)".
+   // Confirmar TODOS los formatos explícitos de la misma respuesta.
+   // Nunca aceptar texto extra ni omitir una discrepancia entre las dos formas.
+   const serialDevuelto=String(resultado.reported_sn||'').trim().toUpperCase();
+   const matchSerial=/^([0-9A-F]{16}|[A-Z0-9]{4}-?[0-9A-F]{8})(?:\s*\(\s*([0-9A-F]{16}|[A-Z0-9]{4}-?[0-9A-F]{8})\s*\))?$/.exec(serialDevuelto);
+   const serialesReportados=matchSerial?[matchSerial[1],matchSerial[2]].filter(Boolean).map(normal):null;
+   const serialValido=!demanda||!!serialesReportados&&
+     serialesReportados.every((sn:string)=>sn===normal(q.onu_sn));
    const optico=Number.isFinite(Number(resultado.rx_optical_dbm))&&resultado.rx_optical_dbm!=null||
      Number.isFinite(Number(resultado.olt_rx_ont_dbm))&&resultado.olt_rx_ont_dbm!=null;
    const captura=Date.parse(String(resultado.optica_leida_at||'')),requestMs=Date.parse(String(q.expira_at||''))-600000;
