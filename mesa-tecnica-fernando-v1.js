@@ -80,7 +80,7 @@ function potenciaStep(o,r){
  const accionHuawei=done?'':pendingHu?
    '<button type="button" disabled style="opacity:.65;cursor:wait">⏳ ESPERANDO LECTURA HUAWEI</button>':
    '<button type="button" onclick="solicitarPotenciaHuaweiMesa(\''+o.id+'\')">📡 CONSULTAR POTENCIA HUAWEI AHORA</button>';
- const estadoHuawei=pendingHu?'<div class="stepState">La lectura individual está solicitada; se compartirá al recibir respuesta de Huawei.</div>':'';
+ const estadoHuawei=pendingHu?'<div class="stepState">La lectura individual está solicitada; se compartirá al recibir respuesta de Huawei.</div>':solicitud?.estado==='ERROR'?'<div class="stepState" style="color:#ab401d">⚠️ Última lectura Huawei rechazada: '+esc(solicitud.error||'sin diagnóstico')+'. Puedes solicitar una nueva cuando se corrija.</div>':'';
 
  if(!v)return '<div class="step"><b>📶 POTENCIA ÓPTICA</b><div class="stepState">⚠️ Sin lectura óptica disponible para este servicio.</div>'+accionHuawei+estadoHuawei+reset+'</div>';
  const vals=[
