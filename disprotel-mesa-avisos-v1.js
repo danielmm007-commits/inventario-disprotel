@@ -253,6 +253,8 @@
       box-shadow:0 12px 28px #19395538;padding:12px 32px 12px 13px;font:600 12px/1.4 system-ui,sans-serif;
       animation:disprotelMesaIn .24s ease-out}
     #disprotelMesaToastStack.supervisor{top:244px}
+    #disprotelMesaConexionEstado{font:700 11px system-ui,sans-serif;color:#667b85;pointer-events:none;padding:3px 7px;background:#ffffffeb;border-radius:7px;width:max-content;max-width:100%;justify-self:end}
+    #disprotelMesaConexionEstado[data-connected=true]{color:#17643e}
     .disprotelMesaToast.ok{border-left-color:#159467}
     .disprotelMesaToast.warn{border-left-color:#d6a029}
     .disprotelMesaTitle{font-size:13px;font-weight:800}
@@ -306,8 +308,17 @@
      enable.textContent=audioPreferred?'🔊 Reanudar sonido de Mesa':'🔊 Activar sonido de Mesa';enable.className='disprotelMesaSoundEnable disprotelMesaEnableSound';
      enable.onclick=enableAudio;root.append(enable);
    }
-   document.body.append(root);updateBadge();return root;
+   const estado=document.createElement('div');estado.id='disprotelMesaConexionEstado';
+   root.append(estado);
+   document.body.append(root);updateBadge();mostrarConexion();return root;
  }
+ function mostrarConexion(connected=window.DISPROTEL_OT_RT_CONNECTED===true){
+   const el=document.getElementById('disprotelMesaConexionEstado');
+   if(!el)return;
+   el.dataset.connected=connected?'true':'false';
+   el.textContent=connected?'● Mesa en vivo: conectada':'○ Mesa en vivo: desconectada · respaldo activo';
+ }
+ window.addEventListener('disprotel:ot-conexion',e=>mostrarConexion(e?.detail?.connected===true));
  function enrich(card){
    const code=String(card.dataset.ot||''),meta=orderDetails.get(code)||{},
      details=card.querySelector('.disprotelMesaDetails');
@@ -411,7 +422,7 @@
    const d=event?.detail||{};
    track(d);
    const info=describe(d);if(!info||!info.ot)return;
-   const key=[info.ot,norm(d.area),norm(d.estado),norm(d.destino)].join('|'),now=Date.now();
+   const key=[String(d.solicitud_id||info.ot),info.ot,norm(d.area),norm(d.estado),norm(d.destino)].join('|'),now=Date.now();
    for(const [key,at] of seen)if(now-at>60000)seen.delete(key);
    if(seen.has(key)&&now-seen.get(key)<5000)return;
    seen.set(key,now);
