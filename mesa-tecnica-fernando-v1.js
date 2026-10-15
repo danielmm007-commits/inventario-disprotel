@@ -26,6 +26,13 @@ function css(){if($('mesaCampoV7Style'))return;const s=document.createElement('s
 .mesaReqRemoteMeta{flex:1;min-width:135px;font-size:11px;color:#214e3f}
 .mesaReqRemoteMeta b{display:block;font-size:11px}
 @media(max-width:600px){.mesaReqRemoteProof{align-items:stretch}.mesaReqRemotePreview{width:100%;max-width:300px}.mesaReqRemotePreview img{height:150px}}.emptyMesa{text-align:center;padding:24px;color:#60737c}.manualIp{margin-top:6px}.remoteLinkOptions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:6px;margin-top:8px}.remoteLinkOptions a{display:block;padding:8px 9px;border-radius:8px;background:#17313d;color:#fff;text-decoration:none;text-align:center;font-size:10px;font-weight:800;overflow-wrap:anywhere;word-break:break-word}.remoteLinkOptions a:focus-visible{outline:3px solid #278bd2;outline-offset:2px}.remoteEvidence{margin-top:8px;padding:8px;border:1px solid #e6c26e;border-radius:10px;background:#fffaf0}.remoteEvidence img{display:block;width:100%;max-width:560px;height:auto;max-height:260px;object-fit:contain;margin:8px auto;background:#111;border-radius:8px}.remoteWide{grid-column:1/-1!important;min-width:0;background:#f9fcff}.remoteWide .remoteEvidence{max-width:620px;margin:12px auto;padding:12px}.remoteWide .remoteTools{max-width:620px;margin:8px auto}.remoteWide .remotePaste{max-width:620px;margin:8px auto}.remoteTools{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}.remotePaste{position:relative;margin-top:7px;padding:9px;border:2px dashed #e89b00;border-radius:9px;background:#fffdf7;text-align:center;font-size:10px;font-weight:900;cursor:text;outline:none;caret-color:#17313d}.remotePaste:focus{border-style:solid;border-color:#17313d;background:#fff;box-shadow:0 0 0 4px rgba(23,49,61,.12)}.remotePaste:focus:after{content:'';display:inline-block;width:2px;height:16px;background:#17313d;margin-left:6px;vertical-align:-3px;animation:remoteCaretBlink .9s steps(1) infinite}@keyframes remoteCaretBlink{50%{opacity:0}}.remoteOk{background:#167348!important}.remoteDanger{background:#b42323!important;color:#fff!important}
+.opticaAvisoPanel{display:grid;gap:9px;padding:11px;margin:11px 0;background:#fffaf0;border:1px solid #ebcd81;border-radius:10px}
+.opticaAviso{padding:10px;border:1px solid #e9bf60;background:#fff2d5;border-radius:9px}.opticaAviso.corregido{border-color:#b3d6c3;background:#f2fbf4}
+.opticaAviso b,.opticaAvisoTools b{font-size:11px}.opticaAviso p{margin:5px 0 8px;font-size:11px}
+.opticaAviso a img{display:block;max-width:270px;width:100%;max-height:160px;object-fit:contain;border-radius:7px;background:#111;margin-top:6px}
+.opticaAvisoTools{background:#fff;padding:9px;border:1px dashed #d9ad51;border-radius:8px}
+.opticaAlerta{margin:9px 0;padding:10px;border-radius:8px;background:#fff1d7;border:1px solid #e4bb63;font-size:11px;line-height:1.4}
+@media(max-width:600px){.opticaAvisoTools .remoteTools{grid-template-columns:1fr}}
 .powerMirrorGrid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(280px,.95fr);gap:10px;align-items:stretch;margin-top:8px}
 .powerMirrorData,.powerMirrorEvidence{border:1px solid #d7e4ea;border-radius:8px;background:#f8fbfc;padding:9px;min-width:0}
 .powerMirrorEvidence{background:#fffaf0;border-color:#e6c26e}
@@ -91,10 +98,29 @@ function estabilizarUrlsPotencia(data){
   return data;
 }
 const ACTION_LABELS={VERIFICAR_POTENCIA:'📶 Verificar potencia óptica',ACTIVAR_CAMBIAR_ONU:'📡 Activar / cambiar ONU',CONFIRMAR_IP_ACTUAL:'🌐 Confirmar IP actual',ASIGNAR_NUEVA_IP:'🆕 Asignar nueva IP',VERIFICAR_ACCESO_REMOTO:'🔐 Verificar acceso remoto',REVISAR_RADIO_CPE:'📻 Revisar radio / CPE',VERIFICAR_CONECTIVIDAD:'🔎 Verificar conectividad',OTRA_ACCION:'🧰 Otra acción técnica'};
+function avisoPotenciaHtml(o,r){
+ if(r.estado==='ATENDIDO')return '';
+ const x=r.resultado?.revision_potencia;
+ const msg=x?'<div class="opticaAviso '+(x.estado==='CORREGIDO_EN_CAMPO'?'corregido':'')+'"><b>'+
+ (x.estado==='REQUIERE_CORRECCION'?'⚠️ BRYAN DEBE CORREGIR LA POTENCIA':'✅ BRYAN CORRIGIÓ · HACER NUEVA LECTURA')+
+ '</b><p>'+esc(x.observacion||'')+'</p>'+
+ (x.url?'<a href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(x.url)+'" alt="Captura provisional"></a>':'')+
+ '<div class="stepState">📷 Diagnóstico provisional. NO es la evidencia final.</div>'+
+ (x.trabajo_realizado?'<div class="stepState"><b>Trabajo de Bryan:</b> '+esc(x.trabajo_realizado)+'</div>':'')+'</div>':'';
+ return '<div class="opticaAvisoPanel">'+msg+
+ '<div class="opticaAvisoTools"><b>📷 ENVIAR FOTO Y SOLICITAR CORRECCIÓN</b><div class="stepState">Esta captura se enviará a Bryan, sin marcar la potencia como verificada.</div>'+
+ '<div class="remoteTools"><label class="btnMini">🖼️ FOTO DIAGNÓSTICA<input type="file" style="display:none" accept="image/png,image/jpeg,image/webp" onchange="seleccionarAvisoPotencia(event,\''+o.id+'\',\''+r.id+'\')"></label>'+
+ '<div tabindex="0" contenteditable="true" class="remotePaste" onkeydown="if(event.key!==\'v\'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarAvisoPotencia(event,\''+o.id+'\',\''+r.id+'\')">📋 PEGAR DIAGNÓSTICO Ctrl+V</div></div></div></div>';
+}
+function sugerenciaPotencia(v){
+ const rx=Number(v?.rx_onu_dbm),when=Date.parse(v?.leido_at||'');
+ if(v?.rx_onu_dbm==null||!Number.isFinite(rx)||rx>-26||!Number.isFinite(when)||Date.now()-when>15*60000||when>Date.now()+60000)return '';
+ return '<div class="opticaAlerta">⚠️ Rx ONU '+esc(rx)+' dBm: <b>sugerir revisión de puertos/conectores</b>. Referencia orientativa ≤ −26 dBm, según tolerancia del equipo. Fernando confirma; el sistema no cierra la OT automáticamente.</div>';
+}
 function potenciaStep(o,r){
  const archivada=(r?.resultado||{})?.verificacion_potencia||null,lectura=o.optica||null;
  const v=lectura&&(!archivada?.leido_at||Date.parse(lectura.leido_at)>Date.parse(archivada.leido_at))?lectura:(archivada||lectura);
- const done=r?.estado==='ATENDIDO',ev=(r?.resultado||{})?.evidencia_potencia||null;
+ const done=r?.estado==='ATENDIDO',ev=(r?.resultado||{})?.evidencia_potencia||null,revision=r?.resultado?.revision_potencia;
  const solicitud=o.lectura_huawei||null,pendingHu=solicitud?.estado==='PENDIENTE'&&!solicitud?.expirada;
  const esPrueba=o.id==='e8ce09af-4a08-4b10-bf9e-459231b1f5cb'&&r.id==='f871587c-89bc-4aa9-9b68-601f9ac67d68';
  const reset=esPrueba&&done&&(ev?.storage_path||archivada)?
@@ -114,10 +140,10 @@ function potenciaStep(o,r){
  const evidenceBody=ev?.url
    ?'<img data-power-evidence="'+esc(r.id)+'" src="'+esc(ev.url)+'" alt="Evidencia potencia SmartOLT" onclick="window.open(this.src,\'_blank\')"><div class="stepState">✅ Captura SmartOLT guardada'+(ev.subido_at?' · '+esc(fmt(ev.subido_at)):'')+'</div>'
    :'<div class="stepState" style="margin-top:0">📎 Falta captura de SmartOLT. Pega un recorte o carga la imagen antes de confirmar.</div>';
- const controls=done?'':'<div class="remoteTools"><label class="btnMini">🖼️ CARGAR ARCHIVO<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="seleccionarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')"></label><div class="remotePaste" tabindex="0" contenteditable="true" spellcheck="false" onclick="this.focus()" onkeydown="if(event.key!==\'v\'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')">📋 PEGAR CAPTURA Ctrl+V</div></div>';
+ const controls=done||revision?.estado==='REQUIERE_CORRECCION'?'':'<div class="remoteTools"><label class="btnMini">🖼️ CARGAR ARCHIVO<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="seleccionarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')"></label><div class="remotePaste" tabindex="0" contenteditable="true" spellcheck="false" onclick="this.focus()" onkeydown="if(event.key!==\'v\'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')">📋 PEGAR CAPTURA Ctrl+V</div></div>';
  const evidence='<div class="powerMirrorEvidence"><div class="stepState" style="margin-top:0"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+evidenceBody+controls+'</div>';
- const confirmar=done?'':'<button class="remoteOk" '+(ev?.url?'':'disabled style="opacity:.45;cursor:not-allowed"')+' onclick="confirmarPotenciaMesa(\''+o.id+'\',\''+r.id+'\')">✅ CONFIRMAR LECTURA ÓPTICA</button>';
- return '<div class="step"><b>📶 POTENCIA ÓPTICA</b><div class="stepState">'+(done?'✅ Lectura y evidencia confirmadas':'🟡 Lectura disponible para verificar')+'</div><div class="powerMirrorGrid">'+data+evidence+'</div>'+accionHuawei+estadoHuawei+confirmar+reset+'</div>';
+ const confirmar=done?'':revision?.estado==='REQUIERE_CORRECCION'?'<div class="stepState" style="color:#a54b00">⏳ Esperando que Bryan corrija la potencia.</div>':'<button class="remoteOk" '+(ev?.url?'':'disabled style="opacity:.45;cursor:not-allowed"')+' onclick="confirmarPotenciaMesa(\''+o.id+'\',\''+r.id+'\')">✅ CONFIRMAR LECTURA ÓPTICA</button>';
+ return '<div class="step"><b>📶 POTENCIA ÓPTICA</b><div class="stepState">'+(done?'✅ Lectura y evidencia confirmadas':'🟡 Lectura disponible para verificar')+'</div><div class="powerMirrorGrid">'+data+evidence+'</div>'+sugerenciaPotencia(v)+avisoPotenciaHtml(o,r)+accionHuawei+estadoHuawei+confirmar+reset+'</div>';
 }
 function ipActualStep(o,r){
  const done=r?.estado==='ATENDIDO',v=(r?.resultado||{})?.verificacion_ip||{},sv=o?.servicio_actual||{},ip=v.ip||sv.ip||o.ip_creacion_registrada||'—',router=v.router_nombre||sv.router_nombre||'—',servicio=v.codigo_servicio||sv.codigo_servicio||'—',tipo=v.tipo_conexion||sv.tipo_conexion||'—',estado=String(v.estado||'SIN_CONSULTAR').toUpperCase(),encontrada=v.encontrada===true,ambigua=sv.requiere_seleccion_servicio===true;
@@ -181,6 +207,20 @@ window.verificarIpActualMesa=async(id,rid)=>{try{await mesa('verify-current-ip',
 window.consultarPotenciaAhora=async(id,servicioId)=>{try{const s=ses(),token=s.session_token||'';if(!token)throw new Error('Sesión no disponible');const r=await fetch(SMARTOLT_DIAG+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'live-diagnostic',session_token:token,servicio_id:servicioId})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'No se pudo consultar SmartOLT');await cargar(true)}catch(e){alert(e.message)}};
 window.seleccionarPotenciaMesa=async(e,id,rid)=>{const f=e.target.files?.[0];if(!f)return;try{await mesa('power-evidence-upload',{orden_id:id,requerimiento_id:rid,mime_type:f.type||'image/jpeg',base64:await dataUrl(f)});await cargar(true)}catch(err){alert(err.message)}finally{e.target.value=''}};
 window.pegarPotenciaMesa=async(e,id,rid)=>{e.preventDefault();const items=[...(e.clipboardData?.items||[])],it=items.find(x=>String(x.type||'').startsWith('image/'));if(!it){alert('El portapapeles no contiene una imagen.');return}const f=it.getAsFile();if(!f)return;try{await mesa('power-evidence-upload',{orden_id:id,requerimiento_id:rid,mime_type:f.type||'image/png',base64:await dataUrl(f)});await cargar(true)}catch(err){alert(err.message)}};
+window.enviarAvisoPotencia=async(file,id,rid)=>{
+ if(!file)return;
+ const observacion=prompt('¿Qué debe corregir Bryan?','Revisar potencia óptica y limpiar puertos/conectores');
+ if(!observacion?.trim())return;
+ try{await mesa('power-diagnostic-upload',{orden_id:id,requerimiento_id:rid,observacion:observacion.trim(),mime_type:file.type||'image/png',base64:await dataUrl(file)});await cargar(true)}
+ catch(e){alert('No se pudo enviar el aviso: '+e.message)}
+};
+window.seleccionarAvisoPotencia=async(e,id,rid)=>{try{await window.enviarAvisoPotencia(e.target.files?.[0],id,rid)}finally{e.target.value=''}};
+window.pegarAvisoPotencia=async(e,id,rid)=>{
+ e.preventDefault();
+ const it=[...(e.clipboardData?.items||[])].find(x=>String(x.type||'').startsWith('image/'));
+ const file=it?.getAsFile();if(!file){alert('Pega una foto de diagnóstico');return}
+ await window.enviarAvisoPotencia(file,id,rid);
+};
 window.reiniciarPotenciaPruebaMesa=async(id,rid)=>{
  if(id!=='e8ce09af-4a08-4b10-bf9e-459231b1f5cb'||
    rid!=='f871587c-89bc-4aa9-9b68-601f9ac67d68')return;
