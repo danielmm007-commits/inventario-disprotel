@@ -14,12 +14,19 @@
  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim().replace(/[\s-]+/g,'_');
  const seen=new Map(),pending=[],orderDetails=new Map(),requests=new Map(),recentlyClosed=new Map();
  const STORE='disprotel_mesa_pendientes_fernando_v1';
- const AUDIO_STORE='disprotel_mesa_sonido_v1';
+ const AUDIO_STORE='disprotel_mesa_sonido_v2_'+id;
+ const AUDIO_LEGACY_STORE='disprotel_mesa_sonido_v1';
  const REMIND_MS=5*60*1000,WORKING_MS=15*60*1000,MAX_AGE=12*60*60*1000;
- let audio=null,audioRequested=false,audioPreferred=false,lastBeep=0,lastReminderBatchAt=0;
- // Una preferencia anterior NO significa que el navegador haya liberado el audio
- // tras recargar: cada nuevo contexto espera un gesto permitido por Edge.
- try{audioPreferred=sessionStorage.getItem(AUDIO_STORE)==='true'}catch{}
+ let audio=null,audioRequested=false,audioPreferred=false,unlockPending=false,lastBeep=0,lastReminderBatchAt=0;
+ let audioAutoFailed=false,audioGestureObserver=null;
+ const audioGestureDocs=new Set(),audioGestureFrames=new Set();
+ // Recordar por usuario, no confundir preferencia con permiso del navegador.
+ try{
+   const stored=localStorage.getItem(AUDIO_STORE),inSession=sessionStorage.getItem(AUDIO_STORE);
+   audioPreferred=stored==='true'||inSession==='true'||(stored===null&&inSession===null&&sessionStorage.getItem(AUDIO_LEGACY_STORE)==='true');
+   if(audioPreferred&&stored!=='true')localStorage.setItem(AUDIO_STORE,'true');
+ }catch{try{audioPreferred=sessionStorage.getItem(AUDIO_STORE)==='true'||sessionStorage.getItem(AUDIO_LEGACY_STORE)==='true'}catch{}}
+
  const keyFor=d=>norm(d.area)+'|'+String(d.solicitud_id||d.ot||'');
  function save(){
    if(id!==FERNANDO)return;
@@ -99,12 +106,90 @@
      }
    }catch(e){console.debug('DISPROTEL Mesa audio',e)}
  }
- function enableAudio(){
-   audioRequested=true;audioPreferred=true;
-   try{sessionStorage.setItem(AUDIO_STORE,'true')}catch{}
-   playSound(true);
+ function guardarPreferenciaAudio(){
+   try{localStorage.setItem(AUDIO_STORE,'true')}catch{try{sessionStorage.setItem(AUDIO_STORE,'true')}catch{}}
+ }
+ function vincularDocumentoAudio(doc){
+   if(!doc||audioGestureDocs.has(doc))return;
+   try{
+     doc.addEventListener('pointerdown',gestoParaAudio,true);
+     doc.addEventListener('keydown',gestoParaAudio,true);
+     audioGestureDocs.add(doc);
+   }catch{}
+ }
+ function marcoCargadoAudio(e){try{vincularDocumentoAudio(e.currentTarget.contentDocument)}catch{}}
+ function buscarMarcosAudio(){
+   for(const frame of document.querySelectorAll('iframe')){
+     if(!audioGestureFrames.has(frame)){
+       audioGestureFrames.add(frame);frame.addEventListener('load',marcoCargadoAudio);
+     }
+     try{vincularDocumentoAudio(frame.contentDocument)}catch{}
+   }
+ }
+ function detenerGestosAudio(){
+   for(const doc of audioGestureDocs){
+     try{doc.removeEventListener('pointerdown',gestoParaAudio,true);doc.removeEventListener('keydown',gestoParaAudio,true)}catch{}
+   }
+   audioGestureDocs.clear();
+   for(const frame of audioGestureFrames)frame.removeEventListener('load',marcoCargadoAudio);
+   audioGestureFrames.clear();
+   audioGestureObserver?.disconnect();audioGestureObserver=null;
+   window.removeEventListener('load',buscarMarcosAudio);
+ }
+ function observarGestosAudio(){
+   if(!audioPreferred||audioRequested||audioAutoFailed||audioGestureObserver)return;
+   vincularDocumentoAudio(document);buscarMarcosAudio();
+   if(document.body){
+     audioGestureObserver=new MutationObserver(buscarMarcosAudio);
+     audioGestureObserver.observe(document.body,{subtree:true,childList:true});
+   }
+   window.addEventListener('load',buscarMarcosAudio);
+ }
+ function mostrarReanudarAudio(){
+   if(audioRequested)return;
+   const root=document.getElementById('disprotelMesaToastStack');
+   if(!root||root.querySelector('.disprotelMesaEnableSound'))return;
+   const boton=document.createElement('button');boton.type='button';
+   boton.textContent='🔊 Reanudar sonido de Mesa';
+   boton.className='disprotelMesaSoundEnable disprotelMesaEnableSound';
+   boton.onclick=enableAudio;
+   root.insertBefore(boton,document.getElementById('disprotelMesaConexionEstado')||null);
+ }
+ function audioDesbloqueado(){
+   audioRequested=true;audioAutoFailed=false;
+   detenerGestosAudio();
    for(const button of document.querySelectorAll('.disprotelMesaEnableSound'))button.remove();
  }
+ async function desbloquearAudio(prueba=false,automatico=false){
+   if(audioRequested||unlockPending)return;
+   unlockPending=true;
+   try{
+     const Audio=window.AudioContext||window.webkitAudioContext;
+     if(!Audio)throw new Error('AudioContext no disponible');
+     audio=audio||new Audio();
+     // resume() comienza en el gesto real; tambien en un iframe del mismo origen.
+     if(audio.state==='suspended')await audio.resume();
+     if(audio.state!=='running')throw new Error('AudioContext aun suspendido');
+     audioDesbloqueado();
+     if(prueba)await playSound(true);
+   }catch(e){
+     console.debug('DISPROTEL Mesa: sonido pendiente de autorizacion',e);
+     if(automatico){audioAutoFailed=true;detenerGestosAudio();}
+     if(audioPreferred)mostrarReanudarAudio();
+   }finally{unlockPending=false}
+ }
+ function gestoParaAudio(e){
+   if(!audioPreferred||audioRequested||audioAutoFailed)return;
+   if(e.type==='keydown'&&['Shift','Alt','Control','Meta'].includes(e.key))return;
+   // Nunca leer teclas, formularios ni enviar eventos a la red.
+   desbloquearAudio(false,true);
+ }
+ function enableAudio(){
+   audioPreferred=true;guardarPreferenciaAudio();
+   desbloquearAudio(true,false);
+ }
+ if(audioPreferred)observarGestosAudio();
+
  function openRequirement(d){
    const uuid=String(d.orden_uuid||'');
    if(!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(uuid)){
@@ -303,7 +388,7 @@
      panel.setAttribute('aria-label','Cola de solicitudes pendientes de Mesa Técnica');
      root.append(badge,panel);
    }
-   if(!audioRequested){
+   if(!audioRequested&&!audioPreferred){
      const enable=document.createElement('button');enable.type='button';
      enable.textContent=audioPreferred?'🔊 Reanudar sonido de Mesa':'🔊 Activar sonido de Mesa';enable.className='disprotelMesaSoundEnable disprotelMesaEnableSound';
      enable.onclick=enableAudio;root.append(enable);
@@ -366,9 +451,9 @@
      make('Recordar en 5 min',false,()=>{
        defer(key,REMIND_MS,'pendiente');remove();
      });
-     if(!audioRequested)make('🔊 Activar sonido',false,enableAudio).classList.add('disprotelMesaEnableSound');
+     if(!audioRequested&&!audioPreferred)make('🔊 Activar sonido',false,enableAudio).classList.add('disprotelMesaEnableSound');
      card.append(actions);
-   }else if(!audioRequested){
+   }else if(!audioRequested&&!audioPreferred){
      const actions=document.createElement('div');actions.className='disprotelMesaActions';
      const b=document.createElement('button');b.type='button';b.textContent='🔊 Activar sonido';
      b.className='disprotelMesaEnableSound';b.onclick=enableAudio;actions.append(b);card.append(actions);
