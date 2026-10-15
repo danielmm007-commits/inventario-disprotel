@@ -71,11 +71,13 @@ Deno.serve(async req=>{
    if(!detectorOk(req))return reply({error:'Scanner no autorizado'},401);
    const id=String(body.id||'');if(!id)return reply({error:'Solicitud obligatoria'},400);
    const now=new Date().toISOString(),resultado=body.resultado||{error:String(body.error||'Error de lectura OLT')};
-   const req=await s.from('consulta_red_solicitudes')
+   // NO sombrear "req": es el Request HTTP usado en detectorOk(req).
+   // Un const req local causaba TDZ ReferenceError y HTTP 500 en resultados.
+   const solicitudDb=await s.from('consulta_red_solicitudes')
      .select('id,servicio_id,orden_id,olt_codigo,onu_sn,mikrotik_estado,expira_at')
      .eq('id',id).eq('olt_estado','PENDIENTE').maybeSingle();
-   if(req.error)throw req.error;
-   const q=req.data;if(!q)return reply({ok:true,ignorada:true});
+   if(solicitudDb.error)throw solicitudDb.error;
+   const q=solicitudDb.data;if(!q)return reply({ok:true,ignorada:true});
    const demanda=q.mikrotik_estado==='NO_APLICA'&&!!q.orden_id;
    const normal=(v:any)=>{
      const sn=String(v||'').toUpperCase().replace(/[\s:.-]/g,'');
