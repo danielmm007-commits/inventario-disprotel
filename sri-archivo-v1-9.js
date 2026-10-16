@@ -165,7 +165,9 @@ function init(){
   const a=el('a','');a.href=url;a.download='FACTURAS_'+currentRuc+'_'+(all.checked?'2026':mes.value)+'_FILTRADAS.csv';
   document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
  };
+ // Las acciones existentes (por ejemplo, Clasificar) deben refrescar con los filtros actuales.
+ window.abrirArchivoMensual=load;
  showCards();load();
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+if(document.readyState='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
