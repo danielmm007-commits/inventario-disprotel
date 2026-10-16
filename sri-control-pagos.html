@@ -232,7 +232,8 @@ $('txtReview').onclick=async()=>{
  const file=$('txtInput').files?.[0],result=$('txtResult');if(!file){result.textContent='Selecciona un archivo TXT.';return}
  if(file.size>2000000){result.textContent='El listado supera el límite de 2 MB.';return}
  try{
-  const report=parseSRIReport(await file.text()),registered=new Set((window.sriData?.facturas||[]).map(x=>x.clave_acceso));
+  const originalBytes=await file.arrayBuffer();let originalText;try{originalText=new TextDecoder('utf-8',{fatal:true}).decode(originalBytes)}catch{originalText=new TextDecoder('windows-1252').decode(originalBytes)}
+  const report=parseSRIReport(originalText),registered=new Set((window.sriData?.facturas||[]).map(x=>x.clave_acceso));
   const already=report.entries.filter(x=>registered.has(x.CLAVE_ACCESO)).length;
   const xmlKeys=new Set((window.sriData?.facturas||[]).filter(f=>!!f.xml_path).map(f=>f.clave_acceso));
   pendingSriXml=report.entries.filter(x=>!xmlKeys.has(x.CLAVE_ACCESO));sriReportRows=report.entries;$('txtQueue').disabled=false;$('txtRegister').disabled=report.invalid>0||report.entries.length===0;
