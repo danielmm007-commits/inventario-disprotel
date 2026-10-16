@@ -194,9 +194,9 @@ function ensureMenuShell(){
     const adminDocsAllowed=norm(me.usuario)==='DANIEL'||norm(me.nombre).includes('CARLOS DANIEL MOLINA');
     if(adminDocsAllowed&&!cards.some(x=>String(x.href||'').includes('conversor-comprobantes.html')))cards.push({title:'Conversor de comprobantes',icon:'📄',href:'conversor-comprobantes.html?v='+Date.now(),i:cards.length});
     // Módulo financiero del panel personal de Daniel. El backend SRI valida su sesión.
-    const sriDanielAllowed=norm(me.usuario).trim()==='DANIEL';
+    const sriDanielAllowed=adminDocsAllowed;
     if(sriDanielAllowed&&!cards.some(x=>String(x.href||'').includes('sri-control-pagos-v2-0.html'))){
-      cards.push({title:'SRI · Facturas y pagos',icon:'🧾',href:'sri-control-pagos-v2-0.html?v=20261016-panel-daniel1',i:cards.length});
+      cards.push({title:'SRI · Facturas y pagos',icon:'🧾',href:'sri-control-pagos-v2-0.html?v=20261016-panel-daniel2',i:cards.length});
     }
     const oltAllowed=me?.es_admin_principal===true||['TECNICO','SUPERVISOR TECNICO','ADMINISTRADOR','ADMINISTRADOR SUPREMO'].includes(role.trim());
     // OLT es un único módulo. Monitoreo, ONU, hardware y configuración
