@@ -70,13 +70,14 @@ function nombrePerfil(v){
 }
 const isRoot=me.rol==='ADMINISTRADOR SUPREMO'||me.es_admin_principal===true;if(!me.usuario)location.href='login-general-v2.html';whoName.textContent=nombrePerfil(me.nombre||me.usuario);whoRole.textContent=me.rol||'USUARIO';if(isRoot){rootArea.classList.add('show');command.classList.add('show');rootBadge.textContent='◆ ADMINISTRADOR SUPREMO'}
 // Finanzas SRI pertenece al panel de Daniel y no se muestra a otros usuarios.
-const sriDanielAllowed=String(me.usuario||'').trim().toLowerCase()==='daniel';
+const sriIdentidad=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+const sriDanielAllowed=sriIdentidad(me.usuario)==='DANIEL'||sriIdentidad(me.nombre).includes('CARLOS DANIEL MOLINA');
 if(sriDanielAllowed){document.getElementById('sriFinanzas')?.classList.add('show')}
 function abrirFinanzasDaniel(){
  if(!sriDanielAllowed){alert('Este módulo está reservado al usuario Daniel');return}
  const button=[...document.querySelectorAll('.menuAside button[data-href]')].find(b=>String(b.dataset.href||'').includes('sri-control-pagos-v2-0.html'));
  if(button){button.click();return}
- location.href='sri-control-pagos-v2-0.html?v=20261016-panel-daniel1';
+ location.href='sri-control-pagos-v2-0.html?v=20261016-panel-daniel2';
 }
 function push(layer,hash){history.pushState({layer},'',hash)}function abrirTrabajos(){workOverlay.classList.add('show');document.body.style.overflow='hidden';push('trabajos','#trabajos-por-aceptar')}function abrirProceso(){processOverlay.classList.add('show');document.body.style.overflow='hidden';push('proceso','#trabajos-en-proceso')}function abrirFinalizados(){finishedOverlay.classList.add('show');document.body.style.overflow='hidden';push('finalizados','#trabajos-finalizados')}
 function verSolicitud(tipo,ciudad,grupo,estado,solicitante,cliente,telefono,direccion){dTipo.textContent=tipo;dCiudad.textContent=ciudad;dGrupo.textContent=grupo;dEstado.textContent=estado;dSolicitante.textContent=solicitante;dCliente.textContent=cliente;dTelefono.textContent=telefono;dDireccion.textContent=direccion;grupoSelect.value=grupo==='Sin asignar'?'':grupo;detailOverlay.classList.add('show');push('detalle','#detalle-solicitud')}
@@ -101,7 +102,7 @@ sincronizarCapas();
 <script src="disprotel-ot-realtime-v1.js?v=20261014-huawei-on-demand1"></script>
 <script src="supervisor-ot-avisos-flotantes-v1.js?v=20261014-cliente-tipo1"></script>
 <script src="disprotel-mesa-avisos-v1.js?v=20261015-audio-recordado1"></script>
-<script src="panel-experiencia-v1.js?v=20261016-sri-daniel1"></script>
+<script src="panel-experiencia-v1.js?v=20261016-sri-daniel2"></script>
 <script src="erp-sidebar-dinamico-v1.js?v=20260930-1756"></script>
 <script src="prioridad-tecnica-local-v1.js?v=20260913-direct"></script>
 <script src="navegacion-movil-historial-v1.js?v=20260913-direct"></script>
