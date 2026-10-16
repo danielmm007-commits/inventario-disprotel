@@ -3,6 +3,7 @@
  'use strict';
  const e=(tag,cls,text)=>{const x=document.createElement(tag);if(cls)x.className=cls;if(text!==undefined&&text!==null)x.textContent=String(text);return x};
  const fmt=n=>(n===undefined||n===null||n==='')?'No disponible':new Intl.NumberFormat('es-EC',{style:'currency',currency:'USD'}).format(Number(n));
+ const fmtUnit=n=>n===undefined||n===null||n===''?'No disponible':'$'+new Intl.NumberFormat('es-EC',{minimumFractionDigits:2,maximumFractionDigits:6}).format(Number(n));
  const show=v=>(v===undefined||v===null||v==='')?'No disponible':String(v);
  const fecha=v=>{const s=String(v||'');return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):show(s)};
  function campo(parent,label,value,extra){
@@ -37,19 +38,20 @@
   buyer.append(buyerFields);hoja.append(buyer);
   const items=soloTxt?[]:Array.isArray(d.items)?d.items:[];
   const cod=items.some(x=>x.codigo||x.codigo_principal);
-  const headers=[...(cod?['Cód. principal']:[]),'Descripción','Cantidad','P. unitario','Descuento','Precio total'];
-  const widths=cod?['12%','37%','10%','16%','12%','13%']:['45%','10%','17%','13%','15%'];
-  const wrap=e('div','sriRTableWrap'),tbl=e('table','sriRItems'),cols=e('colgroup','');
+  const subsidio=items.some(x=>(x.subsidio!==null&&x.subsidio!==undefined)||(x.precio_sin_subsidio!==null&&x.precio_sin_subsidio!==undefined));
+  const headers=[...(cod?['Cód. principal']:[]),'Descripción','Cantidad','P. unitario',...(subsidio?['Subsidio','Precio sin subsidio']:[]),'Descuento','Precio total'];
+  const widths=subsidio?(cod?['9%','26%','8%','13%','10%','13%','9%','12%']:['30%','9%','13%','11%','14%','10%','13%']):(cod?['12%','37%','10%','16%','12%','13%']:['45%','10%','17%','13%','15%']);
+  const wrap=e('div','sriRTableWrap'),tbl=e('table','sriRItems'+(subsidio?' isWide':'')),cols=e('colgroup','');
   widths.forEach(w=>{const col=e('col','');col.style.width=w;cols.append(col)});
   const thead=e('thead',''),headerRow=e('tr','');
-  headers.forEach((h,i)=>headerRow.append(e('th',i>=headers.length-3?'sriRMoney':h==='Cantidad'?'sriRQty':'',h)));
+  headers.forEach(h=>headerRow.append(e('th',h==='Cantidad'?'sriRQty':['P. unitario','Subsidio','Precio sin subsidio','Descuento','Precio total'].includes(h)?'sriRMoney':'',h)));
   thead.append(headerRow);tbl.append(cols,thead);
   const body=e('tbody','');
   if(!items.length){const tr=e('tr',''),td=e('td','sriREmpty',soloTxt?'Sin XML: no se conocen productos, cantidades, precios ni impuestos.':'No existen líneas de productos disponibles en el XML.');td.colSpan=headers.length;tr.append(td);body.append(tr)}
   for(const it of items){
    const row=e('tr',''),description=String(it.descripcion||'')+(it.detalle_adicional?' · '+it.detalle_adicional:'');
-   const values=[...(cod?[show(it.codigo||it.codigo_principal)]:[]),description,show(it.cantidad),fmt(it.precio_unitario),fmt(it.descuento),fmt(it.subtotal)];
-   values.forEach((v,i)=>row.append(e('td',i>=values.length-3?'sriRMoney':i===values.length-4?'sriRQty':'',v)));
+   const values=[...(cod?[show(it.codigo||it.codigo_principal)]:[]),description,show(it.cantidad),fmtUnit(it.precio_unitario),...(subsidio?[fmt(it.subsidio),fmt(it.precio_sin_subsidio)]:[]),fmt(it.descuento),fmt(it.subtotal)];
+   values.forEach((v,i)=>row.append(e('td',headers[i]==='Cantidad'?'sriRQty':['P. unitario','Subsidio','Precio sin subsidio','Descuento','Precio total'].includes(headers[i])?'sriRMoney':'',v)));
    body.append(row);
   }
   tbl.append(body);wrap.append(tbl);hoja.append(wrap);
@@ -63,7 +65,7 @@
   left.append(info);
   if(!soloTxt&&Array.isArray(d.formas_pago)&&d.formas_pago.length){
    const pagos=e('section','sriRExtra');pagos.append(e('h3','sriRTitle','Formas de pago'));
-   d.formas_pago.forEach(p=>campo(pagos,p.forma||'Forma de pago',fmt(p.total)));left.append(pagos);
+   d.formas_pago.forEach(p=>campo(pagos,p.forma==='01'?'01 - SIN UTILIZACIÓN DEL SISTEMA FINANCIERO':p.forma||'Forma de pago',fmt(p.total)));left.append(pagos);
   }
   const total=e('table','sriRTotals'),totalBody=e('tbody','');
   const rows=soloTxt?
