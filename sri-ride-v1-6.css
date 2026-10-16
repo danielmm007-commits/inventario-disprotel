@@ -1,0 +1,39 @@
+/* SRI RIDE V1.6: diseño común para XML autorizado, XML sin verificar y resumen TXT. */
+.sriHoja{box-sizing:border-box;width:100%;background:#fff;color:#192d3c;font:12px/1.43 Arial,Helvetica,sans-serif;padding:18px;border:1px solid #aebac4}
+.sriHoja *{box-sizing:border-box}
+.sriHoja .sriRHead{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:12px;align-items:stretch}
+.sriHoja .sriRPanel{border:1px solid #aebbc5;border-radius:4px;padding:13px 14px;min-width:0}
+.sriHoja .sriRCaption{font-size:10px;font-weight:700;letter-spacing:.06em;color:#637587;text-transform:uppercase;margin:0 0 8px}
+.sriHoja .sriRCompany{margin:0 0 12px;font-size:16px;line-height:1.25;color:#103f69;overflow-wrap:anywhere}
+.sriHoja .sriRDocType{font-size:20px;font-weight:800;letter-spacing:.015em;margin:0 0 10px;color:#18334c}
+.sriHoja .sriRField{display:grid;grid-template-columns:107px minmax(0,1fr);column-gap:8px;align-items:start;margin:0 0 7px}
+.sriHoja .sriRField:last-child{margin-bottom:0}
+.sriHoja .sriRLabel{font-weight:700;color:#3d5263}
+.sriHoja .sriRValue{overflow-wrap:anywhere;min-width:0}
+.sriHoja .sriRKey{font:11px/1.4 Consolas,"Liberation Mono",monospace;letter-spacing:.01em}
+.sriHoja .sriRStatus{border:1px solid #e0ceab;border-left:4px solid #b1893f;background:#fff8e9;padding:10px 12px;font-size:11px;font-weight:700;color:#77591e;margin:12px 0}
+.sriHoja .sriRStatus.isAuthorized{background:#f1f7fa;border-color:#c2d6e1;border-left-color:#27658e;color:#164e70}
+.sriHoja .sriRStatus.isTxt{background:#f5f7f8;border-color:#d5dfe5;border-left-color:#8a9ba7;color:#4c6472}
+.sriHoja .sriRBuyer{border:1px solid #aebbc5;border-radius:4px;padding:12px 14px;margin-bottom:12px}
+.sriHoja .sriRTitle{font-size:11px;font-weight:800;color:#253e53;letter-spacing:.045em;text-transform:uppercase;margin:0 0 9px}
+.sriHoja .sriRBuyerFields{display:grid;grid-template-columns:1fr 1fr;gap:3px 20px}
+.sriHoja .sriRBuyerFields .sriRField{grid-template-columns:110px minmax(0,1fr)}
+.sriHoja .sriRBuyerFields .sriRField:first-child{grid-column:1/-1}
+.sriHoja .sriRTableWrap{width:100%;overflow-x:auto;margin:0 0 12px}
+.sriHoja .sriRItems{width:100%;margin:0;border-collapse:collapse;table-layout:fixed;font-size:11px}
+.sriHoja .sriRItems th,.sriHoja .sriRItems td{border:1px solid #b6c3cc;padding:8px 7px;vertical-align:top;line-height:1.4;white-space:normal;overflow-wrap:anywhere}
+.sriHoja .sriRItems th{font-size:10px;background:#eef3f6;color:#213849;font-weight:700}
+.sriHoja .sriRItems .sriRQty{text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sriHoja .sriRItems .sriRMoney{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sriHoja .sriRItems .sriREmpty{text-align:center;font-style:italic;color:#697b86;padding:18px 10px}
+.sriHoja .sriRBottom{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:12px;align-items:start}
+.sriHoja .sriRExtra{border:1px solid #b6c3cc;padding:11px 12px;margin-bottom:9px;break-inside:avoid;min-width:0}
+.sriHoja .sriRExtra .sriRField{grid-template-columns:116px minmax(0,1fr);font-size:11px}
+.sriHoja .sriRHint{color:#637584;font-size:11px;margin:0}
+.sriHoja .sriRTotals{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px;margin:0}
+.sriHoja .sriRTotals td{border:1px solid #b6c3cc;padding:7px 9px;vertical-align:top;overflow-wrap:anywhere;white-space:normal}
+.sriHoja .sriRTotals td:last-child{width:36%;text-align:right;font-variant-numeric:tabular-nums}
+.sriHoja .sriRTotals .sriRGrand td{font-weight:800;font-size:12px;background:#eaf1f5;border-top:2px solid #71899a}
+.sriHoja .sriRFooter{margin:16px 0 0;border-top:1px solid #d8e2e9;padding-top:9px;font-size:10px;color:#667987;line-height:1.5}
+@media(max-width:720px){.sriHoja{padding:12px}.sriHoja .sriRHead,.sriHoja .sriRBuyerFields,.sriHoja .sriRBottom{grid-template-columns:1fr}.sriHoja .sriRBuyerFields .sriRField:first-child{grid-column:auto}.sriHoja .sriRItems{min-width:610px}}
+@media print{@page{size:A4;margin:10mm}html,body{background:#fff!important;margin:0!important;padding:0!important}.sriHoja{width:100%;border:0;padding:0;font-size:10pt;print-color-adjust:exact;-webkit-print-color-adjust:exact}.sriHoja .sriRHead{grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:8px}.sriHoja .sriRBuyerFields{grid-template-columns:1fr 1fr}.sriHoja .sriRBottom{grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:8px}.sriHoja .sriRTableWrap{overflow:visible}.sriHoja .sriRItems{min-width:0;font-size:9pt}.sriHoja .sriRItems td,.sriHoja .sriRItems th{padding:5px}.sriHoja .sriRItems tr,.sriHoja .sriRTotals tr{break-inside:avoid}.sriHoja .sriRItems thead{display:table-header-group}.sriHoja .sriRPanel,.sriHoja .sriRBuyer,.sriHoja .sriRExtra{break-inside:avoid}.sriHoja .sriRFooter{font-size:8pt}}
