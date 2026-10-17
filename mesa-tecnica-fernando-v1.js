@@ -142,7 +142,7 @@ function potenciaStep(o,r){
    :'<div class="stepState" style="margin-top:0">📎 Falta captura de SmartOLT. Pega un recorte o carga la imagen antes de confirmar.</div>';
  const controls=done||revision?.estado==='REQUIERE_CORRECCION'?'':'<div class="remoteTools"><label class="btnMini">🖼️ CARGAR ARCHIVO<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="seleccionarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')"></label><div class="remotePaste" tabindex="0" contenteditable="true" spellcheck="false" onclick="this.focus()" onkeydown="if(event.key!==\'v\'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')">📋 PEGAR CAPTURA Ctrl+V</div></div>';
  const evidence='<div class="powerMirrorEvidence"><div class="stepState" style="margin-top:0"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+evidenceBody+controls+'</div>';
- const repetir=done&&puedeRepetirVerificacion(o,r,'VERIFICAR_POTENCIA')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REPETIR VERIFICACIÓN DE POTENCIA</button>':'';
+ const repetir=done&&puedeRepetirVerificacion(o,r,'VERIFICAR_POTENCIA')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REINICIAR VERIFICACIÓN DE POTENCIA</button>':'';
  const rectificar=done&&ev?.storage_path?
   '<div class="stepState">Puedes sustituir la captura sin alterar la lectura ni el estado ATENDIDO.</div>'+
   '<label class="mesaRectifyControl">✏️ RECTIFICAR CAPTURA ÓPTICA<input type="file" accept="image/jpeg,image/png,image/webp" onchange="rectificarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')"></label>'+
@@ -187,7 +187,7 @@ function evidenciaAccesoEnRequerimiento(o,r){
    '<div class="mesaReqRemoteMeta"><b>📷 EVIDENCIA DE ACCESO REMOTO</b>'+
      '<div class="stepState">✅ Captura confirmada por Mesa Técnica</div>'+
      (comprobante.confirmado_at?'<div class="stepState">'+esc(fmt(comprobante.confirmado_at))+'</div>':'')+
-     '<div class="stepState">Toca la miniatura para verla completa.</div>'+(comprobante.rectificada_at?'<div class="rectificationNote">✏️ Captura rectificada: '+esc(fmt(comprobante.rectificada_at))+'</div>':'')+(puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REPETIR COMPROBACIÓN DE ACCESO</button>':'')+
+     '<div class="stepState">Toca la miniatura para verla completa.</div>'+(comprobante.rectificada_at?'<div class="rectificationNote">✏️ Captura rectificada: '+esc(fmt(comprobante.rectificada_at))+'</div>':'')+(puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REINICIAR VERIFICACIÓN DE ACCESO</button>':'')+
  (puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<label class="mesaRectifyControl">✏️ RECTIFICAR CAPTURA<input type="file" accept="image/jpeg,image/png,image/webp" onchange="rectificarAccesoRemotoMesa(event,\''+o.id+'\')"></label>':'')+'</div></div>';
 }
 function comprobacionesVigentesMesa(rows){
@@ -266,9 +266,9 @@ window.solicitarPotenciaHuaweiMesa=async id=>{
  }catch(e){alert('No se pudo solicitar Huawei: '+e.message)}
 };
 window.repetirVerificacionMesa=async(id,rid)=>{
- if(!confirm('¿Iniciar otra verificación? Se conservará la anterior como ATENDIDA, con su evidencia; no se altera la IP, la ONU ni la OT.'))return;
+ if(!confirm('¿Reiniciar esta verificación? Se conserva la comprobación anterior en el historial, pero la misma etapa volverá a PENDIENTE y necesitará una nueva evidencia. No se modifica IP, ONU ni otra etapa de la OT.'))return;
  try{await mesa('repeat-support-check',{orden_id:id,requerimiento_id:rid,confirmacion:'REPETIR VERIFICACION'});await cargar(true)}
- catch(err){alert('No se pudo iniciar otra verificación: '+err.message)}
+ catch(err){alert('No se pudo reiniciar la verificación: '+err.message)}
 };
 window.rectificarAccesoRemotoMesa=async(e,id)=>{
  const file=e.target.files?.[0];if(!file)return;
