@@ -37,7 +37,8 @@ update public.soporte_evidencias e set
     select 1 from public.orden_acceso_remoto ar
       where ar.soporte_evidencia_id=e.id and ar.estado='CONFIRMADO'
   ) then null else coalesce(e.reemplazada_at,now()) end
-where e.id in (select id from ids_remoto where id is not null)
+where (e.id in (select id from ids_remoto where id is not null)
+       or e.storage_path_original like (e.orden_id::text||'/acceso-remoto-%'))
   and e.tipo_foto='OTRA';
 
 -- Resguardar un único resultado vigente por OT / tipo sin tocar Storage.
