@@ -36,7 +36,7 @@ begin
    where id=p_requerimiento_id and orden_id=p_orden_id for update;
   if not found then raise exception 'Requerimiento no encontrado' using errcode='P0002'; end if;
   v_accion := case when cardinality(v_req.acciones)=1 then v_req.acciones[1] else null end;
-  if v_req.estado <> 'ATENDIDO' or v_accion not in ('VERIFICAR_POTENCIA','VERIFICAR_ACCESO_REMOTO') then
+  if v_req.estado <> 'ATENDIDO' or v_accion is null or v_accion not in ('VERIFICAR_POTENCIA','VERIFICAR_ACCESO_REMOTO') then
     raise exception 'Esta verificación no se puede repetir' using errcode='P0001';
   end if;
   select id into v_reciente from public.orden_mesa_requerimientos
@@ -61,7 +61,10 @@ begin
     v_snapshot_acceso := to_jsonb(v_acceso);
   end if;
 
-  v_ronda := greatest(2,coalesce(nullif(v_req.resultado->>'ronda','')::integer,1)+1);
+  select greatest(2,coalesce(nullif(v_req.resultado->>'ronda','')::integer,
+      (select count(*)::integer from public.orden_mesa_requerimientos
+       where orden_id=p_orden_id and acciones=array[v_accion]::text[]),1)+1)
+    into v_ronda;
 
   -- Auditoría primero. Si alguna escritura posterior falla, toda la transacción se revierte.
   insert into public.orden_historial(orden_id,evento,detalle,realizado_por_id)
@@ -89,6 +92,13 @@ begin
    where id=v_req.id and orden_id=p_orden_id;
 
   if v_accion='VERIFICAR_ACCESO_REMOTO' then
+    -- Al reiniciar ya no hay evidencia vigente. Se conserva la foto anterior
+    -- en Storage y en la auditoría, pero no en el reporte operativo.
+    if v_acceso.soporte_evidencia_id is not null then
+      update public.soporte_evidencias set
+        es_actual=false,reemplazada_at=v_ahora
+      where id=v_acceso.soporte_evidencia_id and orden_id=p_orden_id;
+    end if;
     update public.orden_acceso_remoto set
       estado='SOLICITADO',
       soporte_evidencia_id=null,evidencia_id=null,
