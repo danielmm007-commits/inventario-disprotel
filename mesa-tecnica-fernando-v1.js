@@ -122,9 +122,7 @@ function potenciaStep(o,r){
  const v=lectura&&(!archivada?.leido_at||Date.parse(lectura.leido_at)>Date.parse(archivada.leido_at))?lectura:(archivada||lectura);
  const done=r?.estado==='ATENDIDO',ev=(r?.resultado||{})?.evidencia_potencia||null,revision=r?.resultado?.revision_potencia;
  const solicitud=o.lectura_huawei||null,pendingHu=solicitud?.estado==='PENDIENTE'&&!solicitud?.expirada;
- const esPrueba=o.id==='e8ce09af-4a08-4b10-bf9e-459231b1f5cb'&&r.id==='f871587c-89bc-4aa9-9b68-601f9ac67d68';
- const reset=esPrueba&&done&&(ev?.storage_path||archivada)?
-  '<button type="button" class="secondary" onclick="reiniciarPotenciaPruebaMesa(\''+o.id+'\',\''+r.id+'\')">🧹 BORRAR EVIDENCIA Y REINICIAR PRUEBA</button>':'';
+ const reset='';
  const accionHuawei=done?'':pendingHu?
    '<button type="button" disabled style="opacity:.65;cursor:wait">⏳ ESPERANDO LECTURA HUAWEI</button>':
    '<button type="button" onclick="solicitarPotenciaHuaweiMesa(\''+o.id+'\')">📡 CONSULTAR POTENCIA HUAWEI AHORA</button>';
@@ -246,16 +244,6 @@ window.pegarAvisoPotencia=async(e,id,rid)=>{
  const it=[...(e.clipboardData?.items||[])].find(x=>String(x.type||'').startsWith('image/'));
  const file=it?.getAsFile();if(!file){alert('Pega una foto de diagnóstico');return}
  await window.enviarAvisoPotencia(file,id,rid);
-};
-window.reiniciarPotenciaPruebaMesa=async(id,rid)=>{
- if(id!=='e8ce09af-4a08-4b10-bf9e-459231b1f5cb'||
-   rid!=='f871587c-89bc-4aa9-9b68-601f9ac67d68')return;
- if(!confirm('¿Eliminar físicamente la captura de prueba y reiniciar SOLO la verificación de potencia de OT-20261014-93344?'))return;
- try{
-   await mesa('reset-test-power-evidence',{orden_id:id,requerimiento_id:rid,confirmacion:'RESETEAR PRUEBA'});
-   alert('✅ Captura de prueba eliminada. Verificación de potencia nuevamente PENDIENTE.');
-   await cargar(true);
- }catch(e){alert('No se completó el reinicio: '+e.message)}
 };
 window.solicitarPotenciaHuaweiMesa=async id=>{
  if(!confirm('¿Solicitar una lectura Huawei individual? Se reutilizará si ya existe una solicitud pendiente.'))return;
