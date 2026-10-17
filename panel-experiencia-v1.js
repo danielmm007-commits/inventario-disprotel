@@ -222,7 +222,7 @@ function ensureMenuShell(){
     const attentionObserver=new MutationObserver(syncAttentionIndicators);attentionObserver.observe(dash,{childList:true,subtree:true,characterData:true});
     syncTechnicalMetrics();
 
-    let moduleLoadSeq=0,moduleLoadRetryTimer=0;
+    let moduleLoadSeq=0,moduleLoadRetryTimer=0,moduleLoadPending=false;
     function frameLooksBlank(){
       try{
         const w=menuFrame.contentWindow,d=menuFrame.contentDocument,path=String(w?.location?.pathname||'');
@@ -234,36 +234,59 @@ function ensureMenuShell(){
         return !text&&!visible;
       }catch{return false}
     }
+    function moduleRecovery(message,raw){
+      let box=stage.querySelector('#disprotelModuleRecovery');
+      if(!box){
+        box=document.createElement('div');
+        box.id='disprotelModuleRecovery';
+        box.style.cssText='position:absolute;top:15px;right:16px;z-index:12;max-width:min(420px,calc(100% - 32px));background:#fff9ec;border:1px solid #dcad49;border-radius:10px;box-shadow:0 8px 20px #082b5c20;padding:12px;color:#614a1b;font:600 12px system-ui';
+        const p=document.createElement('div'),btn=document.createElement('button');
+        p.id='moduleRecoveryMessage';
+        btn.type='button';btn.textContent='↻ Intentar nuevamente';
+        btn.style.cssText='margin:8px 0 0;padding:8px 12px;border:0;border-radius:7px;background:#176fc4;color:#fff;cursor:pointer';
+        box.append(p,btn);stage.appendChild(box);
+      }
+      box.querySelector('#moduleRecoveryMessage').textContent=message;
+      box.querySelector('button').onclick=()=>loadModuleFrame(raw,{retry:true});
+      box.hidden=false;
+    }
+    function hideModuleRecovery(){const box=stage.querySelector('#disprotelModuleRecovery');if(box)box.hidden=true}
     function loadModuleFrame(raw,{retry=false}={}){
-      const seq=++moduleLoadSeq,target=directModuleUrl(raw);
-      clearTimeout(moduleLoadRetryTimer);
-      menuFrame.style.visibility='hidden';menuFrame.setAttribute('aria-busy','true');
-      menuFrame.dataset.loadSeq=String(seq);menuFrame.dataset.sourceHref=String(raw||'');
+      const source=String(raw||'');
+      if(!retry&&moduleLoadPending&&menuFrame.dataset.sourceHref===source)return;
+      const seq=++moduleLoadSeq,target=directModuleUrl(source);
+      clearTimeout(moduleLoadRetryTimer);hideModuleRecovery();
+      moduleLoadPending=true;
+      menuFrame.setAttribute('aria-busy','true');
+      menuFrame.dataset.loadSeq=String(seq);
+      menuFrame.dataset.sourceHref=source;
+      menuFrame.dataset.retrySeq='';
+      // Una sola navegación. Nunca sustituir automáticamente una carga lenta por about:blank.
+      // Los reintentos serán explícitos, para no reiniciar formularios ni perder el contexto.
       menuFrame.src=target;
       moduleLoadRetryTimer=setTimeout(()=>{
-        if(Number(menuFrame.dataset.loadSeq)!==seq||document.body.classList.contains('moduleOpen')===false)return;
-        if(!frameLooksBlank())return;
-        if(menuFrame.dataset.retrySeq===String(seq))return;
-        menuFrame.dataset.retrySeq=String(seq);
-        const retryTarget=directModuleUrl(raw);
-        menuFrame.src='about:blank';
-        setTimeout(()=>{if(Number(menuFrame.dataset.loadSeq)===seq)menuFrame.src=retryTarget},40);
-      },1800);
+        if(Number(menuFrame.dataset.loadSeq)!==seq||!document.body.classList.contains('moduleOpen'))return;
+        if(!moduleLoadPending&&!frameLooksBlank())return;
+        moduleLoadPending=false;menuFrame.removeAttribute('aria-busy');
+        moduleRecovery('Este módulo tardó más de lo esperado. Puedes volver a intentarlo sin cerrar la OT.',source);
+      },12000);
     }
     const goMenuHome=()=>{
       localStorage.removeItem(moduleStateKey);
-      clearTimeout(moduleLoadRetryTimer);moduleLoadSeq++;
+      clearTimeout(moduleLoadRetryTimer);moduleLoadSeq++;moduleLoadPending=false;hideModuleRecovery();
       document.body.classList.remove('moduleOpen');
       menuFrame.src='about:blank';
-      menuFrame.style.visibility='hidden';
+      menuFrame.removeAttribute('aria-busy');
       aside.querySelectorAll('button').forEach(x=>x.classList.remove('on'))
     };
     mobileBar.querySelector('.mobileModuleBack').onclick=goMenuHome;
     menuFrame.onload=()=>{
       let loadedPath='';try{loadedPath=String(menuFrame.contentWindow?.location?.pathname||'')}catch{}
       if(menuFrame.src==='about:blank'||loadedPath==='about:blank')return;
-      menuFrame.style.visibility='visible';menuFrame.removeAttribute('aria-busy');
-      if(!frameLooksBlank())menuFrame.dataset.retrySeq='';
+      moduleLoadPending=false;clearTimeout(moduleLoadRetryTimer);
+      menuFrame.removeAttribute('aria-busy');
+      if(frameLooksBlank())moduleRecovery('El módulo terminó de cargar sin contenido visible. Reintenta abrirlo.',menuFrame.dataset.sourceHref||'');
+      else hideModuleRecovery();
       try{
         const w=menuFrame.contentWindow,d=menuFrame.contentDocument,path=w.location.pathname,href=w.location.pathname.split('/').pop()+w.location.search+w.location.hash;
         if(/login-general|principal\.html/.test(path)){goMenuHome();return}
@@ -296,7 +319,7 @@ function ensureMenuShell(){
       const homeBtn=[...aside.querySelectorAll('button')].find(x=>norm(x.textContent)==='INICIO');
       if(homeBtn)homeBtn.classList.remove('on');
       if(!current||current==='about:blank'||!current.startsWith(String(target).split('?')[0]))loadModuleFrame(saved.childHref||saved.href)
-    }catch{}};[40,500,1400].forEach(delay=>setTimeout(restoreSavedModule,delay))
+    }catch{}};setTimeout(restoreSavedModule,90)
     document.documentElement.dataset.panelStaticHydrated='1';
   }
 
