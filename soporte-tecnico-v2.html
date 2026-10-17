@@ -110,21 +110,41 @@ function guardarCantidad(i){
  const total=n+(actual?.cantidad||0);
  if(Number.isFinite(Number(p.stock))&&total>Number(p.stock))return alert('La cantidad total supera la disponibilidad del grupo.');
  if(actual)actual.cantidad=total;else ITEMS.push({tipo_control:tipo,producto_id:p.id,cantidad:n,nombre:p.producto,unidad_medida:p.unidad_medida});
- BASKET_OK=false;renderBasket()}function addSerial(){const serial=$('serialSel').value;if(!serial)return alert('No hay serial seleccionado.');if(ITEMS.some(x=>x.serial===serial))return alert('Ese serial ya está en la canasta.');const x=(OPTS.seriales||[]).find(y=>y.serial===serial);ITEMS.push({tipo_control:'SERIAL',serial,nombre:x?.producto?.producto||'EQUIPO'});BASKET_OK=false;renderBasket()}function renderTypes(){
- const ev=DATA?.evidencias||[];
+ BASKET_OK=false;renderBasket()}function addSerial(){const serial=$('serialSel').value;if(!serial)return alert('No hay serial seleccionado.');if(ITEMS.some(x=>x.serial===serial))return alert('Ese serial ya está en la canasta.');const x=(OPTS.seriales||[]).find(y=>y.serial===serial);ITEMS.push({tipo_control:'SERIAL',serial,nombre:x?.producto?.producto||'EQUIPO'});BASKET_OK=false;renderBasket()}function evidenciasVigentesSoporte(rows){
+ const sorted=[...(rows||[])].sort((a,b)=>Date.parse(b.fecha_hora_captura||0)-Date.parse(a.fecha_hora_captura||0));
+ const vistos=new Set();
+ return sorted.filter(x=>{
+   // Las capturas de acceso remoto corresponden al numeral Mesa Técnica, NO a fotos de soporte.
+   if(x.tipo_foto==='OTRA')return false;
+   // Las fotos adicionales son distintas tomas, no una sola verificación.
+   if(x.tipo_foto==='ADICIONAL')return true;
+   if(vistos.has(x.tipo_foto))return false;
+   vistos.add(x.tipo_foto);return true;
+ });
+}
+function comprobacionesVigentesTecnico(rows){
+ const ordenados=[...(rows||[])].sort((a,b)=>(Date.parse(b.solicitado_at)||0)-(Date.parse(a.solicitado_at)||0));
+ const vistos=new Set();
+ return ordenados.filter(r=>{
+   const code=Array.isArray(r.acciones)&&r.acciones.length===1?r.acciones[0]:'';
+   if(!['VERIFICAR_POTENCIA','VERIFICAR_ACCESO_REMOTO'].includes(code))return true;
+   if(vistos.has(code))return false;
+   vistos.add(code);return true;
+ }).reverse();
+}
+function renderTypes(){
+ const ev=evidenciasVigentesSoporte(DATA?.evidencias||[]);
  $('evTypes').innerHTML=TYPES.map(t=>'<button type="button" class="evType '+(EVTYPE===t[0]?'on':'')+'" data-t="'+t[0]+'"><span class="count">'+ev.filter(x=>x.tipo_foto===t[0]).length+'</span><b>'+t[1]+'</b><small>'+t[2]+'</small></button>').join('');
  $('evSeleccion').textContent='Seleccionaste: '+(TYPES.find(t=>t[0]===EVTYPE)?.[1]||EVTYPE)+' · elige tomar foto o cargar archivo.';
  document.querySelectorAll('.evType').forEach(b=>b.onclick=()=>{EVTYPE=b.dataset.t;renderTypes()});
 }function renderEv(){
- const ev=DATA?.evidencias||[],ordered=[...ev].sort((a,b)=>Date.parse(b.fecha_hora_captura||0)-Date.parse(a.fecha_hora_captura||0)),seen=new Set();
+ const ordered=evidenciasVigentesSoporte(DATA?.evidencias||[]);
  $('evidencias').innerHTML=ordered.length?ordered.map(x=>{
- const anterior=seen.has(x.tipo_foto);seen.add(x.tipo_foto);
- return '<div class="evidence"><b>'+esc(up(x.tipo_foto).replaceAll('_',' '))+'</b>'+
- (anterior?' <span class="muted">· Versión anterior conservada</span>':' <span class="muted">· Última versión</span>')+
+ return '<div class="evidence"><b>'+esc(up(x.tipo_foto).replaceAll('_',' '))+'</b> <span class="muted">· Evidencia vigente</span>'+
  (x.offline_pending?' <span class="badge">⏳ PENDIENTE DE SINCRONIZACIÓN</span>':'')+
  '<div class="muted">'+esc(fmt(x.fecha_hora_captura))+'</div>'+
  (x.url?'<img src="'+esc(x.url)+'" alt="Evidencia" style="display:block;max-width:100%;max-height:160px;object-fit:contain;border-radius:8px;margin:6px 0">':'')+
- (!anterior?'<button type="button" class="secondary" onclick="nuevaVersionFoto(\''+esc(x.tipo_foto)+'\')">⬆️ SUBIR CORRECCIÓN (CONSERVA ORIGINAL)</button>':'')+'</div>'
+ '<button type="button" class="secondary" onclick="nuevaVersionFoto(\''+esc(x.tipo_foto)+'\')">✏️ CORREGIR FOTO</button>'+'</div>'
  }).join(''):'<div class="muted">Sin evidencias todavía.</div>';
  $('confirmarSinEvidencias').classList.toggle('hidden',ordered.some(x=>!x.offline_pending));
  renderTypes();refrescarEtapas();
@@ -362,7 +382,7 @@ function mesaReqLine(r){
  }
  return '<div class="mesaMirrorReq '+(done?'done':'pending')+'"><div class="mesaMirrorReqHead"><b>'+(done?'✅ ATENDIDO':'⏳ ESPERANDO MESA TÉCNICA')+' · '+esc(names)+'</b><span>'+(done?'ATENDIDO':'PENDIENTE')+'</span></div><div class="muted">'+esc(fmt(r.solicitado_at))+(done&&r.atendido_at?' · atendido '+esc(fmt(r.atendido_at)):'')+'</div>'+extra+'</div>'
 }
-async function mesaStatus(){if(!['SOPORTE_TECNICO','CAMBIO_EQUIPOS','REUBICACION'].includes(DATA?.orden?.tipo_trabajo))return;try{const d=estabilizarMesaEvidencias(await post(MESA_API,{action:'status',orden_id:ORDEN}));MESA_STATE=d;refrescarEtapas();const rs=d.requerimientos||[],rsOrdenados=[...rs].sort((a,b)=>(Date.parse(a.solicitado_at)||0)-(Date.parse(b.solicitado_at)||0)),sig=JSON.stringify({rs,optica:d.optica?{
+async function mesaStatus(){if(!['SOPORTE_TECNICO','CAMBIO_EQUIPOS','REUBICACION'].includes(DATA?.orden?.tipo_trabajo))return;try{const d=estabilizarMesaEvidencias(await post(MESA_API,{action:'status',orden_id:ORDEN}));MESA_STATE=d;refrescarEtapas();const rs=d.requerimientos||[],rsOrdenados=comprobacionesVigentesTecnico(rs),sig=JSON.stringify({rs,optica:d.optica?{
  fuente:d.optica.fuente,leido_at:d.optica.leido_at,
  rx_onu_dbm:d.optica.rx_onu_dbm,rx_olt_dbm:d.optica.rx_olt_dbm
 }:null,acceso:d.acceso?{estado:d.acceso.estado,confirmado_at:d.acceso.confirmado_at,evidencia_id:d.acceso.evidencia?.id||null}:null});if(sig!==MESA_RENDER_SIG){MESA_RENDER_SIG=sig;$('mesaSoporteEstado').innerHTML=rsOrdenados.length?rsOrdenados.map(mesaReqLine).join(''):'<div class="muted">Todavía no hay requerimientos enviados a Mesa Técnica.</div>';renderMesaActions()}}catch(e){$('mesaSoporteEstado').textContent='No se pudo consultar Mesa técnica: '+e.message}}
