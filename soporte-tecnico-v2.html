@@ -115,7 +115,7 @@ function guardarCantidad(i){
  const vistos=new Set();
  return sorted.filter(x=>{
    // Las capturas de acceso remoto corresponden al numeral Mesa Técnica, NO a fotos de soporte.
-   if(x.tipo_foto==='OTRA')return false;
+   if(['OTRA','ACCESO_REMOTO'].includes(x.tipo_foto))return false;
    // Las fotos adicionales son distintas tomas, no una sola verificación.
    if(x.tipo_foto==='ADICIONAL')return true;
    if(vistos.has(x.tipo_foto))return false;
