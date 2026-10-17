@@ -28,61 +28,28 @@ if(action==='request'){if(!c.tecnico)return reply({error:'Solo el técnico asign
 if(action==='confirm'){if(!c.autorizado&&!c.admin)return reply({error:'Solo un responsable autorizado puede confirmar el acceso remoto'},403);const st=await estado(s,ordenId);if(!st.evidencia?.id)return reply({error:'Primero guarda una evidencia del acceso remoto'},409);const obs=String(body.observacion||'').trim()||null;const {data,error}=await s.from('orden_acceso_remoto').upsert({orden_id:ordenId,estado:'CONFIRMADO',confirmado_por_id:me.id,confirmado_at:new Date().toISOString(),observacion:obs,updated_at:new Date().toISOString()},{onConflict:'orden_id'}).select('id,estado,confirmado_at,observacion').single();if(error)throw error;await s.from('orden_historial').insert({orden_id:ordenId,evento:'ACCESO_REMOTO_CONFIRMADO',detalle:{observacion:obs,evidencia_id:st.evidencia.id,evidencia_origen:st.evidencia.origen||null},realizado_por_id:me.id});return reply({ok:true,acceso:data,evidencia:st.evidencia})}
 if(action==='correction'){if(!c.autorizado&&!c.admin)return reply({error:'Solo un responsable autorizado puede marcar corrección'},403);const obs=String(body.observacion||'').trim();if(!obs)return reply({error:'Indica qué debe corregirse'},400);const {data,error}=await s.from('orden_acceso_remoto').upsert({orden_id:ordenId,estado:'REQUIERE_CORRECCION',confirmado_por_id:me.id,confirmado_at:null,observacion:obs,updated_at:new Date().toISOString()},{onConflict:'orden_id'}).select('id,estado,observacion').single();if(error)throw error;await s.from('orden_historial').insert({orden_id:ordenId,evento:'ACCESO_REMOTO_REQUIERE_CORRECCION',detalle:{observacion:obs},realizado_por_id:me.id});return reply({ok:true,acceso:data})}
 if(action==='replace-confirmed-evidence'){
- // Rectificación de captura confirmada de SOPORTE: conservar la imagen anterior y su auditoría.
- if(!c.autorizado&&!c.admin)return reply({error:'Solo un responsable autorizado puede rectificar la evidencia'},403);
+ if(!c.autorizado&&!c.admin)return reply({error:'Solo Mesa Técnica puede rectificar acceso remoto'},403);
  if(String(c.o.tipo_trabajo||'').startsWith('INSTALACION'))
-   return reply({error:'Esta corrección corresponde a las evidencias de soporte; las instalaciones usan su propio flujo'},409);
- const {data:prior,error:pErr}=await s.from('orden_acceso_remoto')
-   .select('estado,soporte_evidencia_id,confirmado_at').eq('orden_id',ordenId).maybeSingle();
- if(pErr)throw pErr;
- if(prior?.estado!=='CONFIRMADO'||!prior.soporte_evidencia_id)
-   return reply({error:'No existe una captura confirmada de soporte para rectificar'},409);
+   return reply({error:'Las instalaciones tienen un flujo independiente'},409);
  const motivo=String(body.motivo||'').trim().slice(0,400);
- if(motivo.length<6)return reply({error:'Indica brevemente por qué reemplazas la captura'},400);
- const mime=String(body.mime_type||'image/jpeg').toLowerCase(),base64=String(body.base64||'');
- if(!['image/jpeg','image/png','image/webp'].includes(mime))return reply({error:'Formato de imagen no permitido'},400);
- if(!base64)return reply({error:'Selecciona una imagen para la rectificación'},400);
+ if(motivo.length<6)return reply({error:'Indica por qué corriges la captura'},400);
+ const mime=String(body.mime_type||'image/jpeg').toLowerCase();
+ const base64=String(body.base64||'');
+ if(!base64||!['image/jpeg','image/png','image/webp'].includes(mime))
+   return reply({error:'Selecciona una imagen JPG, PNG o WebP'},400);
  const bytes=decodeBase64(base64);
  if(!bytes.length||bytes.length>5*1024*1024)return reply({error:'La imagen supera 5 MB'},400);
- const now=new Date().toISOString(),ext=mime==='image/png'?'png':mime==='image/webp'?'webp':'jpg';
+ const ext=mime==='image/png'?'png':mime==='image/webp'?'webp':'jpg';
  const path=`${ordenId}/acceso-remoto-rectificacion-${crypto.randomUUID()}.${ext}`;
- const storage=await s.storage.from('soporte-evidencias').upload(path,bytes,{contentType:mime,upsert:false});
- if(storage.error)throw storage.error;
- const insert=await s.from('soporte_evidencias').insert({orden_id:ordenId,tipo_foto:'ACCESO_REMOTO',
-   storage_path_original:path,storage_path_vista:null,mime_type:mime,tamano_bytes:bytes.length,
-   fecha_hora_captura:now,tomada_por_id:me.id,registrado_por_id:me.id}).select('id').single();
- if(insert.error){await s.storage.from('soporte-evidencias').remove([path]);throw insert.error}
- const nuevoId=insert.data.id,anteriorId=prior.soporte_evidencia_id;
- const move=await s.from('orden_acceso_remoto').update({soporte_evidencia_id:nuevoId,updated_at:now})
-   .eq('orden_id',ordenId).eq('estado','CONFIRMADO').eq('soporte_evidencia_id',anteriorId).select('id');
- if(move.error||!move.data?.length){
-   await s.from('soporte_evidencias').delete().eq('id',nuevoId);
-   await s.storage.from('soporte-evidencias').remove([path]);
-   if(move.error)throw move.error;
-   return reply({error:'La evidencia cambió mientras la corregías; recarga la pantalla'},409);
- }
- // Actualizar exclusivamente los requerimientos que se confirmaron con la imagen anterior.
- const reqs=await s.from('orden_mesa_requerimientos').select('id,estado,acciones,resultado')
-   .eq('orden_id',ordenId).contains('acciones',['VERIFICAR_ACCESO_REMOTO']).limit(80);
- if(reqs.error)throw reqs.error;
- const affected=(reqs.data||[]).filter((x:any)=>x.estado==='ATENDIDO'&&
-   String(x.resultado?.verificacion_acceso_remoto?.evidencia_id||'')===String(anteriorId));
- for(const row of affected){
-   const prev=row.resultado||{},v=prev.verificacion_acceso_remoto||{};
-   const changes=Array.isArray(prev.rectificaciones_acceso_remoto)?prev.rectificaciones_acceso_remoto:[];
-   const resultado={...prev,verificacion_acceso_remoto:{...v,evidencia_id:nuevoId,
-     rectificada_at:now,rectificada_por_id:me.id},
-     rectificaciones_acceso_remoto:[...changes,{anterior_id:anteriorId,nueva_id:nuevoId,motivo,
-       registrado_por_id:me.id,registrado_at:now}]};
-   const up=await s.from('orden_mesa_requerimientos').update({resultado,updated_at:now}).eq('id',row.id);
-   if(up.error)throw up.error;
- }
- const audit=await s.from('orden_historial').insert({orden_id:ordenId,
-   evento:'EVIDENCIA_ACCESO_REMOTO_RECTIFICADA',
-   detalle:{evidencia_anterior_id:anteriorId,evidencia_nueva_id:nuevoId,motivo,
-     requerimientos_actualizados:affected.map((x:any)=>x.id)},realizado_por_id:me.id});
- if(audit.error)throw audit.error;
- return reply({ok:true,rectificada:true,...await estado(s,ordenId)});
+ const uploaded=await s.storage.from('soporte-evidencias').upload(path,bytes,{contentType:mime,upsert:false});
+ if(uploaded.error)throw uploaded.error;
+ const commit=await s.rpc('disprotel_guardar_evidencia_remota_soporte_v2',{
+   p_orden_id:ordenId,p_actor_id:me.id,p_storage_path:path,p_mime:mime,
+   p_tamano:bytes.length,p_motivo:motivo
+ });
+ if(commit.error){await s.storage.from('soporte-evidencias').remove([path]);
+   return reply({error:commit.error.message||'No se pudo rectificar la captura'},409)}
+ return reply({ok:true,...(commit.data||{}),...await estado(s,ordenId)});
 }
 if(action==='delete-evidence'){
  if(!c.autorizado&&!c.admin)return reply({error:'Solo un responsable autorizado puede eliminar la evidencia de acceso remoto'},403);
@@ -121,11 +88,15 @@ if(action==='upload'){
    await s.from('orden_historial').insert({orden_id:ordenId,evento:'EVIDENCIA_ACCESO_REMOTO_GUARDADA',detalle:{evidencia_id:ev.id,origen:'INSTALACION'},realizado_por_id:me.id});
  }else{
    const path=`${ordenId}/acceso-remoto-${crypto.randomUUID()}.${ext}`;
-   const {error:upErr}=await s.storage.from('soporte-evidencias').upload(path,bytes,{contentType:mime,upsert:false});if(upErr)throw upErr;
-   const {data:ev,error:eErr}=await s.from('soporte_evidencias').insert({orden_id:ordenId,tipo_foto:'ACCESO_REMOTO',storage_path_original:path,storage_path_vista:null,mime_type:mime,tamano_bytes:bytes.length,fecha_hora_captura:now,tomada_por_id:me.id,registrado_por_id:me.id}).select('id').single();
-   if(eErr){await s.storage.from('soporte-evidencias').remove([path]);throw eErr}
-   const {error:aErr}=await s.from('orden_acceso_remoto').upsert({orden_id:ordenId,evidencia_id:null,soporte_evidencia_id:ev.id,updated_at:now},{onConflict:'orden_id'});if(aErr)throw aErr;
-   await s.from('orden_historial').insert({orden_id:ordenId,evento:'EVIDENCIA_ACCESO_REMOTO_GUARDADA',detalle:{evidencia_id:ev.id,origen:'SOPORTE'},realizado_por_id:me.id});
+   const uploaded=await s.storage.from('soporte-evidencias').upload(path,bytes,{contentType:mime,upsert:false});
+   if(uploaded.error)throw uploaded.error;
+   const commit=await s.rpc('disprotel_guardar_evidencia_remota_soporte_v2',{
+     p_orden_id:ordenId,p_actor_id:me.id,p_storage_path:path,p_mime:mime,
+     p_tamano:bytes.length,p_motivo:null
+   });
+   if(commit.error){await s.storage.from('soporte-evidencias').remove([path]);
+     return reply({error:commit.error.message||'No se pudo registrar la captura'},409)}
+
  }
  return reply({ok:true,...await estado(s,ordenId)})
 }
