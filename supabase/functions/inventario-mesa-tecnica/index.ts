@@ -545,49 +545,6 @@ Deno.serve(async req=>{
       if(actual.error)return reply({error:actual.error.message||'No se pudo reiniciar la comprobación'},409);
       return reply({ok:true,...(actual.data||{}),...await state(s,o)});
     }
-    if(action==='reset-test-power-evidence'){
-      // Limpieza controlada de UNA OT de prueba, con sesión del supervisor.
-      // Nunca modifica cliente, servicio, routers, inventario ni caché Huawei.
-      if(!supervisor(me))return reply({error:'Solo el supervisor puede reiniciar la evidencia'},403);
-      if(String(body.confirmacion||'')!=='RESETEAR PRUEBA')return reply({error:'Confirma el reinicio de la prueba'},400);
-      const o=await order(s,String(body.orden_id||''));
-      const rid=String(body.requerimiento_id||'');
-      if(o.id!=='e8ce09af-4a08-4b10-bf9e-459231b1f5cb'||o.id_orden!=='OT-20261014-93344'
-        ||rid!=='f871587c-89bc-4aa9-9b68-601f9ac67d68')
-        return reply({error:'Reinicio permitido exclusivamente para la OT de prueba 93344'},403);
-      const q=await s.from('orden_mesa_requerimientos')
-        .select('id,orden_id,acciones,estado,resultado').eq('id',rid).eq('orden_id',o.id).maybeSingle();
-      if(q.error)throw q.error;
-      const r=q.data;
-      if(!r||!Array.isArray(r.acciones)||!r.acciones.includes('VERIFICAR_POTENCIA'))
-        return reply({error:'Requerimiento de potencia no encontrado'},404);
-      const resultado={...(r.resultado||{})};
-      const path=String(resultado.evidencia_potencia?.storage_path||'');
-      const prefix=`mesa-potencia/${o.id}/${rid}/`;
-      if(path&&!path.startsWith(prefix))
-        return reply({error:'Ruta de evidencia ajena a esta OT: limpieza detenida'},409);
-      // Eliminar físicamente la captura del bucket mediante Storage API.
-      if(path){
-        const del=await s.storage.from('soporte-evidencias').remove([path]);
-        if(del.error)return reply({error:'No se pudo eliminar la imagen de Storage: '+del.error.message},409);
-      }
-      delete resultado.evidencia_potencia;
-      delete resultado.verificacion_potencia;
-      const ahora=new Date().toISOString();
-      const update=await s.from('orden_mesa_requerimientos').update({
-        estado:'PENDIENTE',atendido_por_id:null,atendido_at:null,
-        canal_resolucion:null,resultado,updated_at:ahora
-      }).eq('id',rid).eq('orden_id',o.id);
-      if(update.error)throw update.error;
-      // Se conserva un hito mínimo de auditoría; los demás pasos de la OT permanecen.
-      await s.from('orden_historial').insert({
-        orden_id:o.id,evento:'MESA_TECNICA_POTENCIA_PRUEBA_RESETEADA',
-        detalle:{requerimiento_id:rid,evidencia_eliminada:!!path},
-        realizado_por_id:me.id
-      });
-      return reply({ok:true,requerimiento_id:rid,evidencia_eliminada:!!path,
-        estado:'PENDIENTE',...await state(s,o)});
-    }
     if(action==='power-diagnostic-upload'){
       // Fernando envía observación/foto para corregir, pero NO atiende la solicitud
       // ni escribe en resultado.evidencia_potencia / resultado.verificacion_potencia.
