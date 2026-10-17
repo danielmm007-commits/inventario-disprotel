@@ -77,7 +77,7 @@ function abrirFinanzasDaniel(){
  if(!sriDanielAllowed){alert('Este módulo está reservado al usuario Daniel');return}
  const button=[...document.querySelectorAll('.menuAside button[data-href]')].find(b=>String(b.dataset.href||'').includes('sri-control-pagos-v2-0.html'));
  if(button){button.click();return}
- location.href='sri-control-pagos-v2-2.html?v=20261016-txt-registro-anual';
+ location.href='sri-control-pagos-v2-2.html?v=20261017-prioridad-sep-oct-v23';
 }
 function push(layer,hash){history.pushState({layer},'',hash)}function abrirTrabajos(){workOverlay.classList.add('show');document.body.style.overflow='hidden';push('trabajos','#trabajos-por-aceptar')}function abrirProceso(){processOverlay.classList.add('show');document.body.style.overflow='hidden';push('proceso','#trabajos-en-proceso')}function abrirFinalizados(){finishedOverlay.classList.add('show');document.body.style.overflow='hidden';push('finalizados','#trabajos-finalizados')}
 function verSolicitud(tipo,ciudad,grupo,estado,solicitante,cliente,telefono,direccion){dTipo.textContent=tipo;dCiudad.textContent=ciudad;dGrupo.textContent=grupo;dEstado.textContent=estado;dSolicitante.textContent=solicitante;dCliente.textContent=cliente;dTelefono.textContent=telefono;dDireccion.textContent=direccion;grupoSelect.value=grupo==='Sin asignar'?'':grupo;detailOverlay.classList.add('show');push('detalle','#detalle-solicitud')}
