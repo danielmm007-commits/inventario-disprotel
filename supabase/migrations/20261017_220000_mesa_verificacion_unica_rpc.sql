@@ -87,7 +87,7 @@ begin
     atendido_por_id=null,
     atendido_at=null,
     canal_resolucion=null,
-    resultado=jsonb_build_object('ronda',v_ronda,'repeticion_iniciada_at',v_ahora),
+    resultado=jsonb_build_object('ronda',v_ronda,'repeticion_de',v_req.id,'repeticion_iniciada_at',v_ahora),
     updated_at=v_ahora
    where id=v_req.id and orden_id=p_orden_id;
 
