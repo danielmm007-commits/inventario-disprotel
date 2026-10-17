@@ -58,13 +58,13 @@
 #archivo .sriTxtGmail{display:block;border-top:1px solid #e7eff5;margin-top:8px;padding-top:8px;color:#64798c;font-size:11px}
 </style></head>
 <body><header><strong>DISPROTEL · SRI y Control de Pagos</strong><a href="principal.html" target="_top">← Volver al panel</a></header><main>
-<div class="hero"><h1>SRI y Control de Pagos <span id="sriVersion" style="display:inline-block;vertical-align:middle;margin-left:12px;padding:5px 11px;background:#fff;color:#103d73;border-radius:8px;font-size:14px;letter-spacing:.4px">V2.2</span></h1><p>Facturas recibidas de ambos contribuyentes, gastos, pagos bancarios, abonos y anticipos. Desarrollo inicial exclusivo de Daniel.</p></div>
+<div class="hero"><h1>SRI y Control de Pagos <span id="sriVersion" style="display:inline-block;vertical-align:middle;margin-left:12px;padding:5px 11px;background:#fff;color:#103d73;border-radius:8px;font-size:14px;letter-spacing:.4px">V2.3</span></h1><p>Facturas recibidas de ambos contribuyentes, gastos, pagos bancarios, abonos y anticipos. Desarrollo inicial exclusivo de Daniel.</p></div>
 <div id="error" class="error"></div>
 <div class="tabs"><button class="on" data-tab="archivo">Facturas recibidas</button><button data-tab="prov">Proveedores</button><button data-tab="pay">Pagos y comprobantes</button><button data-tab="meses">Conciliación mensual</button><button data-tab="setup">Automatización SRI</button></div>
 <section id="archivo" class="tab on panel">
 <h2 id="arTitle">Facturas recibidas · Carlos Daniel Molina Muñoz</h2>
 <p class="hint">Selecciona el contribuyente y filtra sus facturas por mes, rango de días y proveedor. Los documentos XML autorizados, XML sin verificar y TXT sin XML mantienen sus estados originales.</p>
-<div class="sriTxtToolbar"><span><strong>Estado de facturas · 2026</strong><small>Por contribuyente · Independiente del filtro mensual</small></span><span class="sriTxtToolbarRight"><small id="sriTxtUpdated">Consultando Supabase…</small><button type="button" id="sriTxtRefresh">↻ Actualizar estado</button></span></div><div id="sriContribCards" class="sriContribCards" role="group" aria-label="Selecciona contribuyente">
+<div class="sriTxtToolbar"><span><strong>Prioridad · Septiembre y octubre 2026</strong><small>Facturas de ambos contribuyentes; archivo anual conservado debajo</small></span><span class="sriTxtToolbarRight"><small id="sriTxtUpdated">Consultando Supabase…</small><button type="button" id="sriPriorityQueue" title="Añade a la cola las facturas prioritarias sin XML y sin duplicados" style="background:#17698b;color:white;padding:9px 12px;border-radius:8px;border:1px solid #17698b">Preparar cola SEP–OCT</button><button type="button" id="sriTxtRefresh">↻ Actualizar estado</button></span></div><div id="sriContribCards" class="sriContribCards" role="group" aria-label="Selecciona contribuyente">
 <button type="button" class="sriContribCard" data-contrib="0502659378001" aria-pressed="true"><span class="sriContribCardHead"><span class="sriContribIcon">CM</span><span class="sriContribMicro">PERSONA NATURAL · REGISTRO TRIBUTARIO</span><span class="sriContribSelected">Seleccionado ✓</span></span><span class="sriContribName">Carlos Daniel Molina Muñoz</span><span class="sriContribDetail"><strong>RAZÓN SOCIAL</strong> MOLINA MUÑOZ CARLOS DANIEL</span><span class="sriContribDetail"><strong>RUC</strong> 0502659378001</span><span class="sriTxtState" id="sriTxtState0502659378001" aria-live="polite">Consultando TXT y XML…</span></button>
 <button type="button" class="sriContribCard" data-contrib="0600485015001" aria-pressed="false"><span class="sriContribCardHead"><span class="sriContribIcon">PM</span><span class="sriContribMicro">PERSONA NATURAL · REGISTRO TRIBUTARIO</span><span class="sriContribSelected">Seleccionado ✓</span></span><span class="sriContribName">Pedro Salomón Mancero Guevara</span><span class="sriContribDetail"><strong>RAZÓN SOCIAL</strong> PEDRO SALOMON MANCERO GUEVARA</span><span class="sriContribDetail"><strong>RUC</strong> 0600485015001</span><span class="sriTxtState" id="sriTxtState0600485015001" aria-live="polite">Consultando TXT y XML…</span></button>
 </div>
@@ -543,14 +543,27 @@ const make=(tag,cl,txt)=>{const x=document.createElement(tag);x.className=cl||''
 function line(parent,title,value){const r=make('span','sriTxtStateLine');r.append(make('b','',title),make('strong','',value));parent.append(r)}
 function show(d){
  const el=G('sriTxtState'+d.ruc);if(!el)return;el.replaceChildren();
- const total=Number(d.txt),ready=Number(d.xml_listos),pending=Number(d.xml_pendientes),gmail=Number(d.gmail_sin_verificar);
+ const p=d.prioridad||{};
+ const total=Number(p.txt)||0,ready=Number(p.xml_listos)||0,missing=total-ready;
+ const staged=Number(p.gmail_sin_verificar)||0,without=Number(p.sin_xml)||0,queue=Number(p.en_cola)||0,toQueue=Number(p.por_encolar)||0;
+ const yearTotal=Number(d.txt)||0,yearReady=Number(d.xml_listos)||0;
  if(total>0){
-  line(el,'Facturas en TXT',total);line(el,'XML autorizados',ready+' de '+total);
-  const bar=make('span','sriTxtBar'),fill=make('span','');fill.style.width=(ready*100/total).toFixed(1)+'%';bar.append(fill);el.append(bar);
-  const success=pending===0,outcome=make('span','sriTxtOutcome',success?'✓ Todas las facturas del TXT están listas':pending+' pendiente'+(pending===1?'':'s')+' de XML autorizado');
-  outcome.dataset.state=success?'complete':'pending';el.append(outcome);
- }else{const empty=make('span','sriTxtOutcome','TXT todavía no cargado en 2026');empty.dataset.state='empty';el.append(empty)}
- el.append(make('span','sriTxtGmail',gmail===0?'Sin XML de Gmail pendientes de verificar':gmail+' XML de Gmail sin verificar · no cuentan como autorizados'));
+  line(el,'Facturas en TXT · SEP y OCT',total);
+  line(el,'XML autorizados de estos meses',ready+' de '+total);
+  const bar=make('span','sriTxtBar'),fill=make('span','');
+  fill.style.width=(100*ready/total).toFixed(1)+'%';bar.append(fill);el.append(bar);
+  const outcome=make('span','sriTxtOutcome',missing===0?'✓ Septiembre y octubre completos':missing+' aún sin XML autorizado');
+  outcome.dataset.state=missing===0?'complete':'pending';el.append(outcome);
+  line(el,'Sin ningún XML',without);
+  line(el,'XML de Gmail por verificar',staged);
+  line(el,'En cola PC Scanner',queue);
+  if(toQueue>0){const aviso=make('span','sriTxtGmail',toQueue+' facturas aún por agregar a la cola');aviso.style.color='#ac6415';el.append(aviso);}
+ } else {
+  el.append(make('span','sriTxtOutcome','Sin TXT de septiembre y octubre'));
+ }
+ const yr=make('span','sriTxtGmail','ARCHIVO ANUAL 2026 · '+yearTotal+' facturas TXT · '+yearReady+' XML autorizados · '+(yearTotal-yearReady)+' pendientes');
+ yr.style.cssText='display:block;margin-top:10px;padding-top:9px;border-top:1px solid #dce7ef;color:#48637b;font-weight:600';
+ el.append(yr);
 }
 async function update(){
  const btn=G('sriTxtRefresh'),note=G('sriTxtUpdated');if(!btn||!note)return;
@@ -565,6 +578,20 @@ async function update(){
  }catch(e){note.textContent='Error al consultar el resumen: '+e.message;R.forEach(k=>{const el=G('sriTxtState'+k);if(el&&!el.querySelector('.sriTxtStateLine'))el.textContent='Datos no disponibles · pulsa Actualizar estado'})}
  finally{btn.disabled=false}
 }
-function init(){if(!G('sriTxtRefresh'))return;G('sriTxtRefresh').addEventListener('click',update);window.sriRefreshEstadoTxt=update;update()}
+async function preparePriority(){
+ const button=G('sriPriorityQueue');if(!button)return;
+ if(!confirm('¿Preparar la cola SRI de septiembre y octubre 2026 para Daniel y Pedro? Solo se agregarán facturas sin XML ni registros duplicados. NO hace consultas al SRI.'))return;
+ button.disabled=true;
+ try{
+  const session=JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'null');
+  if(!session?.session_token)throw Error('Sesión no disponible');
+  const r=await fetch('https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-sri-control-pagos',{method:'POST',headers:{'Content-Type':'application/json','x-session':session.session_token},body:JSON.stringify({action:'preparar_cola_prioritaria',confirmar:true})});
+  const d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||'No se pudo preparar la cola');
+  alert('Cola SEP–OCT preparada. Nuevas: '+d.nuevas+'; ya en cola: '+d.ya_en_cola+'; XML archivados: '+d.xml_archivados+'; Gmail sin verificar: '+d.gmail_sin_verificar+'. No se consultó al SRI.');
+  await update();
+ }catch(e){alert('No se preparó la cola: '+e.message);}
+ finally{button.disabled=false}
+}
+function init(){if(!G('sriTxtRefresh'))return;G('sriTxtRefresh').addEventListener('click',update);G('sriPriorityQueue')?.addEventListener('click',preparePriority);window.sriRefreshEstadoTxt=update;update()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();</script></body></html>
