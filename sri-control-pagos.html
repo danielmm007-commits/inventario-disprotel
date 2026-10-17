@@ -58,7 +58,7 @@
 #archivo .sriTxtGmail{display:block;border-top:1px solid #e7eff5;margin-top:8px;padding-top:8px;color:#64798c;font-size:11px}
 </style></head>
 <body><header><strong>DISPROTEL · SRI y Control de Pagos</strong><a href="principal.html" target="_top">← Volver al panel</a></header><main>
-<div class="hero"><h1>SRI y Control de Pagos <span id="sriVersion" style="display:inline-block;vertical-align:middle;margin-left:12px;padding:5px 11px;background:#fff;color:#103d73;border-radius:8px;font-size:14px;letter-spacing:.4px">V2.3</span></h1><p>Facturas recibidas de ambos contribuyentes, gastos, pagos bancarios, abonos y anticipos. Desarrollo inicial exclusivo de Daniel.</p></div>
+<div class="hero"><h1>SRI y Control de Pagos <span id="sriVersion" style="display:inline-block;vertical-align:middle;margin-left:12px;padding:5px 11px;background:#fff;color:#103d73;border-radius:8px;font-size:14px;letter-spacing:.4px">V2.4</span></h1><p>Facturas recibidas de ambos contribuyentes, gastos, pagos bancarios, abonos y anticipos. Desarrollo inicial exclusivo de Daniel.</p></div>
 <div id="error" class="error"></div>
 <div class="tabs"><button class="on" data-tab="archivo">Facturas recibidas</button><button data-tab="prov">Proveedores</button><button data-tab="pay">Pagos y comprobantes</button><button data-tab="meses">Conciliación mensual</button><button data-tab="setup">Automatización SRI</button></div>
 <section id="archivo" class="tab on panel">
@@ -554,9 +554,13 @@ function show(d){
   fill.style.width=(100*ready/total).toFixed(1)+'%';bar.append(fill);el.append(bar);
   const outcome=make('span','sriTxtOutcome',missing===0?'✓ Septiembre y octubre completos':missing+' aún sin XML autorizado');
   outcome.dataset.state=missing===0?'complete':'pending';el.append(outcome);
+  const sep=p.septiembre||{},oct=p.octubre||{};
+  line(el,'Septiembre · TXT / XML listos',(Number(sep.txt)||0)+' / '+(Number(sep.xml_listos)||0));
+  line(el,'Octubre · TXT / XML listos',(Number(oct.txt)||0)+' / '+(Number(oct.xml_listos)||0));
   line(el,'Sin ningún XML',without);
   line(el,'XML de Gmail por verificar',staged);
   line(el,'En cola PC Scanner',queue);
+  if(Number(p.en_error||0)>0){const err=make('span','sriTxtGmail',p.en_error+' factura(s) con error por revisar');err.style.color='#a83b3b';el.append(err);}
   if(toQueue>0){const aviso=make('span','sriTxtGmail',toQueue+' facturas aún por agregar a la cola');aviso.style.color='#ac6415';el.append(aviso);}
  } else {
   el.append(make('span','sriTxtOutcome','Sin TXT de septiembre y octubre'));
