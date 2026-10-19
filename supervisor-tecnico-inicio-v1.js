@@ -91,14 +91,14 @@
     const byHref=s=>buttons.find(b=>String(b.dataset.href||'').toLowerCase().includes(s));
     const byText=re=>buttons.find(b=>re.test(b.textContent||''));
     const ip=byHref('asignacion-ip.html')||byText(/IP Y ACCESO REMOTO|ACTIVACIONES Y ACCESO REMOTO/i);
-    const tech=byHref('panel-general-supervisor-visual.html')||byHref('trabajos-tecnicos.html')||byText(/ÁREA TÉCNICA|SUPERVISIÓN TÉCNICA/i);
+    const tech=byHref('panel-supervisor-vivo-v2.html')||byHref('panel-general-supervisor-visual.html')||byHref('trabajos-tecnicos.html')||byText(/ÁREA TÉCNICA|SUPERVISIÓN TÉCNICA/i);
     const req=byHref('solicitudes-oficina.html')||byText(/REQUERIMIENTOS A TÉCNICOS|^\s*SOLICITUDES\s*$/i);
     const inv=byHref('inventario-supervisor.html')||buttons.find(b=>/^\s*📦?\s*INVENTARIO\s*$/i.test((b.textContent||'').trim()))||byHref('index.html');
     const compras=byHref('compras-ingresos.html')||byText(/COMPRAS E INGRESOS/i);
     const transfer=byHref('solicitudes-transferencias.html')||byText(/TRANSFERENCIAS/i);
 
     setBtn(ip,'📡','Activaciones y acceso remoto','asignacion-ip.html');
-    setBtn(tech,'🛠️','Supervisión técnica','panel-general-supervisor-visual.html');
+    setBtn(tech,'🛠️','Supervisión técnica','panel-supervisor-vivo-v2.html');
     setBtn(req,'📋','Requerimientos a técnicos','solicitudes-oficina.html');
     setBtn(inv,'📦','Inventario','inventario-supervisor.html');
     if(compras&&compras!==inv)compras.remove();
