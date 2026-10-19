@@ -22,7 +22,61 @@ function controlesFoto(id){return `<div style="display:grid;grid-template-column
 function controlPegar(id){return `<div class="arPasteZone" tabindex="0" contenteditable="true" spellcheck="false" onclick="this.focus()" onkeydown="if(event.key!=='v'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarPortapapelesAR(event,'${id}')" style="margin-top:8px;padding:14px;border:2px dashed #f59e0b;border-radius:12px;background:#fffaf0;text-align:center;font-weight:800;cursor:text;outline:none;min-height:54px">📋 Clic aquí y pega la captura con Ctrl+V<div class="muted" contenteditable="false" style="margin-top:5px;font-weight:400">Usa Recortes de Windows, copia la imagen y pégala aquí.</div></div>`}
 window.__focusAccesoRemotoFernando=function(id){const box=document.getElementById('accesoRemotoFernando');if(box)box.style.display='';setTimeout(()=>{const q=document.querySelector('#listaAR .req[data-orden-id="'+CSS.escape(id)+'"]');if(q){q.style.boxShadow='0 0 0 4px rgba(245,158,11,.28)';q.scrollIntoView({behavior:'smooth',block:'center'})}else box?.scrollIntoView({behavior:'smooth',block:'start'})},100)}
 async function cargarAR(){const sec=document.getElementById('secPend');if(!sec)return;let box=document.getElementById('accesoRemotoFernando');if(box){if(FOCUS_REMOTE){box.style.display='';if(FOCUS_OT)window.__focusAccesoRemotoFernando(FOCUS_OT)}return}crearEditorAR();box=document.createElement('section');box.className='card';box.id='accesoRemotoFernando';box.style.border='2px solid #f59e0b';box.style.background='#fffaf0';box.innerHTML='<h2>🟠 Acceso remoto por confirmar</h2><div class="muted">La evidencia es obligatoria para confirmar el acceso remoto, pero no detiene el resto del soporte. Puedes pegar un recorte con Ctrl+V o cargar una foto.</div><button id="recargarAR" class="secondary">🔄 ACTUALIZAR ACCESOS REMOTOS</button><div id="listaAR"></div>';sec.insertAdjacentElement('afterend',box);document.getElementById('recargarAR').onclick=()=>pintarAR(true);if(FOCUS_REMOTE)box.style.display='';cargarVisor();cargarCamara();await pintarAR(true);if(FOCUS_REMOTE&&FOCUS_OT)window.__focusAccesoRemotoFernando(FOCUS_OT)}
-async function pintarAR(forzar=false){const out=document.getElementById('listaAR');if(!out)return;try{const d=await ar('pending');const a=d.solicitudes||[],sig=sigLista(a);if(!forzar&&out.dataset.sig===sig)return;out.dataset.sig=sig;out.innerHTML=a.map(x=>{const hasEv=!!x.evidencia?.url;return `<div class="req" data-orden-id="${esc2(x.orden_id)}" style="border-color:#f59e0b;background:#fff"><b>${esc2(x.id_orden)} · ${esc2(String(x.cliente_nombre||'').toUpperCase())}</b><div class="muted" style="margin-top:5px">Grupo ${esc2(x.grupo_asignado||'—')} · solicitado ${esc2(x.solicitado_at?new Date(x.solicitado_at).toLocaleString('es-EC'):'—')}</div>${x.observacion?`<div class="msg err">${esc2(x.observacion)}</div>`:''}${enlaces(x)}<div style="margin-top:8px">${hasEv?`<div style="display:flex;gap:10px;align-items:center"><img src="${x.evidencia.url}" alt="Evidencia de acceso remoto" style="width:120px;height:78px;object-fit:contain;background:#111;border:2px solid #f59e0b;border-radius:8px"><div><b>✅ Evidencia guardada</b><div class="muted">Por ${esc2(x.evidencia.registrado_por||'usuario autorizado')}</div><div class="muted" style="margin-top:3px">Ya puedes confirmar el acceso remoto.</div></div></div>`:'<div class="muted">📎 Falta evidencia. Pega una captura o carga una imagen.</div>'}</div><button ${hasEv?'':'disabled title="Primero guarda una evidencia"'} onclick="confirmarAR('${x.orden_id}')" style="${hasEv?'':'opacity:.45;cursor:not-allowed'}">✅ ACCESO REMOTO CONFIRMADO</button>${controlesFoto(x.orden_id)}${controlPegar(x.orden_id)}<button class="secondary" onclick="corregirAR('${x.orden_id}')">⚠️ REQUIERE CORRECCIÓN</button></div>`}).join('')||'<div class="muted" style="margin-top:10px">No hay accesos remotos solicitados todavía.</div>';window.VisorEvidencias?.aplicar();if(FOCUS_REMOTE&&FOCUS_OT){setTimeout(()=>{const q=document.querySelector('#listaAR .req[data-orden-id="'+CSS.escape(FOCUS_OT)+'"]');if(q){q.style.boxShadow='0 0 0 4px rgba(245,158,11,.28)';q.scrollIntoView({behavior:'smooth',block:'center'})}},80)}}catch(e){const html='<div class="msg err">'+esc2(e.message)+'</div>';if(out.innerHTML!==html)out.innerHTML=html}}
+const FIRMAS_TARJETAS_AR=new Map();
+function rutaFotoAR(url){
+ const v=String(url||'');
+ return v.includes('/storage/v1/object/')?v.split('?')[0]:v;
+}
+function firmaTarjetaAR(html){
+ return html.replace(/(src|href)=(["'])([^"']+)\2/g,
+  (full,attr,quote,url)=>attr+'='+quote+rutaFotoAR(url)+quote);
+}
+function actualizarTarjetasAR(out,html){
+ const temp=document.createElement('div');temp.innerHTML=html;
+ const antiguas=new Map([...out.querySelectorAll(':scope > .req')]
+  .map(el=>[String(el.dataset.ordenId||''),el]));
+ const recibidas=[...temp.querySelectorAll(':scope > .req')];
+ const vigentes=new Set();
+ for(let i=0;i<recibidas.length;i++){
+   let next=recibidas[i],id=String(next.dataset.ordenId||'');
+   if(!id)continue;
+   vigentes.add(id);
+   const original=antiguas.get(id),firma=firmaTarjetaAR(next.outerHTML);
+   if(original&&FIRMAS_TARJETAS_AR.get(id)===firma){
+     next=original;
+   }else{
+     if(original){
+       const imgsViejas=new Map();
+       for(const img of original.querySelectorAll('img')){
+         const key=rutaFotoAR(img.getAttribute('src'));
+         if(!imgsViejas.has(key))imgsViejas.set(key,[]);
+         imgsViejas.get(key).push(img);
+       }
+       for(const img of [...next.querySelectorAll('img')]){
+         const key=rutaFotoAR(img.getAttribute('src'));
+         const guardada=imgsViejas.get(key)?.shift();
+         if(guardada)img.replaceWith(guardada);
+       }
+       original.replaceWith(next);
+     }
+     FIRMAS_TARJETAS_AR.set(id,firma);
+   }
+   if(out.children[i]!==next)out.insertBefore(next,out.children[i]||null);
+ }
+ for(const [id,element] of antiguas){
+   if(!vigentes.has(id)){element.remove();FIRMAS_TARJETAS_AR.delete(id)}
+ }
+ if(!recibidas.length){
+   if(out.textContent!==temp.textContent||out.querySelector(':scope > .req'))
+     out.innerHTML=html;
+   FIRMAS_TARJETAS_AR.clear();
+ }else{
+   for(const child of [...out.children]){
+     if(!child.classList.contains('req'))child.remove();
+   }
+ }
+}
+async function pintarAR(forzar=false){const out=document.getElementById('listaAR');if(!out)return;try{const d=await ar('pending');const a=d.solicitudes||[],sig=sigLista(a);if(out.dataset.sig===sig)return;out.dataset.sig=sig;const nuevasTarjetas=a.map(x=>{const hasEv=!!x.evidencia?.url;return `<div class="req" data-orden-id="${esc2(x.orden_id)}" style="border-color:#f59e0b;background:#fff"><b>${esc2(x.id_orden)} · ${esc2(String(x.cliente_nombre||'').toUpperCase())}</b><div class="muted" style="margin-top:5px">Grupo ${esc2(x.grupo_asignado||'—')} · solicitado ${esc2(x.solicitado_at?new Date(x.solicitado_at).toLocaleString('es-EC'):'—')}</div>${x.observacion?`<div class="msg err">${esc2(x.observacion)}</div>`:''}${enlaces(x)}<div style="margin-top:8px">${hasEv?`<div style="display:flex;gap:10px;align-items:center"><img src="${x.evidencia.url}" alt="Evidencia de acceso remoto" style="width:120px;height:78px;object-fit:contain;background:#111;border:2px solid #f59e0b;border-radius:8px"><div><b>✅ Evidencia guardada</b><div class="muted">Por ${esc2(x.evidencia.registrado_por||'usuario autorizado')}</div><div class="muted" style="margin-top:3px">Ya puedes confirmar el acceso remoto.</div></div></div>`:'<div class="muted">📎 Falta evidencia. Pega una captura o carga una imagen.</div>'}</div><button ${hasEv?'':'disabled title="Primero guarda una evidencia"'} onclick="confirmarAR('${x.orden_id}')" style="${hasEv?'':'opacity:.45;cursor:not-allowed'}">✅ ACCESO REMOTO CONFIRMADO</button>${controlesFoto(x.orden_id)}${controlPegar(x.orden_id)}<button class="secondary" onclick="corregirAR('${x.orden_id}')">⚠️ REQUIERE CORRECCIÓN</button></div>`}).join('')||'<div class="muted" style="margin-top:10px">No hay accesos remotos solicitados todavía.</div>';actualizarTarjetasAR(out,nuevasTarjetas);window.VisorEvidencias?.aplicar();if(FOCUS_REMOTE&&FOCUS_OT){setTimeout(()=>{const q=document.querySelector('#listaAR .req[data-orden-id="'+CSS.escape(FOCUS_OT)+'"]');if(q){q.style.boxShadow='0 0 0 4px rgba(245,158,11,.28)';q.scrollIntoView({behavior:'smooth',block:'center'})}},80)}}catch(e){const html='<div class="msg err">'+esc2(e.message)+'</div>';if(out.innerHTML!==html)out.innerHTML=html}}
 async function pintarEstadosIPs(forzar=false){const cards=[...document.querySelectorAll('#asignadas .hist')];for(const card of cards){const btn=[...card.querySelectorAll('button')].find(b=>(b.getAttribute('onclick')||'').includes('mostrarCambioIp('));if(!btn)continue;const m=(btn.getAttribute('onclick')||'').match(/mostrarCambioIp\('([^']+)'/);if(!m)continue;const oid=m[1];let box=card.querySelector('.estadoARip');try{const d=await ar('status',{orden_id:oid}),a=d.acceso||{},ev=d.evidencia,estadoOrden=d.orden?.estado||'',abierta=!['COMPLETADA','CANCELADA'].includes(estadoOrden),sig=sigAcceso(a,ev,d.ip_asignada,estadoOrden);if(!a.id&&!ev){if(box)box.remove();continue}if(!box){box=document.createElement('div');box.className='estadoARip';box.style.cssText='margin-top:10px;padding:10px 12px;border:2px solid #f59e0b;border-radius:10px;background:#fffaf0';btn.insertAdjacentElement('beforebegin',box)}if(!forzar&&box.dataset.sig===sig)continue;box.dataset.sig=sig;box.innerHTML=`<b>🔐 ACCESO REMOTO: ${esc2(estadoTxt(a))}</b>${a.confirmado_por?.nombre?`<div class="muted" style="margin-top:4px">Confirmado por ${esc2(a.confirmado_por.nombre)}${a.confirmado_at?' · '+esc2(new Date(a.confirmado_at).toLocaleString('es-EC')):''}</div>`:''}${a.observacion?`<div class="muted" style="margin-top:4px">${esc2(a.observacion)}</div>`:''}${d.ip_asignada?`<div class="muted" style="margin-top:4px">IP ${esc2(d.ip_asignada)} · puerto 5000</div>`:''}${ev?.url?`<div style="display:flex;gap:8px;align-items:center;margin-top:7px"><img src="${ev.url}" alt="Evidencia de acceso remoto" style="width:64px;height:46px;object-fit:cover;border:2px solid #f59e0b;border-radius:7px"><span class="muted">Evidencia compartida${ev.registrado_por?' · '+esc2(ev.registrado_por):''}</span></div>`:'<div class="muted" style="margin-top:7px">Sin evidencia fotográfica todavía.</div>'}${abierta?`<div class="muted" style="margin-top:8px">La confirmación ya puede estar cerrada; la evidencia fotográfica sigue abierta hasta finalizar la OT.</div>${controlesFoto(oid)}`:'<div class="muted" style="margin-top:8px">OT finalizada · evidencia en solo lectura.</div>'}`;window.VisorEvidencias?.aplicar()}catch(e){const sig='ERR';if(box.dataset.sig!==sig){box.dataset.sig=sig;box.innerHTML='<b>🔐 ACCESO REMOTO: ⚪ PENDIENTE</b>'}}}}
 window.confirmarAR=async id=>{if(!confirm('¿Confirmar que el acceso remoto funciona correctamente?'))return;try{await ar('confirm',{orden_id:id});show('✅ Acceso remoto confirmado.','ok');avisarCambioAR(id);await pintarAR(true)}catch(e){show(e.message,'err')}};
 window.corregirAR=async id=>{const obs=prompt('¿Qué debe corregir el técnico?');if(!obs)return;try{await ar('correction',{orden_id:id,observacion:obs});show('⚠️ Corrección enviada al técnico.','ok');avisarCambioAR(id);await pintarAR(true)}catch(e){show(e.message,'err')}};
