@@ -94,8 +94,7 @@ if(action==='finalize-support'){
    .select('registro_tecnico_guardado_at,canasta_borrador,canasta_confirmada_at')
    .eq('orden_id',ordenId).maybeSingle();
  if(rErr)throw rErr;
- if(!reporte?.registro_tecnico_guardado_at)
-   return reply({error:'Primero guarda el registro técnico del numeral 4'},409);
+ // El numeral 2 alimenta diagnóstico y solución; el 4 solo permite notas opcionales.
  if(!reporte.canasta_confirmada_at||!Array.isArray(reporte.canasta_borrador))
    return reply({error:'Primero guarda y confirma la canasta del numeral 5'},409);
  const items=Array.isArray(body.items)?body.items:[];
