@@ -102,6 +102,9 @@ if(action==='delete-evidence'){
  return reply({ok:true,...await estado(s,ordenId)})
 }
 if(action==='upload'){
+ // El técnico solicita la comprobación, pero NUNCA aporta ni sustituye su comprobante.
+ // Se aplica en backend aunque una pantalla antigua intente llamar a esta ruta.
+ if(me.rol==='TÉCNICO'||(!c.autorizado&&!c.admin))return reply({error:'Solo Mesa Técnica puede subir evidencia de acceso remoto'},403);
  const current=await estado(s,ordenId);
  if(current.acceso?.estado==='CONFIRMADO')return reply({error:'La captura está confirmada; usa Rectificar evidencia para conservar el historial'},409);
  const mime=String(body.mime_type||'image/jpeg').toLowerCase(),base64=String(body.base64||'');
