@@ -150,6 +150,12 @@ function editarObservacion(i){
  $('guardarObservacion').textContent='💾 GUARDAR CAMBIO';
 }
 async function guardarRegistroTecnico(nuevas=NOTAS){
+ // Si pulsa el guardado general con una observación aún escrita, incluirla.
+ if(nuevas===NOTAS&&$('observacion').value.trim()){
+   nuevas=[...NOTAS];
+   if(NOTA_EDIT>=0)nuevas[NOTA_EDIT]=$('observacion').value.trim();
+   else nuevas.push($('observacion').value.trim());
+ }
  if(!ORDEN||!DATA?.reporte)return msg('observacionMsg','El reporte todavía no está disponible.');
  const boton=$('guardarRegistroTecnico'),notaBtn=$('guardarObservacion');
  boton.disabled=true;notaBtn.disabled=true;
@@ -204,6 +210,7 @@ function renderGps(){}function obtenerGpsSilencioso(){return new Promise(resolve
  saveDraft();refrescarEtapas();
 }
 function guardarCantidad(i){
+ if(BASKET_SAVING)return alert('Espera a que termine de guardarse la canasta.');
  const x=ITEMS[i];if(!x||x.tipo_control==='SERIAL')return;
  const n=Number($('basketQty-'+i)?.value);
  const p=(OPTS?.cantidades||[]).find(p=>p.id===x.producto_id);
@@ -213,10 +220,12 @@ function guardarCantidad(i){
  if(x.cantidad!==n){x.cantidad=n;cambiosCanasta()}
 }
 function removeItem(i){
+ if(BASKET_SAVING)return alert('Espera a que termine de guardarse la canasta.');
  if(i<0||i>=ITEMS.length)return;
  ITEMS.splice(i,1);cambiosCanasta();
 }
 function addCant(){
+ if(BASKET_SAVING)return alert('Espera a que termine de guardarse la canasta.');
  const p=(OPTS?.cantidades||[]).find(x=>x.id===$('productoCant').value);
  const n=Number($('cantidad').value);
  if(!p||!Number.isSafeInteger(n)||n<=0)return alert('Ingresa una cantidad válida.');
@@ -231,6 +240,7 @@ function addCant(){
  cambiosCanasta();
 }
 function addSerial(){
+ if(BASKET_SAVING)return alert('Espera a que termine de guardarse la canasta.');
  const serial=$('serialSel').value;
  if(!serial)return alert('No hay serial seleccionado.');
  ITEMS=normalizarCanasta(ITEMS);
