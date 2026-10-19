@@ -118,38 +118,63 @@ function refrescarEtapas(){
    $(id)?.classList.toggle('hidden',!mostrar);
  }
 }
+function renderRegistroTecnico(){
+ const estado=$('registroTecnicoEstado'),resumen=$('resumenRegistroTecnico');
+ if(!estado||!resumen)return;
+ const previo=DATA?.reporte||{},at=previo.registro_tecnico_guardado_at;
+ estado.className='basketState'+(NOTAS_OK?' ok':'');
+ estado.textContent=NOTAS_OK?'✅ REGISTRO TÉCNICO GUARDADO. PUEDES EDITARLO O AÑADIR OBSERVACIONES.':
+  at?'⚠️ HAY CAMBIOS PENDIENTES. GUARDA EL REGISTRO NUEVAMENTE.':
+  'REGISTRO TÉCNICO PENDIENTE DE GUARDAR.';
+ resumen.innerHTML=at?'<div class="basketItem"><div><b>📋 Registro guardado · '+esc(fmt(at))+'</b>'+
+   '<small><b>Encontrado:</b> '+esc(previo.diagnostico||'—')+'</small>'+
+   '<small><b>Trabajo realizado:</b> '+esc(previo.solucion||'—')+'</small>'+
+   '</div></div>':'';
+}
 function renderObservaciones(){
  const box=$('observacionesGuardadas');
- box.innerHTML=NOTAS.length?NOTAS.map((n,i)=>'<div class="basketItem"><div><b>Observación '+(i+1)+'</b><small style="white-space:pre-wrap">'+esc(n)+'</small></div><div><button type="button" onclick="editarObservacion('+i+')">EDITAR</button><button type="button" onclick="quitarObservacion('+i+')">QUITAR</button></div></div>').join(''):'<div class="muted">No has registrado observaciones adicionales.</div>';
+ box.innerHTML=NOTAS.length?NOTAS.map((n,i)=>
+  '<div class="basketItem"><div><b>Observación '+(i+1)+'</b>'+
+  '<small style="white-space:pre-wrap">'+esc(n)+'</small></div><div>'+
+  '<button type="button" onclick="editarObservacion('+i+')">EDITAR</button>'+
+  '<button type="button" onclick="quitarObservacion('+i+')">QUITAR</button>'+
+  '</div></div>').join(''):
+  '<div class="muted">No hay observaciones adicionales guardadas.</div>';
  $('sinObservaciones').classList.toggle('hidden',NOTAS.length>0);
- refrescarEtapas();
+ renderRegistroTecnico();refrescarEtapas();
 }
 function editarObservacion(i){
  NOTA_EDIT=i;$('observacion').value=NOTAS[i]||'';$('observacion').focus();
  $('guardarObservacion').textContent='💾 GUARDAR CAMBIO';
 }
-async function persistirObservaciones(nuevas){
+async function guardarRegistroTecnico(nuevas=NOTAS){
  if(!ORDEN||!DATA?.reporte)return msg('observacionMsg','El reporte todavía no está disponible.');
- const boton=$('guardarObservacion');boton.disabled=true;
+ const boton=$('guardarRegistroTecnico'),notaBtn=$('guardarObservacion');
+ boton.disabled=true;notaBtn.disabled=true;
  try{
    const diagnostico=$('diagnostico').value.trim(),solucion=$('solucion').value.trim();
-   if(!diagnostico||!solucion)throw Error('Completa primero el hallazgo y el trabajo realizado.');
-   await call('save-report',{orden_id:ORDEN,diagnostico,solucion,
+   if(!diagnostico||!solucion)throw Error('Escribe qué encontraste y el trabajo realizado.');
+   const d=await call('save-report',{orden_id:ORDEN,diagnostico,solucion,
      observacion:nuevas.map(x=>'• '+x).join('\n'),
      hallazgos_codigos:DATA.reporte.hallazgos_codigos||[],
      soluciones_codigos:DATA.reporte.soluciones_codigos||[],
-     acciones_adicionales_codigos:ACCIONES_EXTRA});
-   NOTAS=nuevas;NOTAS_OK=true;NOTA_EDIT=-1;
+     acciones_adicionales_codigos:ACCIONES_EXTRA,confirmar_registro_tecnico:true});
+   NOTAS=[...nuevas];NOTAS_OK=true;NOTA_EDIT=-1;
+   DATA.reporte.diagnostico=diagnostico;DATA.reporte.solucion=solucion;
    DATA.reporte.observacion=nuevas.map(x=>'• '+x).join('\n');
-   $('observacion').value='';boton.textContent='💾 GUARDAR OBSERVACIÓN';
-   saveDraft();renderObservaciones();msg('observacionMsg','✅ Observaciones guardadas en el reporte.',true);
+   DATA.reporte.registro_tecnico_guardado_at=d.registro_tecnico_guardado_at||new Date().toISOString();
+   $('observacion').value='';notaBtn.textContent='💾 AGREGAR OBSERVACIÓN';
+   saveDraft();renderObservaciones();
+   msg('observacionMsg','✅ Registro técnico y observaciones guardados en la OT.',true);
  }catch(e){msg('observacionMsg',e.message)}
- finally{boton.disabled=false}
+ finally{boton.disabled=false;notaBtn.disabled=false}
 }
+async function persistirObservaciones(nuevas){await guardarRegistroTecnico(nuevas)}
 async function guardarObservacion(){
- const texto=$('observacion').value.trim().replace(/\s*\n+\s*/g,' ');
- if(!texto)return msg('observacionMsg','Escribe una observación o utiliza continuar sin observaciones.');
- const nueva=[...NOTAS];if(NOTA_EDIT>=0)nueva[NOTA_EDIT]=texto;else nueva.push(texto);
+ const texto=$('observacion').value.trim();
+ if(!texto)return msg('observacionMsg','Escribe una observación o guarda el registro técnico sin observaciones adicionales.');
+ const nueva=[...NOTAS];
+ if(NOTA_EDIT>=0)nueva[NOTA_EDIT]=texto;else nueva.push(texto);
  await persistirObservaciones(nueva);
 }
 async function quitarObservacion(i){
