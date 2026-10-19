@@ -257,6 +257,7 @@ function ensureMenuShell(){
       const seq=++moduleLoadSeq,target=directModuleUrl(source);
       clearTimeout(moduleLoadRetryTimer);hideModuleRecovery();
       moduleLoadPending=true;
+      menuFrame.style.visibility='visible';
       menuFrame.setAttribute('aria-busy','true');
       menuFrame.dataset.loadSeq=String(seq);
       menuFrame.dataset.sourceHref=source;
@@ -284,6 +285,7 @@ function ensureMenuShell(){
       let loadedPath='';try{loadedPath=String(menuFrame.contentWindow?.location?.pathname||'')}catch{}
       if(menuFrame.src==='about:blank'||loadedPath==='about:blank')return;
       moduleLoadPending=false;clearTimeout(moduleLoadRetryTimer);
+      menuFrame.style.visibility='visible';
       menuFrame.removeAttribute('aria-busy');
       if(frameLooksBlank())moduleRecovery('El módulo terminó de cargar sin contenido visible. Reintenta abrirlo.',menuFrame.dataset.sourceHref||'');
       else hideModuleRecovery();
