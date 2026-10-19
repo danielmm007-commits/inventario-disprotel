@@ -463,8 +463,8 @@ function mesaLabelContextual(code,tipo){
  if(code==='CONFIRMAR_IP_ACTUAL')return ['🌐','Ayúdame con la IP actual','Consulta la dirección existente en ERP/MikroTik. No cambia ni asigna la IP.'];
  if(code==='ASIGNAR_NUEVA_IP')return ['🆕','Solicitar nueva IP','Fernando confirma la candidata del Scanner o asigna manualmente la IP definitiva.'];
  if(code==='VERIFICAR_ACCESO_REMOTO')return tipo==='RADIO'?
- ['🔐','Confirmar acceso a antena y WiFi','Antena: IP del cliente. WiFi: misma IP con puerto 5000.']:
- ['🔐','Confirmar acceso remoto al WiFi','ONU en bridge; IP del cliente en el router WiFi.'];
+ ['🔐','Solicitar verificación de acceso a antena y WiFi','Antena: IP del cliente. WiFi: misma IP con puerto 5000.']:
+ ['🔐','Solicitar verificación de acceso remoto al WiFi','ONU en bridge; IP del cliente en el router WiFi.'];
  if(code==='ACTIVAR_CAMBIAR_ONU')return ['📡','Activar o cambiar ONU','Se solicita después del reemplazo o al requerir autorización de la ONU.'];
  return MESA_ACTIONS[code]||['🧰',code,''];
 }
