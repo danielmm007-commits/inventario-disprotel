@@ -42,3 +42,24 @@ Antes/después del ensayo, comparar:
 - `soporte_reportes` y `ordenes_trabajo`: nada finalizado hasta autorización de cierre.
 
 **Condición de salida:** todos los casos críticos aprobados, sin pantallas blancas, sin duplicados activos ni escrituras a equipos de red. El cierre de la OT es una operación independiente que requiere autorización expresa.
+
+## Ensayo ampliado — numerales 4 y 5 (captura de Bryan, 19-oct-2026)
+
+| Caso | Procedimiento | Resultado esperado |
+|---|---|---|
+| OT4-01 | Bryan escribe «ONU apagada / sin energía» y «Restablecer alimentación / conexión eléctrica» y pulsa **Guardar registro técnico** | Se guarda en `soporte_reportes` con `registro_tecnico_guardado_at`. Debajo se muestra registro con fecha; no hace falta repetir el numeral 2 |
+| OT4-02 | Añadir observación opcional, y después otra | Se listan individualmente con editar y quitar, pero permanecen en el mismo reporte de OT |
+| OT4-03 | Reabrir el soporte desde otro navegador | Registro, observaciones y fecha de confirmación recuperados del backend |
+| OT4-04 | Modificar el diagnóstico y recargar sin guardar | El editor conserva el cambio local, el registro anterior sigue visible y el numeral siguiente queda pendiente hasta volver a guardar |
+| OT5-01 | Cargar 1 m y luego 10 m de la misma referencia de fibra | Solo una línea, cantidad **11 m**, sin dos filas |
+| OT5-02 | Añadir fibra de 2 hilos y fibra de 4 hilos con IDs de producto distintos | Se mantienen dos líneas, porque son productos diferentes |
+| OT5-03 | Confirmar la canasta de la OT y reabrir desde otra sesión | Se recuperan materiales, cantidades y estado confirmado desde Supabase |
+| OT5-04 | Editar 11 m a 8 m, quitar o añadir otro ítem | Estado cambia a **CAMBIOS SIN CONFIRMAR**; botones siguen disponibles; nueva confirmación persiste la revisión |
+| OT5-05 | Intentar confirmar dos registros del mismo serial | Un solo equipo por serial |
+| OT5-06 | Intentar cerrar con ítems diferentes a la canasta guardada | Backend devuelve rechazo de conflicto. Nunca descuenta stock de canasta no confirmada |
+| OT5-07 | Ver disponibilidad de fibra (captura mostraba «DISP. 1») | Si se requieren 11 m pero stock real es 1 m, mantener registro editable y validar el stock al cerrar; no inventar disponibilidad |
+| OT5-08 | Intentar modificar la canasta durante una petición en curso | Bloquear cambios hasta completar el guardado, sin perder el estado confirmado |
+
+**Dependencias de publicación:** migración `20261019_130000_soporte_registro_tecnico_canasta.sql`; Edge Function `inventario-soporte`; páginas `soporte-tecnico-v2.html` y `soporte-resumen-v2.html`. Desplegar como conjunto coherente, no solo la interfaz.
+
+**Comprobado por análisis de código:** normalización 1+10=11; referencia diferente no fusionada; serial duplicado eliminado; cierre compara versión guardada; scripts HTML sin errores de sintaxis. **No se han ejecutado todavía pruebas end-to-end con la sesión real de Bryan ni el despliegue de Supabase.**
