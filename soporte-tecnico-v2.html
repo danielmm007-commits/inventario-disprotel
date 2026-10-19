@@ -56,7 +56,46 @@ function cambiosCanasta(){
  BASKET_DIRTY_AT=new Date().toISOString();
  renderBasket();
 }
-function saveDraft(){const d={orden_id:ORDEN,diagnostico:$('diagnostico').value,solucion:$('solucion').value,observacion:NOTAS.map(x=>'• '+x).join('\n'),observacion_editor:$('observacion').value,notas:NOTAS,notas_ok:NOTAS_OK,evidencias_ok:EVIDENCIAS_OK,hallazgo:HALLAZGO,solucion_codigo:SOLUCION,acciones_extra:ACCIONES_EXTRA,items:ITEMS,basket_ok:BASKET_OK,gps:GPS};sessionStorage.setItem(DRAFT,JSON.stringify(d));window.DisprotelOffline?.saveDraft(ORDEN,d).catch(()=>{})}async function loadDraft(){let d=null;try{d=JSON.parse(sessionStorage.getItem(DRAFT)||'null')}catch{}if(d?.orden_id!==ORDEN){try{d=await window.DisprotelOffline?.loadDraft(ORDEN)}catch{}}if(d?.orden_id===ORDEN){ITEMS=d.items||[];BASKET_OK=!!d.basket_ok;GPS=d.gps||null;HALLAZGO=d.hallazgo||HALLAZGO;SOLUCION=d.solucion_codigo||SOLUCION;ACCIONES_EXTRA=Array.isArray(d.acciones_extra)?d.acciones_extra:ACCIONES_EXTRA;$('diagnostico').value=d.diagnostico||$('diagnostico').value;$('solucion').value=d.solucion||$('solucion').value;NOTAS=Array.isArray(d.notas)?d.notas:parseObservaciones(d.observacion||'');NOTAS_OK=!!d.notas_ok;EVIDENCIAS_OK=!!d.evidencias_ok;$('observacion').value=d.observacion_editor||''}}function parseObservaciones(value){
+function saveDraft(){
+ if(!ORDEN)return;
+ const d={orden_id:ORDEN,diagnostico:$('diagnostico').value,solucion:$('solucion').value,
+ observacion:NOTAS.map(x=>'• '+x).join('\n'),observacion_editor:$('observacion').value,
+ notas:NOTAS,notas_ok:NOTAS_OK,evidencias_ok:EVIDENCIAS_OK,hallazgo:HALLAZGO,
+ solucion_codigo:SOLUCION,acciones_extra:ACCIONES_EXTRA,
+ items:normalizarCanasta(ITEMS),basket_ok:BASKET_OK,basket_dirty_at:BASKET_DIRTY_AT,gps:GPS};
+ sessionStorage.setItem(DRAFT,JSON.stringify(d));
+ window.DisprotelOffline?.saveDraft(ORDEN,d).catch(()=>{});
+}
+async function loadDraft(){
+ let d=null;try{d=JSON.parse(sessionStorage.getItem(DRAFT)||'null')}catch{}
+ if(d?.orden_id!==ORDEN){try{d=await window.DisprotelOffline?.loadDraft(ORDEN)}catch{}}
+ const valido=d?.orden_id===ORDEN;
+ if(valido){
+  GPS=d.gps||null;HALLAZGO=d.hallazgo||HALLAZGO;
+  SOLUCION=d.solucion_codigo||SOLUCION;
+  ACCIONES_EXTRA=Array.isArray(d.acciones_extra)?d.acciones_extra:ACCIONES_EXTRA;
+  $('diagnostico').value=d.diagnostico||$('diagnostico').value;
+  $('solucion').value=d.solucion||$('solucion').value;
+  EVIDENCIAS_OK=!!d.evidencias_ok;$('observacion').value=d.observacion_editor||'';
+ }
+ const registroAt=DATA?.reporte?.registro_tecnico_guardado_at;
+ NOTAS=parseObservaciones(DATA?.reporte?.observacion||'');
+ NOTAS_OK=!!registroAt;
+ if(valido&&!registroAt&&DATA?.reporte?.registro_tecnico_guardado_at===undefined){
+   NOTAS=Array.isArray(d.notas)?d.notas:NOTAS;NOTAS_OK=!!d.notas_ok;
+ }
+ const serverItems=DATA?.reporte?.canasta_borrador;
+ const serverAt=Date.parse(DATA?.reporte?.canasta_actualizada_at||'')||0;
+ const dirtyAt=valido?(Date.parse(d.basket_dirty_at||'')||0):0;
+ const localItems=valido&&Array.isArray(d.items)?d.items:[];
+ const servidor=Array.isArray(serverItems);
+ const usarLocal=valido&&(!servidor||dirtyAt>serverAt||
+   (!serverAt&&!serverItems?.length&&localItems.length>0));
+ ITEMS=normalizarCanasta(usarLocal?localItems:(servidor?serverItems:localItems));
+ BASKET_DIRTY_AT=usarLocal?(d.basket_dirty_at||new Date().toISOString()):null;
+ BASKET_OK=!usarLocal&&!!DATA?.reporte?.canasta_confirmada_at;
+}
+function parseObservaciones(value){
  const str=String(value||'').trim();
  if(!str)return [];
  return str.split(/\n(?=• )/).map(x=>x.replace(/^• /,'').trim()).filter(Boolean);
