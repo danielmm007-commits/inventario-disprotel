@@ -324,7 +324,13 @@ async function validarSecuenciaSoporte(s:any,o:any,acciones:string[]){
     throw new Error('La IP se consulta o asigna ANTES del acceso remoto. Envía cada intervención por separado.');
   const st=await state(s,o);
   const solicitadas=new Set((st.requerimientos||[]).flatMap((x:any)=>Array.isArray(x.acciones)?x.acciones:[]));
-  const repetidas=clean.filter((x:string)=>solicitadas.has(x));
+  // No basarse solo en state(), porque ese resumen puede limitar filas históricas.
+  const anteriores=await s.from('orden_mesa_requerimientos').select('id,acciones')
+    .eq('orden_id',o.id).overlaps('acciones',clean).limit(50);
+  if(anteriores.error)throw anteriores.error;
+  const enHistorial=new Set((anteriores.data||[])
+    .flatMap((r:any)=>Array.isArray(r.acciones)?r.acciones:[]));
+  const repetidas=clean.filter((x:string)=>solicitadas.has(x)||enHistorial.has(x));
   if(repetidas.length)throw new Error('Esta acción ya fue solicitada a Mesa Técnica: '+repetidas.join(', ')+'. Revisa el resultado existente antes de volver a solicitarla.');
 
   if(pideIp){
