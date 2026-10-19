@@ -18,9 +18,9 @@
   function setButtonLabel(btn,label){const span=btn?.querySelector('span:last-child');if(span&&span.textContent!==label)span.textContent=label}
   function wire(){
     const tech=techButton();
-    if(tech){if(tech.dataset.href!==TARGET)tech.dataset.href=TARGET;tech.title='Supervisión técnica · Operación en vivo';setButtonLabel(tech,'Supervisión técnica')}
+    if(tech){if(tech.dataset.href!==TARGET)tech.dataset.href=TARGET;if(tech.title!=='Supervisión técnica · Operación en vivo')tech.title='Supervisión técnica · Operación en vivo';setButtonLabel(tech,'Supervisión técnica')}
     const mesa=mesaButton();
-    if(mesa){mesa.style.display='none';mesa.setAttribute('aria-hidden','true');mesa.dataset.supDuplicateHidden='1'}
+    if(mesa){if(mesa.style.display!=='none')mesa.style.display='none';if(mesa.getAttribute('aria-hidden')!=='true')mesa.setAttribute('aria-hidden','true');if(mesa.dataset.supDuplicateHidden!=='1')mesa.dataset.supDuplicateHidden='1'}
     return !!tech;
   }
   function cleanPanelNav(d){
