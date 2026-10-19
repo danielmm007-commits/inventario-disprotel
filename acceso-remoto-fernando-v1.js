@@ -62,7 +62,12 @@ window.addEventListener('disprotel:mesa-hito',e=>{
    if(!document.hidden&&document.getElementById('accesoRemotoFernando'))pintarAR(true)
  },750);
 });
-window.addEventListener('disprotel:ot-sincronizar',()=>{
+window.addEventListener('disprotel:mesa-dato',e=>{
+ if(String(e?.detail?.orden_uuid||'')&&
+    !document.querySelector('#listaAR .req[data-orden-id="'+String(e.detail.orden_uuid).replace(/[^a-f0-9-]/gi,'')+'"]'))return;
+ if(!document.hidden&&document.getElementById('accesoRemotoFernando'))pintarAR(true);
+});
+ window.addEventListener('disprotel:ot-sincronizar',()=>{
  if(!document.hidden&&document.getElementById('accesoRemotoFernando'))pintarAR(false);
 });
 document.addEventListener('DOMContentLoaded',()=>{cargarVisor();cargarCamara();cargarEstiloPegar();ob.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});setTimeout(cargarAR,700);setInterval(()=>{if(!document.hidden&&document.getElementById('accesoRemotoFernando'))pintarAR(false)},120000)});
