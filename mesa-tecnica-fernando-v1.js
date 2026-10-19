@@ -190,8 +190,22 @@ function evidenciaAccesoEnRequerimiento(o,r){
      '<div class="stepState">Toca la miniatura para verla completa.</div>'+(comprobante.rectificada_at?'<div class="rectificationNote">✏️ Captura rectificada: '+esc(fmt(comprobante.rectificada_at))+'</div>':'')+(puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REPETIR COMPROBACIÓN DE ACCESO</button>':'')+
  (puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<label class="mesaRectifyControl">✏️ RECTIFICAR CAPTURA<input type="file" accept="image/jpeg,image/png,image/webp" onchange="rectificarAccesoRemotoMesa(event,\''+o.id+'\')"></label>':'')+'</div></div>';
 }
+function comprobacionesRemotasVisibles(rows){
+ // Una sola comprobación de acceso remoto vigente por OT.
+ // No borra ni modifica la comprobación anterior: queda en base de datos e historial.
+ const todos=Array.isArray(rows)?rows:[];
+ const remotos=todos.filter(r=>Array.isArray(r.acciones)&&r.acciones.length===1&&r.acciones[0]==='VERIFICAR_ACCESO_REMOTO');
+ if(remotos.length<=1)return ordenarRequerimientosMesa(todos);
+ const actual=remotos.slice().sort((a,b)=>
+   (Date.parse(b.solicitado_at)||0)-(Date.parse(a.solicitado_at)||0)||
+   (Date.parse(b.atendido_at)||0)-(Date.parse(a.atendido_at)||0)||
+   String(b.id||'').localeCompare(String(a.id||'')))[0];
+ return ordenarRequerimientosMesa(todos.filter(r=>
+   !(Array.isArray(r.acciones)&&r.acciones.length===1&&r.acciones[0]==='VERIFICAR_ACCESO_REMOTO')||
+   r.id===actual.id));
+}
 function batchHtml(o){
- const rs=ordenarRequerimientosMesa(o.requerimientos||[]);
+ const rs=comprobacionesRemotasVisibles(o.requerimientos||[]);
  if(!rs.length)return '<div class="mesaReqs"><div class="stepState">Sin requerimientos agrupados.</div></div>';
  return '<div class="mesaReqs">'+rs.map(r=>{
   const done=r.estado==='ATENDIDO',acciones=r.acciones||[],
