@@ -64,7 +64,7 @@
     try{const w=frame.contentWindow,d=frame.contentDocument;if(!w||!d)return false;const path=String(w.location.pathname||'').toLowerCase();if(!path.endsWith('/panel-supervisor-vivo-v2.html'))return false;frame.dataset.supOrigin='live';cleanPanelNav(d);return injectEnhancerSafely(frame,w,d)}catch{return false}
   }
   function returnToLive(frame){
-    try{frame.dataset.supOrigin='live';frame.style.visibility='hidden';frame.setAttribute('aria-busy','true');frame.src=TARGET;document.body.classList.add('moduleOpen');const tech=techButton();document.querySelectorAll('.menuAside button').forEach(x=>x.classList.toggle('on',x===tech))}catch(e){console.warn('Regreso a supervisión:',e)}
+    try{frame.dataset.supOrigin='live';frame.style.visibility='visible';frame.setAttribute('aria-busy','true');if(!String(frame.getAttribute('src')||'').split('?')[0].endsWith(TARGET))frame.src=TARGET;document.body.classList.add('moduleOpen');const tech=techButton();document.querySelectorAll('.menuAside button').forEach(x=>x.classList.toggle('on',x===tech))}catch(e){console.warn('Regreso a supervisión:',e)}
   }
   function installBackGuard(frame,d){
     if(d.documentElement.dataset.supBackGuard==='1')return;d.documentElement.dataset.supBackGuard='1';
