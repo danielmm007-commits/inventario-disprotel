@@ -85,7 +85,7 @@ if(action==='replace-confirmed-evidence'){
  return reply({ok:true,rectificada:true,...await estado(s,ordenId)});
 }
 if(action==='delete-evidence'){
- if(!c.autorizado&&!c.admin)return reply({error:'Solo un responsable autorizado puede eliminar la evidencia de acceso remoto'},403);
+ if(me.rol==='TÉCNICO'||(!c.autorizado&&!c.admin))return reply({error:'Solo Mesa Técnica puede eliminar evidencia de acceso remoto'},403);
  const st=await estado(s,ordenId);if(st.acceso?.estado==='CONFIRMADO')return reply({error:'No se elimina evidencia confirmada. Usa rectificar y conserva el historial'},409);if(!st.evidencia?.id)return reply({ok:true,already:true,...st});
  if(st.evidencia.origen==='SOPORTE'){
    const {data:e,error:eErr}=await s.from('soporte_evidencias').select('id,storage_path_original').eq('id',st.evidencia.id).maybeSingle();if(eErr)throw eErr;
