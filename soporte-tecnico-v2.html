@@ -147,7 +147,8 @@ function mostrarTarjetaObservaciones(){
  if(!summary||!edit||!toggle)return;
  const tarjetas=NOTAS.map((n,i)=>'<div class="basketItem"><div><b>Observación '+(i+1)+'</b>'+
   '<small style="white-space:pre-wrap">'+esc(n)+'</small></div></div>').join('');
- const html=tarjetas||'<div class="muted">Sin observaciones adicionales. Este numeral es opcional.</div>';
+ const html=(NOTAS.length?'<div class="muted">'+(NOTAS_OK?'✅ Observaciones guardadas en la OT':'⚠️ Observaciones pendientes de guardar')+'</div>':'')+
+  (tarjetas||'<div class="muted">Sin observaciones adicionales. Este numeral es opcional.</div>');
  if(summary.innerHTML!==html)summary.innerHTML=html;
  edit.classList.toggle('hidden',!OBS_EDITOR_ABIERTO);
  toggle.textContent=OBS_EDITOR_ABIERTO?'↩️ VOLVER AL RESUMEN':
@@ -221,12 +222,12 @@ async function quitarObservacion(i){
 function renderGps(){}function obtenerGpsSilencioso(){return new Promise(resolve=>{if(!navigator.geolocation)return resolve(null);navigator.geolocation.getCurrentPosition(p=>resolve({lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy,at:new Date().toISOString()}),()=>resolve(null),{enableHighAccuracy:true,timeout:12000,maximumAge:0})})}function capturarGps(){if(!navigator.geolocation)return alert('GPS no disponible.');$('capturarGps').disabled=true;navigator.geolocation.getCurrentPosition(p=>{GPS={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy,at:new Date().toISOString()};renderGps();saveDraft();$('capturarGps').disabled=false},e=>{$('capturarGps').disabled=false;alert('No se pudo capturar GPS: '+e.message)},{enableHighAccuracy:true,timeout:15000,maximumAge:0})}function renderOptions(){const c=OPTS.cantidades||[],s=OPTS.seriales||[];$('productoCant').innerHTML=c.length?c.map(p=>`<option value="${p.id}">${esc(up(p.producto))} · ${esc(up(p.unidad_medida||'UNIDAD'))} · DISP. ${p.stock}</option>`).join(''):'<option value="">SIN MATERIALES DISPONIBLES</option>';$('serialSel').innerHTML=s.length?s.map(x=>`<option value="${esc(x.serial)}">${esc(up(x.producto?.producto||'EQUIPO'))} · ${esc(x.serial)}</option>`).join(''):'<option value="">SIN SERIALES DISPONIBLES</option>';updateUnitHint()}function updateUnitHint(){const p=(OPTS?.cantidades||[]).find(x=>x.id===$('productoCant').value);const m=meterUnit(p);$('cantidadLabel').textContent=m?'Metros utilizados':'Unidades utilizadas';$('unidadHint').textContent=m?'Este producto se registrará en METROS.':'Este producto se registrará en UNIDADES.';$('cantidad').step='1'}function mostrarTarjetaCanasta(){
  const summary=$('canastaResumen'),edit=$('canastaEditor'),button=$('editarCanasta');
  if(!summary||!edit||!button)return;
- const html=ITEMS.length?ITEMS.map(x=>'<div class="basketItem"><div><b>'+
+ const html=(BASKET_OK?'<div class="muted">✅ Canasta confirmada en la OT'+(DATA?.reporte?.canasta_confirmada_at?' · '+esc(fmt(DATA.reporte.canasta_confirmada_at)):'')+'</div>':'<div class="muted">⚠️ Canasta pendiente de confirmar</div>')+(ITEMS.length?ITEMS.map(x=>'<div class="basketItem"><div><b>'+
    esc(up(x.nombre))+'</b><small>'+(
    x.tipo_control==='SERIAL'?'SERIAL '+esc(x.serial):
    esc(String(x.cantidad))+' '+(x.tipo_control==='METROS'?'metros':'unidades')
    )+'</small></div></div>').join(''):
-   '<div class="muted">No se registraron materiales ni equipos.</div>';
+   '<div class="muted">No se registraron materiales ni equipos.</div>');
  if(summary.innerHTML!==html)summary.innerHTML=html;
  edit.classList.toggle('hidden',BASKET_OK&&!BASKET_EDITOR_ABIERTO);
  button.classList.toggle('hidden',!BASKET_OK);
