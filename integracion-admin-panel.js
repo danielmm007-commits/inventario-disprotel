@@ -10,14 +10,14 @@
     const st=document.createElement('style');
     st.id='panelAtomicPaint';
     st.textContent=`
-      body{visibility:hidden!important}
+      body{visibility:visible!important}
       body.panelAtomicReady{visibility:visible!important}
       body.supMobileAtomicWait::before{
         content:'Cargando supervisión en vivo…';
         visibility:visible!important;
-        position:fixed;inset:0;z-index:99999;
-        display:grid;place-items:center;
-        background:linear-gradient(145deg,#061a39,#0b356f 62%,#116d83);
+        position:fixed;top:14px;right:14px;left:auto;bottom:auto;z-index:99999;
+        display:block;padding:10px 12px;border-radius:10px;pointer-events:none;
+        background:#103f64;box-shadow:0 6px 18px #082b5c36;
         color:#eaf8ff;font:800 13px Arial,sans-serif;letter-spacing:.02em
       }
       body.supMobileAtomicWait.supMobileAtomicSlow::before{content:'Conectando con la operación en vivo…'}

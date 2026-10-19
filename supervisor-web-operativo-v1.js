@@ -18,9 +18,9 @@
   function setButtonLabel(btn,label){const span=btn?.querySelector('span:last-child');if(span&&span.textContent!==label)span.textContent=label}
   function wire(){
     const tech=techButton();
-    if(tech){if(tech.dataset.href!==TARGET)tech.dataset.href=TARGET;tech.title='Supervisión técnica · Operación en vivo';setButtonLabel(tech,'Supervisión técnica')}
+    if(tech){if(tech.dataset.href!==TARGET)tech.dataset.href=TARGET;if(tech.title!=='Supervisión técnica · Operación en vivo')tech.title='Supervisión técnica · Operación en vivo';setButtonLabel(tech,'Supervisión técnica')}
     const mesa=mesaButton();
-    if(mesa){mesa.style.display='none';mesa.setAttribute('aria-hidden','true');mesa.dataset.supDuplicateHidden='1'}
+    if(mesa){if(mesa.style.display!=='none')mesa.style.display='none';if(mesa.getAttribute('aria-hidden')!=='true')mesa.setAttribute('aria-hidden','true');if(mesa.dataset.supDuplicateHidden!=='1')mesa.dataset.supDuplicateHidden='1'}
     return !!tech;
   }
   function cleanPanelNav(d){
@@ -64,7 +64,7 @@
     try{const w=frame.contentWindow,d=frame.contentDocument;if(!w||!d)return false;const path=String(w.location.pathname||'').toLowerCase();if(!path.endsWith('/panel-supervisor-vivo-v2.html'))return false;frame.dataset.supOrigin='live';cleanPanelNav(d);return injectEnhancerSafely(frame,w,d)}catch{return false}
   }
   function returnToLive(frame){
-    try{frame.dataset.supOrigin='live';frame.style.visibility='hidden';frame.setAttribute('aria-busy','true');frame.src=TARGET;document.body.classList.add('moduleOpen');const tech=techButton();document.querySelectorAll('.menuAside button').forEach(x=>x.classList.toggle('on',x===tech))}catch(e){console.warn('Regreso a supervisión:',e)}
+    try{frame.dataset.supOrigin='live';frame.style.visibility='visible';frame.setAttribute('aria-busy','true');if(!String(frame.getAttribute('src')||'').split('?')[0].endsWith(TARGET))frame.src=TARGET;document.body.classList.add('moduleOpen');const tech=techButton();document.querySelectorAll('.menuAside button').forEach(x=>x.classList.toggle('on',x===tech))}catch(e){console.warn('Regreso a supervisión:',e)}
   }
   function installBackGuard(frame,d){
     if(d.documentElement.dataset.supBackGuard==='1')return;d.documentElement.dataset.supBackGuard='1';
