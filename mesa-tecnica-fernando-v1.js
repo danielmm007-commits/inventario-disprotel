@@ -230,9 +230,89 @@ function batchHtml(o){
 }
 function supportDynamicSteps(o){const pending=(o.requerimientos||[]).filter(r=>r.estado==='PENDIENTE'),acts=new Set(pending.flatMap(r=>r.acciones||[]));let out='';if(acts.has('ASIGNAR_NUEVA_IP'))out+=ipStep(o);if(acts.has('VERIFICAR_ACCESO_REMOTO'))out+=remotoStep(o);return out}
 function card(o,inst){const estado=o.requiere_accion?'REQUIERE ACCIÓN':o.espera_tecnico?'ESPERANDO TÉCNICO':'SIN ACCIÓN PENDIENTE';const cls=o.requiere_accion?'need':'wait',dir=o.cliente_direccion_final||o.cliente_direccion||'';const steps=inst?clienteStep(o)+onuStep(o)+ipStep(o)+remotoStep(o):supportDynamicSteps(o),reqs=inst?'':batchHtml(o);return `<article class="otMesa ${cls}" data-orden-id="${esc(o.id||'')}"><div class="otHead"><div><div class="otTitle">${esc(o.id_orden||'')} · ${esc(up(o.cliente_nombre_final||o.cliente_nombre||''))}</div>${dir?'<div class="otMeta"><b>📍 '+esc(up(dir))+'</b></div>':''}<div class="otMeta">${inst?'INSTALACIÓN':'SOPORTE'} · Grupo: ${esc(up(o.grupo_asignado||o.grupo_destino||'—'))} · ${esc(fmt(o.mesa?.solicitado_at))}</div></div>${badge(estado,!o.requiere_accion&&!o.espera_tecnico,o.espera_tecnico)}</div>${reqs}${steps?'<div class="otSteps" style="grid-template-columns:repeat('+Math.min(3,Math.max(1,(steps.match(/class="step"/g)||[]).length))+',1fr)">'+steps+'</div>':''}</article>`}
-function render(){const list=TAB==='INSTALACIONES'?DATA.instalaciones||[]:DATA.soportes||[];$('mtInst')?.classList.toggle('on',TAB==='INSTALACIONES');$('mtSop')?.classList.toggle('on',TAB==='SOPORTES');$('mTotal').textContent=list.length;$('mAccion').textContent=list.filter(x=>x.requiere_accion).length;$('mEspera').textContent=list.filter(x=>x.espera_tecnico).length;const out=$('listaMesa');if(!out)return;out.innerHTML=list.length?list.sort((a,b)=>(b.requiere_accion?1:0)-(a.requiere_accion?1:0)||new Date(a.mesa?.solicitado_at||0)-new Date(b.mesa?.solicitado_at||0)).map(x=>card(x,TAB==='INSTALACIONES')).join(''):'<div class="emptyMesa">✅ No hay '+(TAB==='INSTALACIONES'?'instalaciones':'soportes')+' en Mesa técnica en este momento.</div>';enfocarSolicitud()}
+// Evitar que un signed URL renovado cause un repintado de la misma foto.
+function claveImagenMesa(url){
+ const v=String(url||'');
+ return v.includes('/storage/v1/object/')?v.split('?')[0]:v;
+}
+function firmaTarjetaMesa(html){
+ return html.replace(/(src|href)=(["'])([^"']+)\2/g,
+   (all,attr,quote,url)=>attr+'='+quote+claveImagenMesa(url)+quote);
+}
+const FIRMAS_TARJETAS_MESA=new Map();
+let FOCUS_MESA_APLICADO=false;
+function conservarFotosMesa(anterior,nueva){
+ const guardadas=new Map();
+ for(const img of anterior.querySelectorAll('img')){
+   const k=claveImagenMesa(img.getAttribute('src'));
+   if(!k)continue;
+   if(!guardadas.has(k))guardadas.set(k,[]);
+   guardadas.get(k).push(img);
+ }
+ for(const img of [...nueva.querySelectorAll('img')]){
+   const k=claveImagenMesa(img.getAttribute('src'));
+   const viejo=guardadas.get(k)?.shift();
+   if(viejo)img.replaceWith(viejo); // Mismo archivo y misma foto cargada: no descargarlos de nuevo.
+ }
+}
+function render(){
+ const list=TAB==='INSTALACIONES'?DATA.instalaciones||[]:DATA.soportes||[];
+ $('mtInst')?.classList.toggle('on',TAB==='INSTALACIONES');
+ $('mtSop')?.classList.toggle('on',TAB==='SOPORTES');
+ $('mTotal').textContent=list.length;
+ $('mAccion').textContent=list.filter(x=>x.requiere_accion).length;
+ $('mEspera').textContent=list.filter(x=>x.espera_tecnico).length;
+ const out=$('listaMesa');if(!out)return;
+ const sorted=[...list].sort((a,b)=>(b.requiere_accion?1:0)-(a.requiere_accion?1:0)||
+   new Date(a.mesa?.solicitado_at||0)-new Date(b.mesa?.solicitado_at||0));
+ if(!sorted.length){
+   const text='✅ No hay '+(TAB==='INSTALACIONES'?'instalaciones':'soportes')+
+     ' en Mesa técnica en este momento.';
+   if(out.querySelector(':scope > .otMesa')||out.textContent!==text)
+     out.innerHTML='<div class="emptyMesa">'+text+'</div>';
+   FIRMAS_TARJETAS_MESA.clear();
+   return;
+ }
+ const existentes=new Map([...out.querySelectorAll(':scope > .otMesa')]
+   .map(node=>[String(node.dataset.ordenId||''),node]));
+ const actuales=new Set();
+ let agregarFocus=false;
+ sorted.forEach((o,i)=>{
+   const key=String(o.id||'');
+   if(!key)return;
+   actuales.add(key);
+   const html=card(o,TAB==='INSTALACIONES');
+   const sig=firmaTarjetaMesa(html);
+   const anterior=existentes.get(key);
+   let elemento=anterior;
+   if(!anterior||FIRMAS_TARJETAS_MESA.get(key)!==sig){
+     const temp=document.createElement('div');
+     temp.innerHTML=html;
+     elemento=temp.firstElementChild;
+     if(!elemento)return;
+     if(anterior){
+       conservarFotosMesa(anterior,elemento);
+       anterior.replaceWith(elemento);
+     }
+     FIRMAS_TARJETAS_MESA.set(key,sig);
+     if(key===FOCUS_OT)agregarFocus=true;
+   }
+   // Reordenar solo cuando cambia el orden, sin vaciar la lista.
+   if(out.children[i]!==elemento)out.insertBefore(elemento,out.children[i]||null);
+ });
+ for(const [key,elem] of existentes){
+   if(!actuales.has(key)){elem.remove();FIRMAS_TARJETAS_MESA.delete(key)}
+ }
+ for(const child of [...out.children]){
+   if(!child.classList.contains('otMesa'))child.remove();
+ }
+ if(agregarFocus&&!FOCUS_MESA_APLICADO){
+   FOCUS_MESA_APLICADO=true;
+   enfocarSolicitud();
+ }
+}
 function enfocarSolicitud(){if(!FOCUS_OT)return;setTimeout(()=>{const card=document.querySelector('.otMesa[data-orden-id="'+CSS.escape(FOCUS_OT)+'"]');if(card){card.style.boxShadow='0 0 0 4px rgba(245,158,11,.25)';card.style.borderColor='#f59e0b';card.scrollIntoView({behavior:'smooth',block:'center'})}},120)}
-async function cargar(force=false){if(LOADING)return;LOADING=true;try{ocultarLegacy();const d=estabilizarUrlsPotencia(await mesa('board'));DATA=d;if(FOCUS_OT){if((d.soportes||[]).some(x=>x.id===FOCUS_OT))TAB='SOPORTES';else if((d.instalaciones||[]).some(x=>x.id===FOCUS_OT))TAB='INSTALACIONES'}const sig=JSON.stringify(d)+TAB;if(force||$('listaMesa')?.dataset.sig!==sig){$('listaMesa').dataset.sig=sig;render()}}catch(e){if($('listaMesa'))$('listaMesa').innerHTML='<div class="msg err">'+esc(e.message)+'</div>'}finally{LOADING=false}}
+async function cargar(force=false){if(LOADING)return;LOADING=true;try{ocultarLegacy();const d=estabilizarUrlsPotencia(await mesa('board'));DATA=d;if(FOCUS_OT){if((d.soportes||[]).some(x=>x.id===FOCUS_OT))TAB='SOPORTES';else if((d.instalaciones||[]).some(x=>x.id===FOCUS_OT))TAB='INSTALACIONES'}const sig=JSON.stringify(d,(k,v)=>k==='url'&&typeof v==='string'?claveImagenMesa(v):v)+TAB;if(force||$('listaMesa')?.dataset.sig!==sig){$('listaMesa').dataset.sig=sig;render()}}catch(e){if($('listaMesa'))$('listaMesa').innerHTML='<div class="msg err">'+esc(e.message)+'</div>'}finally{LOADING=false}}
 window.verificarIpActualMesa=async(id,rid)=>{try{await mesa('verify-current-ip',{orden_id:id,requerimiento_id:rid});await cargar(true)}catch(e){alert(e.message)}};
 window.consultarPotenciaAhora=async(id,servicioId)=>{try{const s=ses(),token=s.session_token||'';if(!token)throw new Error('Sesión no disponible');const r=await fetch(SMARTOLT_DIAG+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'live-diagnostic',session_token:token,servicio_id:servicioId})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'No se pudo consultar SmartOLT');await cargar(true)}catch(e){alert(e.message)}};
 window.seleccionarPotenciaMesa=async(e,id,rid)=>{const f=e.target.files?.[0];if(!f)return;try{await mesa('power-evidence-upload',{orden_id:id,requerimiento_id:rid,mime_type:f.type||'image/jpeg',base64:await dataUrl(f)});await cargar(true)}catch(err){alert(err.message)}finally{e.target.value=''}};
