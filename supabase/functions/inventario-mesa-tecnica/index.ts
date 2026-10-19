@@ -277,6 +277,33 @@ async function requerimientosMesa(s:any,ordenId:string){
       const sg=await s.storage.from('soporte-evidencias').createSignedUrl(path,21600);
       r.resultado={...(r.resultado||{}),evidencia_potencia:{...(r.resultado?.evidencia_potencia||{}),url:sg.data?.signedUrl||null}};
     }
+    // Un aviso óptico al técnico es diagnóstico provisional, nunca evidencia final.
+    const review=r?.resultado?.revision_potencia;
+    if(review?.storage_path){
+      const signed=await s.storage.from('soporte-evidencias').createSignedUrl(review.storage_path,21600);
+      r.resultado={...(r.resultado||{}),revision_potencia:{...review,url:signed.data?.signedUrl||null}};
+    }
+    const alerts=r?.resultado?.avisos_potencia;
+    if(Array.isArray(alerts)&&alerts.length){
+      const withUrls=[];
+      for(const aviso of alerts){
+        let url:null|string=null;
+        if(aviso?.storage_path){
+          const signed=await s.storage.from('soporte-evidencias').createSignedUrl(aviso.storage_path,21600);
+          url=signed.data?.signedUrl||null;
+        }
+        withUrls.push({...aviso,url});
+      }
+      r.resultado={...(r.resultado||{}),avisos_potencia:withUrls};
+    }
+    // Asociar las miniaturas a la comprobación histórica exacta, incluso si existe otra ronda activa.
+    const historialAcceso=r?.resultado?.verificacion_acceso_remoto;
+    if(historialAcceso?.estado==='CONFIRMADO'&&historialAcceso.evidencia_id){
+      const source=historialAcceso.evidencia_origen==='INSTALACION'
+        ?{evidencia_id:historialAcceso.evidencia_id}:{soporte_evidencia_id:historialAcceso.evidencia_id};
+      const historica=await accesoEvidencia(s,source);
+      r.resultado={...(r.resultado||{}),evidencia_acceso_remoto_historica:historica||null};
+    }
     const onuPath=r?.resultado?.evidencia_onu?.storage_path;
     if(onuPath){
       const sg=await s.storage.from('instalacion-evidencias').createSignedUrl(onuPath,21600);
@@ -289,11 +316,41 @@ const MESA_PREPARACION=new Set(['VERIFICAR_POTENCIA','ACTIVAR_CAMBIAR_ONU','CONF
 const MESA_FINAL=new Set(['VERIFICAR_ACCESO_REMOTO','VERIFICAR_CONECTIVIDAD']);
 async function validarSecuenciaSoporte(s:any,o:any,acciones:string[]){
   const clean=[...new Set((acciones||[]).map(x=>String(x||'').toUpperCase()))];
-  if(clean.includes('CONFIRMAR_IP_ACTUAL')&&clean.includes('ASIGNAR_NUEVA_IP'))throw new Error('Elige confirmar la IP actual o asignar una nueva IP, no ambas.');
+  const accionesIp=['CONFIRMAR_IP_ACTUAL','ASIGNAR_NUEVA_IP'];
+  const pideIp=clean.some(x=>accionesIp.includes(x)),pideRemoto=clean.includes('VERIFICAR_ACCESO_REMOTO');
+  if(clean.includes('CONFIRMAR_IP_ACTUAL')&&clean.includes('ASIGNAR_NUEVA_IP'))
+    throw new Error('Elige confirmar la IP actual o asignar una nueva IP, no ambas.');
+  if(pideIp&&pideRemoto)
+    throw new Error('La IP se consulta o asigna ANTES del acceso remoto. Envía cada intervención por separado.');
   const st=await state(s,o);
   const solicitadas=new Set((st.requerimientos||[]).flatMap((x:any)=>Array.isArray(x.acciones)?x.acciones:[]));
-  const repetidas=clean.filter((x:string)=>solicitadas.has(x));
+  // No basarse solo en state(), porque ese resumen puede limitar filas históricas.
+  const anteriores=await s.from('orden_mesa_requerimientos').select('id,acciones')
+    .eq('orden_id',o.id).overlaps('acciones',clean).limit(50);
+  if(anteriores.error)throw anteriores.error;
+  const enHistorial=new Set((anteriores.data||[])
+    .flatMap((r:any)=>Array.isArray(r.acciones)?r.acciones:[]));
+  const repetidas=clean.filter((x:string)=>solicitadas.has(x)||enHistorial.has(x));
   if(repetidas.length)throw new Error('Esta acción ya fue solicitada a Mesa Técnica: '+repetidas.join(', ')+'. Revisa el resultado existente antes de volver a solicitarla.');
+
+  if(pideIp){
+    // También proteger solicitudes históricas más antiguas que las 20 mostradas por state().
+    const q=await s.from('orden_mesa_requerimientos').select('id')
+      .eq('orden_id',o.id).contains('acciones',['VERIFICAR_ACCESO_REMOTO']).limit(1);
+    if(q.error)throw q.error;
+    if(st.acceso?.solicitado_at||q.data?.length)
+      throw new Error('Ya se solicitó acceso remoto para esta OT. La IP debía confirmarse antes; no corresponde pedirla después.');
+  }
+  if(pideRemoto){
+    // Se puede pedir remoto directamente cuando NO hay intervención de IP pendiente.
+    // Si se pidió ayuda o nueva IP, esperar la confirmación de Fernando/MikroTik.
+    const q=await s.from('orden_mesa_requerimientos').select('id')
+      .eq('orden_id',o.id).eq('estado','PENDIENTE')
+      .overlaps('acciones',accionesIp).limit(1);
+    if(q.error)throw q.error;
+    if(st.ip?.solicitud?.estado==='PENDIENTE'||q.data?.length)
+      throw new Error('Primero Fernando debe resolver la IP pendiente. Después podrás solicitar acceso remoto.');
+  }
   return st;
 }
 Deno.serve(async req=>{
@@ -475,56 +532,103 @@ Deno.serve(async req=>{
       await s.from('orden_historial').insert({orden_id:o.id,evento:'MESA_TECNICA_IP_ACTUAL_CONSULTA',detalle:{requerimiento_id:rid,consulta_red_id:q.data.id,ip:datos.ip,router_id:datos.router_id},realizado_por_id:me.id});
       return reply({ok:true,pendiente:true,...await state(s,o)});
     }
-    if(action==='reset-test-power-evidence'){
-      // Limpieza controlada de UNA OT de prueba, con sesión del supervisor.
-      // Nunca modifica cliente, servicio, routers, inventario ni caché Huawei.
-      if(!supervisor(me))return reply({error:'Solo el supervisor puede reiniciar la evidencia'},403);
-      if(String(body.confirmacion||'')!=='RESETEAR PRUEBA')return reply({error:'Confirma el reinicio de la prueba'},400);
+    if(action==='repeat-support-check'){
+      if(!supervisor(me))return reply({error:'Solo Mesa Técnica puede repetir una verificación'},403);
       const o=await order(s,String(body.orden_id||''));
-      const rid=String(body.requerimiento_id||'');
-      if(o.id!=='e8ce09af-4a08-4b10-bf9e-459231b1f5cb'||o.id_orden!=='OT-20261014-93344'
-        ||rid!=='f871587c-89bc-4aa9-9b68-601f9ac67d68')
-        return reply({error:'Reinicio permitido exclusivamente para la OT de prueba 93344'},403);
-      const q=await s.from('orden_mesa_requerimientos')
-        .select('id,orden_id,acciones,estado,resultado').eq('id',rid).eq('orden_id',o.id).maybeSingle();
-      if(q.error)throw q.error;
-      const r=q.data;
-      if(!r||!Array.isArray(r.acciones)||!r.acciones.includes('VERIFICAR_POTENCIA'))
-        return reply({error:'Requerimiento de potencia no encontrado'},404);
-      const resultado={...(r.resultado||{})};
-      const path=String(resultado.evidencia_potencia?.storage_path||'');
-      const prefix=`mesa-potencia/${o.id}/${rid}/`;
-      if(path&&!path.startsWith(prefix))
-        return reply({error:'Ruta de evidencia ajena a esta OT: limpieza detenida'},409);
-      // Eliminar físicamente la captura del bucket mediante Storage API.
-      if(path){
-        const del=await s.storage.from('soporte-evidencias').remove([path]);
-        if(del.error)return reply({error:'No se pudo eliminar la imagen de Storage: '+del.error.message},409);
-      }
-      delete resultado.evidencia_potencia;
-      delete resultado.verificacion_potencia;
-      const ahora=new Date().toISOString();
-      const update=await s.from('orden_mesa_requerimientos').update({
-        estado:'PENDIENTE',atendido_por_id:null,atendido_at:null,
-        canal_resolucion:null,resultado,updated_at:ahora
-      }).eq('id',rid).eq('orden_id',o.id);
-      if(update.error)throw update.error;
-      // Se conserva un hito mínimo de auditoría; los demás pasos de la OT permanecen.
-      await s.from('orden_historial').insert({
-        orden_id:o.id,evento:'MESA_TECNICA_POTENCIA_PRUEBA_RESETEADA',
-        detalle:{requerimiento_id:rid,evidencia_eliminada:!!path},
-        realizado_por_id:me.id
+      if(String(o.tipo_trabajo||'').startsWith('INSTALACION'))
+        return reply({error:'Esta acción es exclusiva de soportes'},409);
+      if(o.estado!=='EN_PROCESO')
+        return reply({error:'La OT debe seguir EN PROCESO'},409);
+      if(String(body.confirmacion||'')!=='REPETIR VERIFICACION')
+        return reply({error:'Confirma la repetición de la verificación'},400);
+      const rid=String(body.requerimiento_id||'').trim();
+      if(!rid)return reply({error:'Requerimiento obligatorio'},400);
+      // El procedimiento SQL bloquea filas y ejecuta auditoría + reinicio
+      // en una sola transacción: nunca INSERT de otro requerimiento.
+      const actual=await s.rpc('disprotel_reiniciar_verificacion_mesa_v2',{
+        p_orden_id:o.id,p_requerimiento_id:rid,p_actor_id:me.id
       });
-      return reply({ok:true,requerimiento_id:rid,evidencia_eliminada:!!path,
-        estado:'PENDIENTE',...await state(s,o)});
+      if(actual.error)return reply({error:actual.error.message||'No se pudo reiniciar la comprobación'},409);
+      return reply({ok:true,...(actual.data||{}),...await state(s,o)});
+    }
+    if(action==='power-diagnostic-upload'){
+      // Fernando envía observación/foto para corregir, pero NO atiende la solicitud
+      // ni escribe en resultado.evidencia_potencia / resultado.verificacion_potencia.
+      if(!supervisor(me))return reply({error:'Solo Mesa Técnica puede solicitar corrección óptica'},403);
+      const o=await order(s,String(body.orden_id||'')),rid=String(body.requerimiento_id||'').trim();
+      const {data:r,error:rErr}=await s.from('orden_mesa_requerimientos')
+        .select('id,acciones,estado,resultado').eq('id',rid).eq('orden_id',o.id).maybeSingle();
+      if(rErr)throw rErr;
+      if(!r||r.estado!=='PENDIENTE'||r.acciones?.length!==1||r.acciones[0]!=='VERIFICAR_POTENCIA')
+        return reply({error:'Solo puede enviarse un aviso a una verificación de potencia pendiente'},409);
+      const observacion=String(body.observacion||'').trim().slice(0,500);
+      if(observacion.length<6)return reply({error:'Indica claramente qué debe corregir Bryan'},400);
+      const mime=String(body.mime_type||'image/jpeg').toLowerCase();
+      if(!['image/jpeg','image/png','image/webp'].includes(mime))
+        return reply({error:'Formato de imagen no permitido'},400);
+      const base64=String(body.base64||'');
+      if(!base64)return reply({error:'Adjunta una captura de diagnóstico'},400);
+      const bytes=decodeBase64(base64);
+      if(!bytes.length||bytes.length>5*1024*1024)return reply({error:'La captura supera 5 MB'},400);
+      const ext=mime==='image/png'?'png':mime==='image/webp'?'webp':'jpg';
+      const path=`mesa-potencia-aviso/${o.id}/${rid}/${crypto.randomUUID()}.${ext}`;
+      const uploaded=await s.storage.from('soporte-evidencias').upload(path,bytes,{contentType:mime,upsert:false});
+      if(uploaded.error)throw uploaded.error;
+      const now=new Date().toISOString();
+      const optica=await lecturaOptica(s,o);
+      const aviso={id:crypto.randomUUID(),estado:'REQUIERE_CORRECCION',observacion,
+        storage_path:path,mime_type:mime,subido_at:now,subido_por_id:me.id,
+        lectura:{rx_onu_dbm:optica?.rx_onu_dbm??null,rx_olt_dbm:optica?.rx_olt_dbm??null,
+          leido_at:optica?.leido_at||null,fuente:optica?.fuente||null}};
+      const anteriores=Array.isArray(r.resultado?.avisos_potencia)?r.resultado.avisos_potencia:[];
+      const resultado={...(r.resultado||{}),revision_potencia:aviso,avisos_potencia:[...anteriores,aviso]};
+      const u=await s.from('orden_mesa_requerimientos').update({resultado,updated_at:now})
+        .eq('id',rid).eq('orden_id',o.id).eq('estado','PENDIENTE').select('id');
+      if(u.error||!u.data?.length){
+        await s.storage.from('soporte-evidencias').remove([path]);
+        if(u.error)throw u.error;
+        return reply({error:'El requerimiento cambió de estado; actualiza la pantalla'},409);
+      }
+      await s.from('orden_historial').insert({orden_id:o.id,evento:'MESA_TECNICA_POTENCIA_CORRECCION_SOLICITADA',
+        detalle:{requerimiento_id:rid,observacion,aviso_id:aviso.id},realizado_por_id:me.id});
+      return reply({ok:true,estado:'REQUIERE_CORRECCION',...await state(s,o)});
+    }
+    if(action==='power-field-corrected'){
+      if(!tech(me))return reply({error:'Solo el técnico asignado puede confirmar su corrección'},403);
+      const o=await order(s,String(body.orden_id||''));
+      if(!assigned(o,me))return reply({error:'OT no asignada a este técnico/grupo'},403);
+      const rid=String(body.requerimiento_id||'').trim();
+      const {data:r,error:rErr}=await s.from('orden_mesa_requerimientos')
+        .select('id,acciones,estado,resultado').eq('id',rid).eq('orden_id',o.id).maybeSingle();
+      if(rErr)throw rErr;
+      if(!r||r.estado!=='PENDIENTE'||r.acciones?.length!==1||r.acciones[0]!=='VERIFICAR_POTENCIA')
+        return reply({error:'No existe una verificación de potencia pendiente para corregir'},409);
+      const aviso=r.resultado?.revision_potencia;
+      if(aviso?.estado!=='REQUIERE_CORRECCION')return reply({error:'No hay corrección de potencia pendiente'},409);
+      const trabajo=String(body.trabajo_realizado||'').trim().slice(0,400);
+      if(trabajo.length<5)return reply({error:'Escribe el trabajo de limpieza o revisión realizado'},400);
+      const now=new Date().toISOString();
+      const newNotice={...aviso,estado:'CORREGIDO_EN_CAMPO',corregido_at:now,corregido_por_id:me.id,trabajo_realizado:trabajo};
+      const resultado={...(r.resultado||{}),revision_potencia:newNotice,
+        avisos_potencia:(Array.isArray(r.resultado?.avisos_potencia)?r.resultado.avisos_potencia:[])
+          .map((x:any)=>x.id===aviso.id?newNotice:x)};
+      const u=await s.from('orden_mesa_requerimientos').update({resultado,updated_at:now})
+        .eq('id',rid).eq('orden_id',o.id).eq('estado','PENDIENTE').select('id');
+      if(u.error)throw u.error;if(!u.data?.length)return reply({error:'Estado modificado; vuelve a cargar'},409);
+      await s.from('orden_historial').insert({orden_id:o.id,evento:'MESA_TECNICA_POTENCIA_CORREGIDA_EN_CAMPO',
+        detalle:{requerimiento_id:rid,aviso_id:aviso.id,trabajo_realizado:trabajo},realizado_por_id:me.id});
+      return reply({ok:true,estado:'CORREGIDO_EN_CAMPO',...await state(s,o)});
     }
     if(action==='power-evidence-upload'){
       if(!supervisor(me))return reply({error:'No autorizado'},403);
       const o=await order(s,String(body.orden_id||'')),rid=String(body.requerimiento_id||'').trim();
       if(!rid)return reply({error:'Requerimiento obligatorio'},400);
-      const {data:r,error:rErr}=await s.from('orden_mesa_requerimientos').select('id,acciones,resultado').eq('id',rid).eq('orden_id',o.id).maybeSingle();
+      const {data:r,error:rErr}=await s.from('orden_mesa_requerimientos').select('id,acciones,estado,resultado').eq('id',rid).eq('orden_id',o.id).maybeSingle();
       if(rErr)throw rErr;if(!r)return reply({error:'Requerimiento no encontrado'},404);
+      if(r.estado!=='PENDIENTE')return reply({error:'La solicitud de potencia ya fue atendida'},409);
       if(!Array.isArray(r.acciones)||!r.acciones.includes('VERIFICAR_POTENCIA'))return reply({error:'Este requerimiento no incluye verificación de potencia'},400);
+      if(r.resultado?.revision_potencia?.estado==='REQUIERE_CORRECCION')
+        return reply({error:'Primero Bryan debe corregir la potencia y confirmar el trabajo realizado'},409);
       const mime=String(body.mime_type||'image/jpeg').toLowerCase(),base64=String(body.base64||'');
       if(!base64)return reply({error:'Imagen obligatoria'},400);
       if(!['image/jpeg','image/png','image/webp'].includes(mime))return reply({error:'Formato no permitido'},400);
@@ -541,15 +645,78 @@ Deno.serve(async req=>{
       const sg=await s.storage.from('soporte-evidencias').createSignedUrl(path,21600);
       return reply({ok:true,evidencia:{...resultado.evidencia_potencia,url:sg.data?.signedUrl||null},...await state(s,o)});
     }
+    if(action==='power-evidence-rectify'){
+      if(!supervisor(me))return reply({error:'Solo Mesa Técnica puede rectificar una evidencia óptica'},403);
+      const o=await order(s,String(body.orden_id||'')),rid=String(body.requerimiento_id||'').trim();
+      const {data:r,error:rErr}=await s.from('orden_mesa_requerimientos').select('id,acciones,estado,resultado')
+        .eq('id',rid).eq('orden_id',o.id).maybeSingle();
+      if(rErr)throw rErr;
+      if(!r||r.estado!=='ATENDIDO'||r.acciones?.length!==1||r.acciones[0]!=='VERIFICAR_POTENCIA')
+        return reply({error:'Solo se rectifica una verificación óptica atendida'},409);
+      const previa=r.resultado?.evidencia_potencia;
+      if(!previa?.storage_path||!r.resultado?.verificacion_potencia)
+        return reply({error:'La verificación no tiene una evidencia final identificada'},409);
+      const motivo=String(body.motivo||'').trim().slice(0,400);
+      if(motivo.length<6)return reply({error:'Indica el motivo de la rectificación'},400);
+      const mime=String(body.mime_type||'image/jpeg').toLowerCase(),base64=String(body.base64||'');
+      if(!['image/jpeg','image/png','image/webp'].includes(mime))return reply({error:'Formato no permitido'},400);
+      if(!base64)return reply({error:'Debes adjuntar una nueva captura'},400);
+      const bytes=decodeBase64(base64);
+      if(!bytes.length||bytes.length>5*1024*1024)return reply({error:'La imagen supera 5 MB'},400);
+      const ext=mime==='image/png'?'png':mime==='image/webp'?'webp':'jpg',
+        now=new Date().toISOString(),path=`mesa-potencia/${o.id}/${rid}/rectificacion-${crypto.randomUUID()}.${ext}`;
+      const upload=await s.storage.from('soporte-evidencias').upload(path,bytes,{contentType:mime,upsert:false});
+      if(upload.error)throw upload.error;
+      const historico=Array.isArray(r.resultado?.rectificaciones_evidencia_potencia)?
+        r.resultado.rectificaciones_evidencia_potencia:[];
+      const previous={storage_path:previa.storage_path,mime_type:previa.mime_type,
+        subido_at:previa.subido_at,subido_por_id:previa.subido_por_id};
+      const resultado={...r.resultado,evidencia_potencia:{storage_path:path,mime_type:mime,
+        subido_at:now,subido_por_id:me.id,rectificada:true},
+        rectificaciones_evidencia_potencia:[...historico,
+          {anterior:previous,nueva_path:path,motivo,registrado_at:now,registrado_por_id:me.id}]};
+      // Conservar la lectura validada, la solicitud atendida y el archivo anterior en Storage.
+      const u=await s.from('orden_mesa_requerimientos').update({resultado,updated_at:now})
+        .eq('id',rid).eq('orden_id',o.id).eq('estado','ATENDIDO').select('id');
+      if(u.error||!u.data?.length){
+        await s.storage.from('soporte-evidencias').remove([path]);
+        if(u.error)throw u.error;
+        return reply({error:'El requerimiento cambió de estado; actualiza antes de rectificar'},409);
+      }
+      const h=await s.from('orden_historial').insert({orden_id:o.id,evento:'MESA_TECNICA_EVIDENCIA_POTENCIA_RECTIFICADA',
+        detalle:{requerimiento_id:rid,motivo,evidencia_anterior:previa.storage_path,
+          evidencia_nueva:path},realizado_por_id:me.id});
+      if(h.error)throw h.error;
+      return reply({ok:true,rectificada:true,...await state(s,o)});
+    }
     if(action==='confirm-power-check'){
       if(!supervisor(me))return reply({error:'No autorizado'},403);
       const o=await order(s,String(body.orden_id||'')),rid=String(body.requerimiento_id||'').trim();
       if(!rid)return reply({error:'Requerimiento obligatorio'},400);
       const {data:r,error:rErr}=await s.from('orden_mesa_requerimientos').select('id,acciones,estado').eq('id',rid).eq('orden_id',o.id).maybeSingle();if(rErr)throw rErr;if(!r)return reply({error:'Requerimiento no encontrado'},404);
+      if(r.estado==='ATENDIDO')return reply({ok:true,...await state(s,o)});
+      if(r.estado!=='PENDIENTE')return reply({error:'Requerimiento no pendiente'},409);
       if(!Array.isArray(r.acciones)||!r.acciones.includes('VERIFICAR_POTENCIA'))return reply({error:'Este requerimiento no incluye verificación de potencia'},400);
       const optica=await lecturaOptica(s,o);if(!optica)return reply({error:'No hay lectura óptica disponible para este servicio'},409);
       const {data:actual,error:aErr}=await s.from('orden_mesa_requerimientos').select('resultado').eq('id',rid).maybeSingle();if(aErr)throw aErr;
       if(!actual?.resultado?.evidencia_potencia?.storage_path)return reply({error:'Pega o carga primero la evidencia visual de SmartOLT'},409);
+      if(actual.resultado?.repeticion_de){
+        const again=Date.parse(actual.resultado.repeticion_iniciada_at||'');
+        const readAt=Date.parse(optica.leido_at||'');
+        if(!again||!readAt||readAt<=again)
+          return reply({error:'Para repetir la potencia se necesita una lectura óptica nueva, posterior al reinicio'},409);
+      }
+      const review=actual.resultado?.revision_potencia;
+      if(review?.estado==='REQUIERE_CORRECCION')return reply({error:'Bryan debe corregir la señal antes de confirmar la potencia'},409);
+      if(review?.estado==='CORREGIDO_EN_CAMPO'){
+        const corrected=Date.parse(review.corregido_at||'');
+        const uploaded=Date.parse(actual.resultado.evidencia_potencia.subido_at||'');
+        if(!corrected||!uploaded||uploaded<=corrected)
+          return reply({error:'Se necesita una captura final nueva, posterior a la corrección de Bryan'},409);
+        const refreshed=Date.parse(optica.leido_at||'');
+        if(!refreshed||refreshed<=corrected)
+          return reply({error:'Consulta una lectura óptica actualizada después de la corrección'},409);
+      }
       const now=new Date().toISOString();
       const resultado={...(actual.resultado||{}),verificacion_potencia:{...optica,confirmado_at:now,confirmado_por_id:me.id}};
       const {error:uErr}=await s.from('orden_mesa_requerimientos').update({estado:'ATENDIDO',atendido_por_id:me.id,atendido_at:now,canal_resolucion:optica.fuente==='HUAWEI_CACHE'?'LECTURA_HUAWEI_CACHE_EVIDENCIA':'LECTURA_SMARTOLT_EVIDENCIA',resultado,updated_at:now}).eq('id',rid);if(uErr)throw uErr;

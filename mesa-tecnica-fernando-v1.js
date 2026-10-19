@@ -122,9 +122,7 @@ function potenciaStep(o,r){
  const v=lectura&&(!archivada?.leido_at||Date.parse(lectura.leido_at)>Date.parse(archivada.leido_at))?lectura:(archivada||lectura);
  const done=r?.estado==='ATENDIDO',ev=(r?.resultado||{})?.evidencia_potencia||null,revision=r?.resultado?.revision_potencia;
  const solicitud=o.lectura_huawei||null,pendingHu=solicitud?.estado==='PENDIENTE'&&!solicitud?.expirada;
- const esPrueba=o.id==='e8ce09af-4a08-4b10-bf9e-459231b1f5cb'&&r.id==='f871587c-89bc-4aa9-9b68-601f9ac67d68';
- const reset=esPrueba&&done&&(ev?.storage_path||archivada)?
-  '<button type="button" class="secondary" onclick="reiniciarPotenciaPruebaMesa(\''+o.id+'\',\''+r.id+'\')">🧹 BORRAR EVIDENCIA Y REINICIAR PRUEBA</button>':'';
+ const reset='';
  const accionHuawei=done?'':pendingHu?
    '<button type="button" disabled style="opacity:.65;cursor:wait">⏳ ESPERANDO LECTURA HUAWEI</button>':
    '<button type="button" onclick="solicitarPotenciaHuaweiMesa(\''+o.id+'\')">📡 CONSULTAR POTENCIA HUAWEI AHORA</button>';
@@ -142,7 +140,7 @@ function potenciaStep(o,r){
    :'<div class="stepState" style="margin-top:0">📎 Falta captura de SmartOLT. Pega un recorte o carga la imagen antes de confirmar.</div>';
  const controls=done||revision?.estado==='REQUIERE_CORRECCION'?'':'<div class="remoteTools"><label class="btnMini">🖼️ CARGAR ARCHIVO<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="seleccionarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')"></label><div class="remotePaste" tabindex="0" contenteditable="true" spellcheck="false" onclick="this.focus()" onkeydown="if(event.key!==\'v\'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')">📋 PEGAR CAPTURA Ctrl+V</div></div>';
  const evidence='<div class="powerMirrorEvidence"><div class="stepState" style="margin-top:0"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+evidenceBody+controls+'</div>';
- const repetir=done&&puedeRepetirVerificacion(o,r,'VERIFICAR_POTENCIA')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REPETIR VERIFICACIÓN DE POTENCIA</button>':'';
+ const repetir=done&&puedeRepetirVerificacion(o,r,'VERIFICAR_POTENCIA')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REINICIAR VERIFICACIÓN DE POTENCIA</button>':'';
  const rectificar=done&&ev?.storage_path?
   '<div class="stepState">Puedes sustituir la captura sin alterar la lectura ni el estado ATENDIDO.</div>'+
   '<label class="mesaRectifyControl">✏️ RECTIFICAR CAPTURA ÓPTICA<input type="file" accept="image/jpeg,image/png,image/webp" onchange="rectificarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')"></label>'+
@@ -187,11 +185,21 @@ function evidenciaAccesoEnRequerimiento(o,r){
    '<div class="mesaReqRemoteMeta"><b>📷 EVIDENCIA DE ACCESO REMOTO</b>'+
      '<div class="stepState">✅ Captura confirmada por Mesa Técnica</div>'+
      (comprobante.confirmado_at?'<div class="stepState">'+esc(fmt(comprobante.confirmado_at))+'</div>':'')+
-     '<div class="stepState">Toca la miniatura para verla completa.</div>'+(comprobante.rectificada_at?'<div class="rectificationNote">✏️ Captura rectificada: '+esc(fmt(comprobante.rectificada_at))+'</div>':'')+(puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REPETIR COMPROBACIÓN DE ACCESO</button>':'')+
+     '<div class="stepState">Toca la miniatura para verla completa.</div>'+(comprobante.rectificada_at?'<div class="rectificationNote">✏️ Captura rectificada: '+esc(fmt(comprobante.rectificada_at))+'</div>':'')+(puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REINICIAR VERIFICACIÓN DE ACCESO</button>':'')+
  (puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<label class="mesaRectifyControl">✏️ RECTIFICAR CAPTURA<input type="file" accept="image/jpeg,image/png,image/webp" onchange="rectificarAccesoRemotoMesa(event,\''+o.id+'\')"></label>':'')+'</div></div>';
 }
+function comprobacionesVigentesMesa(rows){
+ const ordenados=[...(rows||[])].sort((a,b)=>(Date.parse(b.solicitado_at)||0)-(Date.parse(a.solicitado_at)||0));
+ const usados=new Set();
+ return ordenados.filter(r=>{
+   const codigo=Array.isArray(r.acciones)&&r.acciones.length===1?r.acciones[0]:'';
+   if(!['VERIFICAR_POTENCIA','VERIFICAR_ACCESO_REMOTO'].includes(codigo))return true;
+   if(usados.has(codigo))return false;
+   usados.add(codigo);return true;
+ }).reverse();
+}
 function batchHtml(o){
- const rs=ordenarRequerimientosMesa(o.requerimientos||[]);
+ const rs=comprobacionesVigentesMesa(o.requerimientos||[]);
  if(!rs.length)return '<div class="mesaReqs"><div class="stepState">Sin requerimientos agrupados.</div></div>';
  return '<div class="mesaReqs">'+rs.map(r=>{
   const done=r.estado==='ATENDIDO',acciones=r.acciones||[],
@@ -218,7 +226,7 @@ function supportDynamicSteps(o){const pending=(o.requerimientos||[]).filter(r=>r
 function card(o,inst){const estado=o.requiere_accion?'REQUIERE ACCIÓN':o.espera_tecnico?'ESPERANDO TÉCNICO':'SIN ACCIÓN PENDIENTE';const cls=o.requiere_accion?'need':'wait',dir=o.cliente_direccion_final||o.cliente_direccion||'';const steps=inst?clienteStep(o)+onuStep(o)+ipStep(o)+remotoStep(o):supportDynamicSteps(o),reqs=inst?'':batchHtml(o);return `<article class="otMesa ${cls}" data-orden-id="${esc(o.id||'')}"><div class="otHead"><div><div class="otTitle">${esc(o.id_orden||'')} · ${esc(up(o.cliente_nombre_final||o.cliente_nombre||''))}</div>${dir?'<div class="otMeta"><b>📍 '+esc(up(dir))+'</b></div>':''}<div class="otMeta">${inst?'INSTALACIÓN':'SOPORTE'} · Grupo: ${esc(up(o.grupo_asignado||o.grupo_destino||'—'))} · ${esc(fmt(o.mesa?.solicitado_at))}</div></div>${badge(estado,!o.requiere_accion&&!o.espera_tecnico,o.espera_tecnico)}</div>${reqs}${steps?'<div class="otSteps" style="grid-template-columns:repeat('+Math.min(3,Math.max(1,(steps.match(/class="step"/g)||[]).length))+',1fr)">'+steps+'</div>':''}</article>`}
 function render(){const list=TAB==='INSTALACIONES'?DATA.instalaciones||[]:DATA.soportes||[];$('mtInst')?.classList.toggle('on',TAB==='INSTALACIONES');$('mtSop')?.classList.toggle('on',TAB==='SOPORTES');$('mTotal').textContent=list.length;$('mAccion').textContent=list.filter(x=>x.requiere_accion).length;$('mEspera').textContent=list.filter(x=>x.espera_tecnico).length;const out=$('listaMesa');if(!out)return;out.innerHTML=list.length?list.sort((a,b)=>(b.requiere_accion?1:0)-(a.requiere_accion?1:0)||new Date(a.mesa?.solicitado_at||0)-new Date(b.mesa?.solicitado_at||0)).map(x=>card(x,TAB==='INSTALACIONES')).join(''):'<div class="emptyMesa">✅ No hay '+(TAB==='INSTALACIONES'?'instalaciones':'soportes')+' en Mesa técnica en este momento.</div>';enfocarSolicitud()}
 function enfocarSolicitud(){if(!FOCUS_OT)return;setTimeout(()=>{const card=document.querySelector('.otMesa[data-orden-id="'+CSS.escape(FOCUS_OT)+'"]');if(card){card.style.boxShadow='0 0 0 4px rgba(245,158,11,.25)';card.style.borderColor='#f59e0b';card.scrollIntoView({behavior:'smooth',block:'center'})}},120)}
-async function cargar(force=false){if(LOADING)return;LOADING=true;try{ocultarLegacy();const d=estabilizarUrlsPotencia(await mesa('board'));DATA=d;if(FOCUS_OT){if((d.soportes||[]).some(x=>x.id===FOCUS_OT))TAB='SOPORTES';else if((d.instalaciones||[]).some(x=>x.id===FOCUS_OT))TAB='INSTALACIONES'}const sig=JSON.stringify(d)+TAB;if(force||$('listaMesa')?.dataset.sig!==sig){$('listaMesa').dataset.sig=sig;render()}}catch(e){if($('listaMesa'))$('listaMesa').innerHTML='<div class="msg err">'+esc(e.message)+'</div>'}finally{LOADING=false}}
+async function cargar(force=false){if(LOADING)return;LOADING=true;try{ocultarLegacy();const d=estabilizarUrlsPotencia(await mesa('board'));DATA=d;if(FOCUS_OT){if((d.soportes||[]).some(x=>x.id===FOCUS_OT))TAB='SOPORTES';else if((d.instalaciones||[]).some(x=>x.id===FOCUS_OT))TAB='INSTALACIONES'}const sig=JSON.stringify(d)+TAB;if($('listaMesa')?.dataset.sig!==sig){$('listaMesa').dataset.sig=sig;render()}}catch(e){if($('listaMesa'))$('listaMesa').innerHTML='<div class="msg err">'+esc(e.message)+'</div>'}finally{LOADING=false}}
 window.verificarIpActualMesa=async(id,rid)=>{try{await mesa('verify-current-ip',{orden_id:id,requerimiento_id:rid});await cargar(true)}catch(e){alert(e.message)}};
 window.consultarPotenciaAhora=async(id,servicioId)=>{try{const s=ses(),token=s.session_token||'';if(!token)throw new Error('Sesión no disponible');const r=await fetch(SMARTOLT_DIAG+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'live-diagnostic',session_token:token,servicio_id:servicioId})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'No se pudo consultar SmartOLT');await cargar(true)}catch(e){alert(e.message)}};
 window.seleccionarPotenciaMesa=async(e,id,rid)=>{const f=e.target.files?.[0];if(!f)return;try{await mesa('power-evidence-upload',{orden_id:id,requerimiento_id:rid,mime_type:f.type||'image/jpeg',base64:await dataUrl(f)});await cargar(true)}catch(err){alert(err.message)}finally{e.target.value=''}};
@@ -237,16 +245,6 @@ window.pegarAvisoPotencia=async(e,id,rid)=>{
  const file=it?.getAsFile();if(!file){alert('Pega una foto de diagnóstico');return}
  await window.enviarAvisoPotencia(file,id,rid);
 };
-window.reiniciarPotenciaPruebaMesa=async(id,rid)=>{
- if(id!=='e8ce09af-4a08-4b10-bf9e-459231b1f5cb'||
-   rid!=='f871587c-89bc-4aa9-9b68-601f9ac67d68')return;
- if(!confirm('¿Eliminar físicamente la captura de prueba y reiniciar SOLO la verificación de potencia de OT-20261014-93344?'))return;
- try{
-   await mesa('reset-test-power-evidence',{orden_id:id,requerimiento_id:rid,confirmacion:'RESETEAR PRUEBA'});
-   alert('✅ Captura de prueba eliminada. Verificación de potencia nuevamente PENDIENTE.');
-   await cargar(true);
- }catch(e){alert('No se completó el reinicio: '+e.message)}
-};
 window.solicitarPotenciaHuaweiMesa=async id=>{
  if(!confirm('¿Solicitar una lectura Huawei individual? Se reutilizará si ya existe una solicitud pendiente.'))return;
  try{
@@ -256,9 +254,9 @@ window.solicitarPotenciaHuaweiMesa=async id=>{
  }catch(e){alert('No se pudo solicitar Huawei: '+e.message)}
 };
 window.repetirVerificacionMesa=async(id,rid)=>{
- if(!confirm('¿Iniciar otra verificación? Se conservará la anterior como ATENDIDA, con su evidencia; no se altera la IP, la ONU ni la OT.'))return;
+ if(!confirm('¿Reiniciar esta verificación? Se conserva la comprobación anterior en el historial, pero la misma etapa volverá a PENDIENTE y necesitará una nueva evidencia. No se modifica IP, ONU ni otra etapa de la OT.'))return;
  try{await mesa('repeat-support-check',{orden_id:id,requerimiento_id:rid,confirmacion:'REPETIR VERIFICACION'});await cargar(true)}
- catch(err){alert('No se pudo iniciar otra verificación: '+err.message)}
+ catch(err){alert('No se pudo reiniciar la verificación: '+err.message)}
 };
 window.rectificarAccesoRemotoMesa=async(e,id)=>{
  const file=e.target.files?.[0];if(!file)return;
@@ -374,8 +372,17 @@ document.addEventListener('click',async e=>{
 });
 
 window.addEventListener('disprotel:remote-updated',()=>cargar(true));
-const obs=new MutationObserver(()=>{ocultarLegacy();if(!$('app')?.classList.contains('hidden'))crear()});
-const iniciar=()=>{obs.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});setTimeout(crear,220)};
+const iniciar=()=>{
+  const app=$('app');
+  if(app){
+    const obs=new MutationObserver(()=>{
+      if(!app.classList.contains('hidden')&&!$('mesaTecnicaFernando'))crear();
+    });
+    // Un cambio de visibilidad: no observar fotos, botones y repintados del DOM completo.
+    obs.observe(app,{attributes:true,attributeFilter:['class']});
+  }
+  if(!$('mesaTecnicaFernando'))setTimeout(crear,0);
+};
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',iniciar):iniciar();
 // El panel se actualiza por eventos privados; respaldo espaciado en lugar de 7 s.
 let mesaEventTimer=null;
