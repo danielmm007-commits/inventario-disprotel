@@ -337,15 +337,41 @@ function renderTypes(){
  $('evTypes').innerHTML=TYPES.map(t=>'<button type="button" class="evType '+(EVTYPE===t[0]?'on':'')+'" data-t="'+t[0]+'"><span class="count">'+ev.filter(x=>x.tipo_foto===t[0]).length+'</span><b>'+t[1]+'</b><small>'+t[2]+'</small></button>').join('');
  $('evSeleccion').textContent='Seleccionaste: '+(TYPES.find(t=>t[0]===EVTYPE)?.[1]||EVTYPE)+' · elige tomar foto o cargar archivo.';
  document.querySelectorAll('.evType').forEach(b=>b.onclick=()=>{EVTYPE=b.dataset.t;renderTypes()});
-}function renderEv(){
- const ordered=evidenciasVigentesSoporte(DATA?.evidencias||[]);
- $('evidencias').innerHTML=ordered.length?ordered.map(x=>{
- return '<div class="evidence"><b>'+esc(up(x.tipo_foto).replaceAll('_',' '))+'</b> <span class="muted">· Evidencia vigente</span>'+
- (x.offline_pending?' <span class="badge">⏳ PENDIENTE DE SINCRONIZACIÓN</span>':'')+
- '<div class="muted">'+esc(fmt(x.fecha_hora_captura))+'</div>'+
- (x.url?'<img src="'+esc(x.url)+'" alt="Evidencia" style="display:block;max-width:100%;max-height:160px;object-fit:contain;border-radius:8px;margin:6px 0">':'')+
- '<button type="button" class="secondary" onclick="nuevaVersionFoto(\''+esc(x.tipo_foto)+'\')">✏️ CORREGIR FOTO</button>'+'</div>'
+}const FOTOS_RENDERS=new Map();
+function renderEv(){
+ const ordered=evidenciasVigentesSoporte(DATA?.evidencias||[]),out=$('evidencias');
+ const temp=document.createElement('div');
+ temp.innerHTML=ordered.length?ordered.map(x=>{
+  const id=String(x.id||x.offline_sync_id||x.tipo_foto);
+  return '<div class="evidence" data-evidencia-id="'+esc(id)+'"><b>'+
+   esc(up(x.tipo_foto).replaceAll('_',' '))+'</b> <span class="muted">· Evidencia vigente</span>'+
+   (x.offline_pending?' <span class="badge">⏳ PENDIENTE DE SINCRONIZACIÓN</span>':'')+
+   '<div class="muted">'+esc(fmt(x.fecha_hora_captura))+'</div>'+
+   (x.url?'<img src="'+esc(x.url)+'" alt="Evidencia" style="display:block;max-width:100%;max-height:160px;object-fit:contain;border-radius:8px;margin:6px 0">':'')+
+   '<button type="button" class="secondary" onclick="nuevaVersionFoto(\''+esc(x.tipo_foto)+'\')">✏️ CORREGIR FOTO</button></div>';
  }).join(''):'<div class="muted">Sin evidencias todavía.</div>';
+ const prev=new Map([...out.querySelectorAll(':scope > .evidence')]
+   .map(node=>[node.dataset.evidenciaId,node]));
+ const next=[...temp.querySelectorAll(':scope > .evidence')],ids=new Set();
+ for(let i=0;i<next.length;i++){
+  let node=next[i],id=node.dataset.evidenciaId;
+  if(!id)continue;ids.add(id);
+  const old=prev.get(id);
+  const meta=ordered[i];
+  const signature=JSON.stringify([id,meta?.tipo_foto,meta?.fecha_hora_captura,!!meta?.offline_pending]);
+  if(old&&FOTOS_RENDERS.get(id)===signature){
+   node=old; // El mismo comprobante mantiene la miniatura cargada aunque cambie el token.
+  }else{
+   if(old)old.replaceWith(node);
+   FOTOS_RENDERS.set(id,signature);
+  }
+  if(out.children[i]!==node)out.insertBefore(node,out.children[i]||null);
+ }
+ for(const [id,node] of prev)if(!ids.has(id)){node.remove();FOTOS_RENDERS.delete(id)}
+ if(!next.length){
+  if(out.querySelector('.evidence')||out.textContent!==temp.textContent)out.innerHTML=temp.innerHTML;
+  FOTOS_RENDERS.clear();
+ }else for(const node of [...out.children])if(!node.classList.contains('evidence'))node.remove();
  $('confirmarSinEvidencias').classList.toggle('hidden',ordered.some(x=>!x.offline_pending));
  renderTypes();refrescarEtapas();
 }
