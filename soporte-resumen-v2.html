@@ -187,10 +187,18 @@ function renderGrupoReporte(id,rows){
  ).join(''):'<div class="photoEmpty muted">No se registraron fotografías en este grupo.</div>';
 }
 async function evidenciasVigentesReporte(rows){
- const tecnico=[...(rows||[])].filter(x=>FOTOS_CAMPO.has(String(x.tipo_foto||''))&&x.url).map(x=>({
-  id:x.id,label:LABELS_FOTOS[x.tipo_foto]||String(x.tipo_foto).replaceAll('_',' '),
-  at:x.fecha_hora_captura||null,url:x.url
- })).sort((a,b)=>momentoFoto(a.at)-momentoFoto(b.at));
+ // Igual que la pantalla del técnico: sólo la foto vigente de cada tipo,
+ // excepto ADICIONAL que permite varias tomas independientes.
+ const vistosTecnico=new Set();
+ const tecnico=[...(rows||[])]
+  .filter(x=>FOTOS_CAMPO.has(String(x.tipo_foto||''))&&x.url)
+  .sort((a,b)=>momentoFoto(b.fecha_hora_captura)-momentoFoto(a.fecha_hora_captura))
+  .filter(x=>{if(x.tipo_foto==='ADICIONAL')return true;
+   if(vistosTecnico.has(x.tipo_foto))return false;
+   vistosTecnico.add(x.tipo_foto);return true})
+  .map(x=>({id:x.id,label:LABELS_FOTOS[x.tipo_foto]||String(x.tipo_foto).replaceAll('_',' '),
+   at:x.fecha_hora_captura||null,url:x.url}))
+  .sort((a,b)=>momentoFoto(a.at)-momentoFoto(b.at));
  const mesaFotos=[],vistos=new Set();
  let mesa=null,mesa_disponible=false;
  try{
