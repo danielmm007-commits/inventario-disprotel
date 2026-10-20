@@ -40,113 +40,112 @@
    }finally{image?.close?.()}
  }
  async function generate(){
-   const klass=window.jspdf?.jsPDF;
-   if(!klass)throw Error('No se pudo cargar el generador PDF. Recarga la página.');
-   if($('sheet')?.style.display==='none')throw Error('Espera a que se cargue la previsualización.');
-   const groups=window.DISPROTEL_SOPORTE_EVIDENCIAS;
-   if(!groups||!groups.mesa_disponible)
-     throw Error('Mesa Técnica aún no validó sus evidencias. Recarga el reporte antes de descargarlo.');
-   const photos=[...(groups.tecnico||[]),...(groups.mesa||[])];
-   for(const p of photos){
-     if(!p.url)throw Error('Falta la imagen vigente de '+normalize(p.label)+'. No se generará un PDF incompleto.');
-   }
-   const photoData=[];
-   for(let i=0;i<photos.length;i++){
-     msg('Preparando fotografía '+(i+1)+' de '+photos.length+'...');
-     photoData.push(await imageToJpeg(photos[i].url));
-   }
-   const pdf=new klass({orientation:'portrait',unit:'mm',format:'a4',compress:true});
-   const left=15,right=195,bottom=277,usable=180;
-   let y=20;
-   const draft=Boolean(window.DISPROTEL_SOPORTE_BORRADOR);
-   function nextPage(){
-     pdf.addPage();y=20;
-     pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(105,120,129);
-     pdf.text('DISPROTEL - '+data('ot')+(draft?' - BORRADOR':''),left,12);
-   }
-   function reserve(h){if(y+h>bottom)nextPage()}
-   function text(t,size=10,bold=false,indent=left,max=usable){
-     pdf.setFont('helvetica',bold?'bold':'normal');pdf.setFontSize(size);
-     pdf.setTextColor(24,52,79);
-     const lineH=size>=12?5.8:size>=10?4.8:4.2;
-     for(const line of pdf.splitTextToSize(normalize(t),max)){
-       reserve(lineH);
-       pdf.text(line,indent,y);y+=lineH;
-     }
-   }
-   function title(t){
-     reserve(15);y+=3;
-     pdf.setFillColor(9,57,102);pdf.roundedRect(left,y-5,usable,10,1.5,1.5,'F');
-     pdf.setFontSize(11);pdf.setFont('helvetica','bold');pdf.setTextColor(255,255,255);
-     pdf.text(normalize(t),left+4,y+1.7);y+=10;
-   }
-   function field(k,v){text(k+': '+v,9,false)}
-   pdf.setFillColor(7,53,101);pdf.rect(0,0,210,33,'F');
-   try{
-     const logo=await imageToJpeg('assets/login/logo%20dispro.jpg');
-     pdf.addImage(logo.data,'JPEG',176,4,19,19,undefined,'FAST');
-   }catch(e){console.warn('Logotipo opcional no disponible',e)}
-   pdf.setFont('helvetica','bold');pdf.setFontSize(17);pdf.setTextColor(255,255,255);
-   pdf.text('DISPROTEL',left,14);pdf.setFontSize(12);
-   pdf.text('REPORTE DE SOPORTE TECNICO',left,23);
-   if(draft){pdf.setTextColor(255,223,125);pdf.setFontSize(9);pdf.text('PREVISUALIZACION - NO ES UN CIERRE OFICIAL',left,29)}
-   else{pdf.setTextColor(212,243,218);pdf.setFontSize(9);pdf.text('REPORTE FINAL',left,29)}
-   y=41;
-   title('INFORMACION DE LA ORDEN Y ATENCION');
-   for(const [k,id] of [
-     ['Orden','ot'],['Estado','estado'],['Tipo de trabajo','tipoTrabajo'],['Creada por','solicitado'],
-     ['Fecha de solicitud','fechaSolicitud'],['Aceptada por','aceptadoPor'],['Grupo que atendio','grupo'],
-     ['Fecha y hora de aceptacion','fechaAceptacion'],['Inicio de atencion','inicioTrabajo'],
-     ['Fecha y hora de resolucion','finTrabajo']])field(k,data(id));
-   title('DATOS DEL CLIENTE Y SERVICIO');
-   for(const [k,id] of [
-     ['Cliente','cliente'],['Identificacion','cedula'],['Telefono','telefono'],['Correo','correo'],
-     ['Direccion','direccion'],['Contacto de visita','contacto'],['Codigo de servicio','servicio'],
-     ['Plan','plan'],['Tipo de conexion','tipoConexion'],['IP registrada','ipCliente']])field(k,data(id));
-   title('HALLAZGO Y TRABAJO REALIZADO');
-   field('Problema reportado',data('problema'));field('Diagnostico',data('diagnostico'));
-   field('Solucion',data('solucion'));field('Observaciones adicionales',data('observacion'));
-   title('UBICACION GPS');text(data('gps'),9,false);
-   title('MATERIALES Y EQUIPOS');
-   const lines=[...$('items').querySelectorAll('.item')].map(x=>normalize(x.textContent));
-   if(lines.length)for(const ln of lines)text('• '+ln,9);else text('Sin materiales utilizados.',9);
-   title('EQUIPOS RETIRADOS O REEMPLAZADOS');
-   const retirados=[...$('retirados').querySelectorAll('.item')].map(x=>normalize(x.textContent));
-   if(retirados.length)for(const ln of retirados)text('• '+ln,9);else text('Sin equipos retirados.',9);
-   async function photosSection(header,entries){
-     title(header);
-     if(!entries.length){text('No se registraron evidencias en este grupo.',9);return}
-     for(let i=0;i<entries.length;i+=2){
-       const row=entries.slice(i,i+2);
-       reserve(64);
-       for(let j=0;j<row.length;j++){
-         const photo=row[j],file=photoData[photos.indexOf(photo)];
-         const x=left+j*92,slotW=86,slotH=48;
-         const aspect=file.ratio;
-         let w=slotW,h=slotH;
-         if(aspect>slotW/slotH)h=w/aspect;else w=h*aspect;
-         pdf.setDrawColor(211,226,234);pdf.roundedRect(x,y,slotW,slotH,2,2,'S');
-         pdf.addImage(file.data,'JPEG',x+(slotW-w)/2,y+(slotH-h)/2,w,h,undefined,'FAST');
-         pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(28,54,76);
-         pdf.text(pdf.splitTextToSize(normalize(photo.label),slotW)[0],x,y+53);
-         pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(100,117,129);
-         pdf.text(pdf.splitTextToSize(fechaLocal(photo.at),slotW)[0],x,y+57);
-       }
-       y+=64;
-     }
-   }
-   await photosSection('EVIDENCIAS DEL TECNICO - EN ORDEN DE OCURRENCIA',groups.tecnico||[]);
-   await photosSection('EVIDENCIAS DE MESA TECNICA - EN ORDEN DE OCURRENCIA',groups.mesa||[]);
-   reserve(12);y+=6;
-   text(draft?'BORRADOR PARA REVISION. NO CONFIRMA CIERRE NI DESCUENTA INVENTARIO.':
-     'Documento de soporte finalizado en DISPROTEL.',8,false);
-   const pages=pdf.getNumberOfPages();
-   for(let page=1;page<=pages;page++){
-     pdf.setPage(page);pdf.setDrawColor(219,228,234);pdf.line(left,286,right,286);
-     pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(120,133,141);
-     pdf.text('DISPROTEL - '+data('ot')+'  |  '+page+'/'+pages,left,291);
-   }
-   return pdf.output('blob');
+  const Klass=window.jspdf?.jsPDF;
+  if(!Klass||$('sheet')?.style.display==='none')throw Error('La previsualización PDF todavía no está disponible.');
+  const groups=window.DISPROTEL_SOPORTE_EVIDENCIAS;
+  if(!groups?.mesa_disponible)throw Error('Primero se deben validar las evidencias vigentes de Mesa Técnica.');
+  const photos=[...(groups.tecnico||[]),...(groups.mesa||[])],images=[];
+  for(let i=0;i<photos.length;i++){msg('Cargando evidencia '+(i+1)+' de '+photos.length+'...');images.push(await imageToJpeg(photos[i].url))}
+  let logo=null;try{logo=await imageToJpeg('assets/login/logo%20dispro.jpg')}catch(e){console.warn('Logotipo no disponible',e)}
+  const pdf=new Klass({format:'a4',orientation:'portrait',unit:'mm',compress:true}),W=192,X=9,R=201,MAX=279;
+  const BLUE=[22,95,161],NAVY=[25,57,101],MUTED=[111,130,145],LINE=[215,227,235];
+  const draft=!!window.DISPROTEL_SOPORTE_BORRADOR;
+  let y=10;
+  const clean=v=>normalize(v).replace(/[\u2014\u2013\u2192\u2022\u2705\u26A0\uFE0F]/g,'-');
+  const ink=(c=NAVY)=>pdf.setTextColor(...c);
+  const font=(n=8,b=false,c=NAVY)=>{pdf.setFont('helvetica',b?'bold':'normal');pdf.setFontSize(n);ink(c)};
+  const lines=(v,w,n=8)=>{font(n);return pdf.splitTextToSize(clean(v),w)};
+  const str=(v,x,yy,w,n=8,b=false,c=NAVY,l=3.6)=>{const ls=lines(v,w,n);font(n,b,c);let at=yy;for(const t of ls){pdf.text(t,x,at);at+=l}return Math.max(l,ls.length*l)};
+  const frame=(x,yy,w,h)=>{pdf.setFillColor(255,255,255);pdf.setDrawColor(...LINE);pdf.roundedRect(x,yy,w,h,2.5,2.5,'FD')};
+  const next=()=>{pdf.addPage();y=16;font(8,true,BLUE);pdf.text('DISPROTEL',X,10);font(8,false,MUTED);pdf.text('REPORTE DE SOPORTE TECNICO · '+data('ot')+' · CONTINUACION',35,10)};
+  const room=h=>{if(y+h>MAX)next()};
+  const hRows=(arr,w)=>arr.reduce((sum,[k,id])=>sum+Math.max(5,lines(data(id),w*.65,7.5).length*3.5+1),0);
+  const rows=(arr,x,yy,w)=>{let cur=yy;for(const [k,id] of arr){font(7.2,true,[76,94,112]);pdf.text(k,x,cur);str(data(id),x+w*.34,cur,w*.65,7.5,false,NAVY,3.5);cur+=Math.max(5,lines(data(id),w*.65,7.5).length*3.5+1);pdf.setDrawColor(233,240,244);pdf.line(x,cur,x+w,cur);cur+=1}return cur};
+  // 1. Encabezado blanco, logotipo, título central y estado.
+  if(logo)pdf.addImage(logo.data,'JPEG',16,11,28,17,undefined,'FAST');
+  else {font(15,true,BLUE);pdf.text('DISPROTEL',12,23)}
+  font(15.5,true,NAVY);pdf.text('REPORTE DE SOPORTE TECNICO',69,20);
+  font(8.1,false,MUTED);pdf.text('VISTA PREVIA · documento técnico de la OT',69,25);
+  frame(167,11,33,13);font(8.2,true,draft?[137,93,19]:[20,116,67]);
+  pdf.text(draft?'NO FINALIZADO':'FINALIZADO',170,19);
+  pdf.setDrawColor(...LINE);pdf.line(X,33,R,33);
+  // 2. Franja de seis datos igual al reporte de instalación.
+  const six=[['OT','ot',29],['Fecha y hora','fechaSolicitud',33],['Solicitante','solicitado',34],
+   ['Tecnico','tecnico',34],['Grupo tecnico','grupo',34],['Estado','estado',28]];
+  frame(X,38,W,23);let xx=X;
+  for(let i=0;i<six.length;i++){const [k,id,w]=six[i];if(i){pdf.setDrawColor(...LINE);pdf.line(xx,38,xx,61)}
+   font(7,false,MUTED);pdf.text(k,xx+2,43);str(data(id),xx+2,49,w-4,7.25,true,NAVY,3);xx+=w}
+  y=65;
+  // 3. Cliente a la izquierda y GPS a la derecha.
+  const cli=[['Cliente','cliente'],['Cedula','cedula'],['Telefono','telefono'],
+   ['Direccion','direccion'],['Correo','correo'],['Contacto','contacto']];
+  const hCli=16+hRows(cli,111)+6;room(hCli+4);frame(X,y,W,hCli);
+  font(10.2,true,BLUE);pdf.text('CLIENTE / DATOS CONFIRMADOS',X+4,y+8);
+  rows(cli,X+4,y+17,111);frame(130,y+13,67,Math.min(39,hCli-17));
+  font(8.4,true,BLUE);pdf.text('UBICACION GPS',133,y+19);str(data('gps'),133,y+24,60,7.3,false,NAVY,3.5);
+  y+=hCli+5;
+  // 4. Servicio y responsable de la atención.
+  const a=[['Tipo de trabajo','tipoTrabajo'],['Servicio','servicio'],['Plan','plan'],['Conexion','tipoConexion'],['IP registrada','ipCliente']];
+  const b=[['Aceptada por','aceptadoPor'],['Fecha aceptacion','fechaAceptacion'],
+   ['Inicio trabajo','inicioTrabajo'],['Resolucion','finTrabajo']];
+  const hs=18+Math.max(hRows(a,87),hRows(b,87))+5;room(hs+4);frame(X,y,W,hs);
+  font(10.2,true,BLUE);pdf.text('SERVICIO / INFORMACION DE SOPORTE',X+4,y+8);
+  rows(a,X+4,y+18,87);pdf.setDrawColor(...LINE);pdf.line(104,y+16,104,y+hs-5);
+  rows(b,108,y+18,88);y+=hs+5;
+  // 5. Diagnóstico y solución, en paneles blancos.
+  room(14);font(10.2,true,BLUE);pdf.text('DIAGNOSTICO Y TRABAJO REALIZADO',X+4,y+6);y+=11;
+  for(const [name,id] of [['PROBLEMA REPORTADO','problema'],['HALLAZGO / DIAGNOSTICO','diagnostico'],
+     ['SOLUCION APLICADA','solucion'],['OBSERVACIONES ADICIONALES','observacion']]){
+    const h=Math.max(11,lines(data(id),182,8).length*4+9);room(h+2);
+    pdf.setFillColor(249,252,254);pdf.setDrawColor(...LINE);pdf.roundedRect(X,y,W,h,2,2,'FD');
+    font(8.6,true,BLUE);pdf.text(name,X+4,y+5);str(data(id),X+4,y+10,183,8,false,NAVY,4);y+=h+3;
+  }
+  // 6. Paneles paralelos materiales / equipos retirados.
+  const material=[...$('items').querySelectorAll('.item')].map(v=>clean(v.textContent));
+  const retired=[...$('retirados').querySelectorAll('.item')].map(v=>clean(v.textContent));
+  const n=Math.max(1,material.length,retired.length);
+  for(let i=0;i<n;i+=8){
+   const l=material.slice(i,i+8),r=retired.slice(i,i+8);
+   const hl=l.reduce((n,v)=>n+Math.max(5,lines(v,85,7.5).length*3.5+1),0);
+   const hr=r.reduce((n,v)=>n+Math.max(5,lines(v,85,7.5).length*3.5+1),0);
+   const h=18+Math.max(10,hl,hr);room(h+5);frame(X,y,94,h);frame(107,y,94,h);
+   font(8.6,true,BLUE);pdf.text('MATERIALES Y EQUIPOS USADOS',12,y+7);
+   pdf.text('EQUIPOS RETIRADOS / CAMBIADOS',110,y+7);
+   let yy=y+14;for(const v of l)yy+=str('- '+v,12,yy,85,7.5,false,NAVY,3.5)+1;
+   if(!material.length)str('Sin materiales registrados',12,yy,85,7.5,false,MUTED);
+   yy=y+14;for(const v of r)yy+=str('- '+v,110,yy,85,7.5,false,NAVY,3.5)+1;
+   if(!retired.length)str('Sin equipos retirados',110,yy,85,7.5,false,MUTED);
+   y+=h+5;
+  }
+  // 7. Evidencias agrupadas por origen, tres miniaturas por fila.
+  function photosSection(title,arr){
+    room(15);font(10,true,BLUE);pdf.text(title,X+3,y+7);y+=12;
+    if(!arr.length){font(8,false,MUTED);pdf.text('Sin fotografias en este grupo.',X+3,y+4);y+=10;return}
+    for(let i=0;i<arr.length;i+=3){room(50);
+     for(let j=0;j<3&&i+j<arr.length;j++){
+      const ph=arr[i+j],im=images[photos.indexOf(ph)],x=X+j*65,w=61,h=33;
+      frame(x,y,w,44);const iw=im.ratio>w/h?w:im.ratio*h,ih=im.ratio>w/h?w/im.ratio:h;
+      pdf.addImage(im.data,'JPEG',x+(w-iw)/2,y+(h-ih)/2,iw,ih,undefined,'FAST');
+      font(7.7,true,NAVY);pdf.text(lines(ph.label,w-4,7.7)[0],x+2,y+38);
+      font(7,false,MUTED);pdf.text(lines(fechaLocal(ph.at),w-4,7)[0],x+2,y+42);
+     }y+=49;
+    }y+=3;
+  }
+  photosSection('EVIDENCIAS FOTOGRAFICAS / TECNICO DE CAMPO',groups.tecnico||[]);
+  photosSection('EVIDENCIAS / MESA TECNICA - FERNANDO',groups.mesa||[]);
+  room(12);font(8,false,MUTED);pdf.text(draft?
+    'Al finalizar la OT, el reporte queda congelado y pasa a solo lectura.':
+    'Reporte finalizado en DISPROTEL; se muestran evidencias vigentes.',X+3,y+5);
+  // Pie de página con el mismo formato del documento de instalaciones.
+  const count=pdf.getNumberOfPages();
+  for(let k=1;k<=count;k++){
+   pdf.setPage(k);pdf.setDrawColor(...LINE);pdf.line(X,286,R,286);
+   font(7.4,false,MUTED);pdf.text('DISPROTEL · '+data('ot'),X,291);
+   const t=draft?'VISTA PREVIA PARA REVISION':'REPORTE FINAL';
+   font(7.5,true,BLUE);pdf.text(t,R-pdf.getTextWidth(t),291);
+   font(7,false,MUTED);pdf.text(k+'/'+count,106,291);
+  }
+  return pdf.output('blob');
  }
  function downloadBlob(blob,name){
    const href=URL.createObjectURL(blob),a=document.createElement('a');
