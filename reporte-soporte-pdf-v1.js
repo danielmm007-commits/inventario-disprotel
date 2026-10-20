@@ -11,6 +11,9 @@
    return s.replace(/[\u{10000}-\u{10ffff}]/gu,'').replace(/\r/g,'').trim()||'—';
  }
  function data(id){return normalize($(id)?.textContent);}
+ function fechaLocal(v){
+   const n=Date.parse(v||'');return Number.isFinite(n)?new Date(n).toLocaleString('es-EC'):normalize(v);
+ }
  function msg(t,error=false){
    const node=$('pdfMsg');if(node){
      node.textContent=t;node.style.color=error?'#9d2525':'#17613b';
@@ -127,7 +130,7 @@
          pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(28,54,76);
          pdf.text(pdf.splitTextToSize(normalize(photo.label),slotW)[0],x,y+53);
          pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(100,117,129);
-         pdf.text(pdf.splitTextToSize(normalize(photo.at||''),slotW)[0],x,y+57);
+         pdf.text(pdf.splitTextToSize(fechaLocal(photo.at),slotW)[0],x,y+57);
        }
        y+=64;
      }
