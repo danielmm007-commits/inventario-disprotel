@@ -89,7 +89,7 @@ function makePdf(Klass,groups,photos,images,logo,scale){
  const block=Math.max(client.h,service.h);
  within(block+3);printPanel(client,y);printPanel(service,y);y+=block+3;
  function note(title,value,x,w){
-   const h=8+height(value,w-6,8.1);return {title,value,x,w,h};
+   const h=11+height(value,w-6,8.1);return {title,value,x,w,h};
  }
  function notesRow(arr){
    const h=Math.max(...arr.map(p=>p.h));within(h+2);
@@ -105,12 +105,12 @@ function makePdf(Klass,groups,photos,images,logo,scale){
  const retired=[...$('retirados').querySelectorAll('.item')].map(x=>clean(x.textContent));
  const material=items.length?items:['Sin materiales registrados'];
  const retiro=retired.length?retired:['Sin equipos retirados'];
- const listHeight=(arr,w)=>arr.reduce((sum,value)=>sum+Math.max(3.8,height('• '+value,w-6,7.2)+1),0);
+ const listHeight=(arr,w)=>arr.reduce((sum,value)=>sum+Math.max(3.8,height('- '+value,w-6,7.2)+1),0);
  const panelH=9+Math.max(listHeight(material,95),listHeight(retiro,96));
  within(panelH+3);
  border(X,y,95,panelH);border(X+98,y,96,panelH);
  set(8.1,true,BLUE);pdf.text('MATERIALES Y EQUIPOS',X+3,y+5.6);pdf.text('EQUIPOS RETIRADOS',X+101,y+5.6);
- const list=(arr,x,w)=>{let cur=y+10;for(const v of arr){draw('• '+v,x+3,cur,w-6,7.2);cur+=Math.max(3.8,height('• '+v,w-6,7.2)+1)}};
+ const list=(arr,x,w)=>{let cur=y+10;for(const v of arr){draw('- '+v,x+3,cur,w-6,7.2);cur+=Math.max(3.8,height('- '+v,w-6,7.2)+1)}};
  list(material,X,95);list(retiro,X+98,96);y+=panelH+3;
  // Galería unificada: identificamos origen en cada fotografía y preservamos todas.
  within(10);set(9,true,BLUE);pdf.text('EVIDENCIAS FOTOGRÁFICAS · '+photos.length+' foto(s)',X+2,y+5);
@@ -121,8 +121,8 @@ function makePdf(Klass,groups,photos,images,logo,scale){
   const cols=photos.length<=2?2:photos.length<=4?2:3;
   const rows=Math.ceil(photos.length/cols),gap=2.3,cellW=(W-gap*(cols-1))/cols;
   const available=LIMIT-y-1;const cellH=Math.min(34,(available-gap*(rows-1))/rows);
-  if(cellH<18)throw Error('No caben '+photos.length+' fotografías con tamaño legible en una sola hoja A4. No se ha omitido ninguna evidencia.');
-  const photoH=cellH-9;
+  if(cellH<20)throw Error('No caben '+photos.length+' fotografías con tamaño legible en una sola hoja A4. No se ha omitido ninguna evidencia.');
+  const photoH=cellH-12;
   photos.forEach((ph,i)=>{
    const col=i%cols,row=Math.floor(i/cols),x=X+col*(cellW+gap),yy=y+row*(cellH+gap),im=images[i];
    border(x,yy,cellW,cellH,[250,252,254]);
