@@ -79,6 +79,10 @@
    }
    function field(k,v){text(k+': '+v,9,false)}
    pdf.setFillColor(7,53,101);pdf.rect(0,0,210,33,'F');
+   try{
+     const logo=await imageToJpeg('assets/login/logo%20dispro.jpg');
+     pdf.addImage(logo.data,'JPEG',176,4,19,19,undefined,'FAST');
+   }catch(e){console.warn('Logotipo opcional no disponible',e)}
    pdf.setFont('helvetica','bold');pdf.setFontSize(17);pdf.setTextColor(255,255,255);
    pdf.text('DISPROTEL',left,14);pdf.setFontSize(12);
    pdf.text('REPORTE DE SOPORTE TECNICO',left,23);
@@ -156,8 +160,14 @@
      if(mode==='share'){
        const file=new File([blob],name,{type:'application/pdf'});
        if(navigator.canShare?.({files:[file]})&&typeof navigator.share==='function'){
-         await navigator.share({files:[file],title:'Reporte de soporte DISPROTEL',text:name});
-         msg('Menú de compartir abierto.',false);
+         try{
+           await navigator.share({files:[file],title:'Reporte de soporte DISPROTEL',text:name});
+           msg('Se completó el menú para compartir el PDF.');
+         }catch(e){
+           if(e?.name==='AbortError')throw e;
+           downloadBlob(blob,name);
+           msg('El navegador no permitió abrir Compartir. Se descargó el PDF para enviarlo desde Archivos.');
+         }
        }else{
          downloadBlob(blob,name);
          msg('Este navegador no permite compartir archivos PDF. Se descargó el archivo para compartirlo desde tu teléfono.');
