@@ -10,7 +10,24 @@ const fmt=v=>{if(!v)return'—';try{return new Date(v).toLocaleString('es-EC')}c
 const ses=()=>{try{return JSON.parse(sessionStorage.getItem(KEY)||'null')||{}}catch{return{}}};
 const QS=new URLSearchParams(location.search);let FOCUS_STATE={};const DIRECT_FOCUS=!!QS.get('orden');try{const x=JSON.parse(sessionStorage.getItem('disprotel_mesa_focus_v1')||'null');if(DIRECT_FOCUS&&x&&Date.now()-Number(x.at||0)<5*60*1000)FOCUS_STATE=x;sessionStorage.removeItem('disprotel_mesa_focus_v1')}catch{}const FOCUS_OT=QS.get('orden')||FOCUS_STATE.orden_id||'',FOCUS_KIND=QS.get('focus')||FOCUS_STATE.focus||'',FOCUS_REMOTE=FOCUS_KIND==='acceso-remoto';let TAB=(QS.get('mesa_tab')||FOCUS_STATE.tab)==='SOPORTES'?'SOPORTES':'INSTALACIONES',DATA={instalaciones:[],soportes:[]},LOADING=false;
 async function post(url,action,p={}){const s=ses(),r=await fetch(url+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','x-session':s.session_token||''},body:JSON.stringify({session_token:s.session_token||'',action,...p})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error');return d}
-const mesa=(a,p={})=>post(API_MESA,a,p),ipApi=(a,p={})=>post(API_IP,a,p),arApi=(a,p={})=>post(API_AR,a,p);
+// Inventario IP acepta únicamente Content-Type en CORS. La sesión viaja en JSON.
+async function ipApi(action,p={}){
+ const token=ses().session_token||'';
+ if(!token)throw Error('La sesión de Fernando expiró. Ingresa nuevamente.');
+ let r;
+ try{
+  r=await fetch(API_IP+'?t='+Date.now(),{
+   method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({session_token:token,action,...p})
+  });
+ }catch(e){
+  throw Error('No se pudo conectar al servicio de IP. Actualiza el módulo e inténtalo de nuevo solo si la solicitud sigue PENDIENTE.');
+ }
+ const d=await r.json().catch(()=>({error:'La respuesta del servicio de IP no es válida'}));
+ if(!r.ok||d.error)throw Error(d.error||('Error del servicio IP: '+r.status));
+ return d;
+}
+const mesa=(a,p={})=>post(API_MESA,a,p),arApi=(a,p={})=>post(API_AR,a,p);
 function ocultarLegacy(){const sec=$('secPend');if(sec)sec.style.display='none';const old=$('accesoRemotoFernando');if(old)old.style.display='none'}
 function css(){if($('mesaCampoV7Style'))return;const s=document.createElement('style');s.id='mesaCampoV7Style';s.textContent=`
 #mesaTecnicaFernando{border:2px solid #2d7fd1;background:#f8fbff;padding:15px}
