@@ -1,27 +1,165 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reporte de soporte · DISPROTEL</title><style>*{box-sizing:border-box}body{margin:0;padding:14px;background:#eef2f4;color:#17313d;font-family:Arial,sans-serif}.sheet{max-width:900px;margin:auto;background:#fff;padding:24px;border-radius:16px;box-shadow:0 7px 24px rgba(0,0,0,.08)}h1,h2{margin:0 0 12px}.muted{color:#60737c;font-size:12px;line-height:1.45}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px}.box{border:1px solid #d9e3e7;border-radius:12px;padding:12px}.box b{display:block;font-size:11px;text-transform:uppercase;color:#60737c;margin-bottom:4px}.section{margin-top:22px}.item{border-bottom:1px solid #e5ecef;padding:8px 0}.photos{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.photos img{width:100%;border-radius:10px;border:1px solid #d9e3e7}.actions{max-width:900px;margin:14px auto;display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.btn,button{display:block;width:100%;border:0;border-radius:12px;padding:13px;background:#17313d;color:#fff;text-decoration:none;text-align:center;font-size:15px;font-weight:800;cursor:pointer}.secondary{background:#e8eef1;color:#17313d}.confirm{background:#17824f}.msg{max-width:900px;margin:14px auto;padding:12px;border-radius:10px;background:#fdecec;color:#9d2525}.msg.ok{background:#e8f6ed;color:#1b6c43}.gpsbox{background:#eef6fa;border:1px solid #bcd6e1;border-radius:12px;padding:12px}.upper{text-transform:uppercase}.draftBanner{max-width:900px;margin:14px auto;padding:12px;border-radius:12px;background:#fff7dd;border:1px solid #ebd18b;color:#715800;font-size:12px;font-weight:800}
-.supportReportHeader{display:flex;align-items:center;gap:15px;padding:14px 16px;margin:-24px -24px 16px;background:#073f69;color:#fff;border-radius:16px 16px 0 0}
-.supportReportHeader .logo{width:74px;height:55px;border-radius:7px;object-fit:contain;background:#fff;padding:5px}
-.supportReportHeader h1{margin:0 0 5px;font-size:22px;letter-spacing:.3px}
-.supportReportHeader p{margin:0;color:#d4eaf5;font-size:11px}
-.sheet h2{padding:8px 11px;border-left:5px solid #126eb0;background:#edf5fa;color:#0b345c;border-radius:6px;font-size:14px;margin-bottom:12px}
-.sheet .box,.sheet .photoItem,.sheet .item{break-inside:avoid}
-.photos{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
-.photoItem{border:1px solid #d7e5ec;border-radius:10px;padding:8px;min-width:0;background:#fbfdff}
-.photos img{height:165px;object-fit:contain;border-radius:7px;display:block;background:#edf2f5}
-.photoItem .muted{margin-top:6px;font-size:10px;word-break:break-word}
-.photoEmpty{padding:14px;background:#f1f6f9;border-radius:8px}
-.sheetDraft{display:none;padding:8px 11px;margin-bottom:12px;background:#fff3d6;color:#785200;font-weight:900;font-size:12px;border-radius:8px;text-align:center}
-.actions{grid-template-columns:repeat(2,minmax(0,1fr))}
-#pdfMsg{max-width:900px;margin:4px auto 8px;font-size:12px;line-height:1.4}
-@media(max-width:650px){.grid{grid-template-columns:1fr}.actions{grid-template-columns:1fr 1fr}.photos{grid-template-columns:repeat(2,minmax(0,1fr))}.sheet{padding:15px}.supportReportHeader{margin:-15px -15px 14px}.supportReportHeader h1{font-size:16px}.supportReportHeader .logo{width:58px;height:46px}.photos img{height:110px}.actions button,.actions .btn{padding:10px 5px;font-size:12px}}
-@page{size:A4;margin:12mm}@media print{body{background:#fff;padding:0}.sheet{box-shadow:none;border-radius:0;max-width:none}.actions,.msg,.draftBanner,#pdfMsg{display:none}}</style></head><body><div id="draftBanner" class="draftBanner" style="display:none">👁️ PREVISUALIZACIÓN · TODAVÍA NO SE HA DESCONTADO INVENTARIO NI CERRADO LA OT.</div><div class="actions"><a id="volver" class="btn secondary" href="#">← VOLVER A EDITAR</a><button id="cerrarBtn" class="confirm" style="display:none">✅ CONFIRMAR Y CERRAR TRABAJO</button><button id="printBtn" style="display:none" onclick="window.print()">🖨️ IMPRIMIR / GUARDAR PDF</button><button id="downloadPdfBtn" style="display:none">⬇️ DESCARGAR PDF</button><button id="sharePdfBtn" style="display:none">↗ COMPARTIR PDF</button></div><div id="pdfMsg" role="status" aria-live="polite"></div><div id="msg"></div><main id="sheet" class="sheet" style="display:none"><header class="supportReportHeader"><img class="logo" src="assets/login/logo%20dispro.jpg" alt="Logo DISPROTEL"><div><h1 id="titulo">REPORTE DE SOPORTE TÉCNICO</h1><p>DISPROTEL · INFORME DE TRABAJO REALIZADO · A4</p></div></header><div id="reporteMarca" class="sheetDraft">BORRADOR · PREVISUALIZACIÓN · SIN CIERRE DE OT</div><div class="section grid upper"><div class="box"><b>Orden</b><span id="ot"></span></div><div class="box"><b>Estado</b><span id="estado"></span></div><div class="box"><b>Cliente</b><span id="cliente"></span></div><div class="box"><b>Documento</b><span id="cedula"></span></div><div class="box"><b>Teléfono</b><span id="telefono"></span></div><div class="box"><b>Correo</b><span id="correo"></span></div><div class="box"><b>Servicio</b><span id="servicio"></span></div><div class="box"><b>Plan</b><span id="plan"></span></div><div class="box"><b>Dirección</b><span id="direccion"></span></div><div class="box"><b>Contacto visita</b><span id="contacto"></span></div><div class="box"><b>Generó</b><span id="solicitado"></span></div><div class="box"><b>Técnico</b><span id="tecnico"></span></div><div class="box"><b>Fecha y hora de solicitud</b><span id="fechaSolicitud"></span></div><div class="box"><b>Aceptada por</b><span id="aceptadoPor"></span></div><div class="box"><b>Grupo que atendió</b><span id="grupo"></span></div><div class="box"><b>Fecha y hora de aceptación</b><span id="fechaAceptacion"></span></div><div class="box"><b>Inicio de atención</b><span id="inicioTrabajo"></span></div><div class="box"><b>Fecha y hora de resolución</b><span id="finTrabajo"></span></div><div class="box"><b>Tipo de trabajo</b><span id="tipoTrabajo"></span></div><div class="box"><b>Tipo de conexión</b><span id="tipoConexion"></span></div><div class="box"><b>IP registrada</b><span id="ipCliente"></span></div><div class="box"><b>Inicio / resolución</b><span id="tiempos"></span></div></div><section class="section"><h2>UBICACIÓN GPS</h2><div id="gps" class="gpsbox upper"></div></section><section class="section"><h2>PROBLEMA REPORTADO</h2><div id="problema" class="box upper"></div></section><section class="section"><h2>REPORTE TÉCNICO</h2><div class="grid"><div class="box"><b>Diagnóstico</b><span id="diagnostico" class="upper"></span></div><div class="box"><b>Solución</b><span id="solucion" class="upper"></span></div></div><div class="box" style="margin-top:10px"><b>Observación</b><span id="observacion" class="upper"></span></div></section><section class="section"><h2>MATERIALES Y EQUIPOS INSTALADOS / USADOS</h2><div id="items" class="upper"></div></section><section class="section"><h2>EQUIPOS RETIRADOS / REEMPLAZADOS</h2><div id="retirados" class="upper"></div></section><section class="section"><h2>EVIDENCIAS DEL TÉCNICO EN CAMPO</h2><div class="muted">Fotografías vigentes por fecha y hora de captura.</div><div id="evidenciasTecnico" class="photos"></div></section><section class="section"><h2>COMPROBACIONES DE MESA TÉCNICA</h2><div class="muted">Imágenes vigentes de Fernando / Mesa Técnica en orden de ocurrencia.</div><div id="evidenciasMesa" class="photos"></div></section><footer class="section muted" style="border-top:1px solid #d7e5ec;padding-top:10px">Documento generado por DISPROTEL · OT <span id="otPie"></span>. <span id="reporteNotaPie">La previsualización es un borrador y no acredita el cierre.</span></footer></main><script>const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-soporte',MESA_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-mesa-tecnica',RET_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-soporte-retiros',TKEY='disprotel_trabajos_test',DRAFT='disprotel_soporte_borrador_v2';const $=id=>document.getElementById(id),up=v=>String(v??'').toLocaleUpperCase('es-EC');let SESSION='',ORDEN='',DATA=null,D=null,IS_DRAFT=false;function val(v){return v===null||v===undefined||v===''?'—':String(v)}function fmt(v){try{return v?new Date(v).toLocaleString('es-EC'):'—'}catch{return val(v)}}function cleanProblem(text){return String(text||'—').replaceAll('|',' · ')}async function call(action,payload={}){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_token:SESSION,action,...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error');return d}async function callRet(action,payload={}){const r=await fetch(RET_API,{method:'POST',headers:{'Content-Type':'application/json','x-session':SESSION},body:JSON.stringify({session_token:SESSION,action,orden_id:ORDEN,...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error');return d}function htmlEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reporte de soporte · DISPROTEL</title><style>
+@page{size:A4;margin:9mm}
+*{box-sizing:border-box}
+body{margin:0;padding:15px;background:#edf2f6;color:#203c57;font-family:Arial,Helvetica,sans-serif}
+.sheet{width:210mm;max-width:100%;min-height:297mm;margin:0 auto;background:#fff;padding:10mm 9mm 12mm;border-radius:2px;box-shadow:0 7px 24px #15304416}
+.reportHeader{display:grid;grid-template-columns:49mm 1fr auto;align-items:center;gap:8mm;padding:0 0 6mm;border-bottom:1px solid #d5e0e8}
+.reportHeader .logo{width:39mm;max-height:18mm;object-fit:contain}
+.reportHeader .title h1{margin:0;color:#193f6b;font-size:17px;line-height:1.12;letter-spacing:.15px}
+.reportHeader .title p{font-size:9px;color:#7c8d9d;margin:4px 0 0}
+.reportStatus{font-size:9px;white-space:nowrap;font-weight:800;border:1px solid #f2cf80;background:#fffaf0;color:#895c00;border-radius:10px;padding:10px}
+.reportStatus.complete{color:#126b43;background:#f0faf5;border-color:#91c8a6}
+.metaRow{display:grid;grid-template-columns:1fr 1.16fr 1.2fr 1.12fr 1.24fr .97fr;margin-top:5mm;border:1px solid #d7e1e8;border-radius:9px;overflow:hidden}
+.metaUnit{padding:7px 6px;border-right:1px solid #d7e1e8;min-width:0}
+.metaUnit:last-child{border:0}
+.metaUnit b{display:block;color:#83909a;font-size:7.3px;font-weight:600;margin-bottom:4px}
+.metaUnit span{font-size:9px;line-height:1.26;color:#183e6a;font-weight:800;overflow-wrap:anywhere}
+.reportSection{border:1px solid #d7e1e8;border-radius:10px;margin-top:6mm;padding:4mm;break-inside:avoid-page}
+.reportSection h2{margin:0 0 11px;font-size:11px;font-weight:900;line-height:1.18;color:#12629c}
+.reportSection h3{margin:0 0 7px;font-size:9.5px;font-weight:850;color:#174875}
+.reportSection .muted,.muted{color:#70818e;font-size:9px;line-height:1.35}
+.twoPane{display:grid;grid-template-columns:1.45fr 1fr;gap:5mm;align-items:start}
+.twoPane.equal{grid-template-columns:1fr 1fr}
+.reportRows{min-width:0}
+.infoLine{display:grid;grid-template-columns:29% 1fr;align-items:start;border-bottom:1px solid #e6edf2;padding:4px 0;gap:5px}
+.infoLine:last-child{border:0}
+.infoLine b{color:#475e6f;font-size:8px;font-weight:700}
+.infoLine span{font-size:8px;line-height:1.38;overflow-wrap:anywhere}
+.infoLine span.important{color:#194679;font-weight:800}
+.gpsbox{background:#fbfdff;border:1px solid #d7e3eb;border-radius:9px;padding:10px;font-size:9px;overflow-wrap:anywhere}
+.workGrid{display:grid;grid-template-columns:1fr 1fr;gap:6mm}
+.workDetails{margin-top:10px}
+.workNotes{border:1px solid #e6edf2;border-radius:8px;background:#fafcfd;padding:9px}
+.workNotes b{display:block;font-size:8px;color:#184a77;margin-bottom:5px}
+.workNotes div{font-size:9px;line-height:1.42;overflow-wrap:anywhere}
+.miniPanels{display:grid;grid-template-columns:1fr 1fr;gap:4mm;align-items:stretch}
+.miniPanels .reportSection{margin-top:6mm}
+.miniPanels .item{border-bottom:1px solid #e7edf1;padding:6px 1px;font-size:8px;line-height:1.35;overflow-wrap:anywhere}
+.miniPanels .item:last-child{border:0}
+.reportPhotoTitle{border-top:1px solid #e3ebf0;margin-top:12px;padding-top:10px}
+.photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2.5mm;align-items:start}
+.photoItem{border:1px solid #d6e0e7;border-radius:7px;background:#fff;overflow:hidden;break-inside:avoid-page;min-width:0}
+.photoItem img{display:block;width:100%;height:29mm;object-fit:cover;background:#f0f3f6}
+.photoItem .photoCaption{border-top:1px solid #e7edf1;text-align:center;font-size:8px;font-weight:750;color:#526478;padding:6px 4px;line-height:1.3;overflow-wrap:anywhere}
+.photoItem .photoDate{text-align:center;padding:0 3px 5px;font-size:7px;color:#8995a0}
+.photoEmpty{padding:12px;color:#71828d;font-size:9px;background:#f7fafc;border:1px dashed #d7e1e8;border-radius:8px}
+.reportFooter{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #d8e2ea;margin-top:6mm;padding-top:8px;font-size:8px;color:#788795}
+.reportFooter strong{color:#15528c}
+.sheetDraft{display:none;padding:7px 10px;margin-top:4mm;border:1px solid #ead8ac;background:#fffaf0;color:#886400;font-size:9px;font-weight:800;border-radius:8px}
+.actions{max-width:920px;margin:0 auto 12px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.btn,button{display:block;width:100%;padding:11px 7px;background:#143f6c;border:0;border-radius:9px;color:#fff;text-align:center;text-decoration:none;font-weight:800;font-size:12px;cursor:pointer}
+.secondary{background:#e4ebf0;color:#24445c}
+.confirm{background:#17824f}
+#downloadPdfBtn,#sharePdfBtn{background:#0964a6}
+.msg,.draftBanner,#pdfMsg{max-width:920px;margin:5px auto 12px;font-size:12px}
+.msg,.draftBanner{border-radius:10px;padding:10px;background:#fff6e1;color:#815300}
+.msg.ok{background:#eaf8ef;color:#14673c}
+#pdfMsg{min-height:0}
+.upper{text-transform:uppercase}
+@media(max-width:680px){
+body{padding:7px}
+.sheet{padding:10px;width:100%;min-height:auto}
+.reportHeader{grid-template-columns:23% 1fr auto;gap:7px}
+.reportHeader .logo{width:100%;max-height:44px}
+.reportHeader .title h1{font-size:12px}
+.reportHeader .title p{font-size:7px}
+.reportStatus{padding:5px;font-size:7px}
+.metaRow{grid-template-columns:repeat(3,minmax(0,1fr))}
+.metaUnit:nth-child(3){border-right:0}
+.metaUnit:nth-child(n+4){border-top:1px solid #d7e1e8}
+.metaUnit b{font-size:7px}.metaUnit span{font-size:8px}
+.twoPane,.twoPane.equal,.workGrid,.miniPanels{grid-template-columns:1fr}
+.reportSection{padding:11px}
+.photos{grid-template-columns:repeat(2,minmax(0,1fr))}
+.photoItem img{height:100px}
+.actions{grid-template-columns:repeat(2,minmax(0,1fr));padding:2px 4px}
+.actions .btn,.actions button{padding:10px 6px;font-size:11px}
+}
+@media print{
+html,body{background:#fff;margin:0;padding:0}
+.sheet{width:100%;max-width:none;min-height:0;box-shadow:none;padding:0;border-radius:0}
+.reportSection,.photoItem,.miniPanels,.metaRow{break-inside:avoid}
+.actions,.msg,.draftBanner,#pdfMsg{display:none!important}
+.reportHeader{grid-template-columns:49mm 1fr auto}
+.metaRow{grid-template-columns:1fr 1.16fr 1.2fr 1.12fr 1.24fr .97fr}
+.twoPane{grid-template-columns:1.45fr 1fr}
+.twoPane.equal,.workGrid,.miniPanels{grid-template-columns:1fr 1fr}
+.photos{grid-template-columns:repeat(3,minmax(0,1fr))}
+}</style></head><body><div id="draftBanner" class="draftBanner" style="display:none">👁️ PREVISUALIZACIÓN · TODAVÍA NO SE HA DESCONTADO INVENTARIO NI CERRADO LA OT.</div><div class="actions"><a id="volver" class="btn secondary" href="#">← VOLVER A EDITAR</a><button id="cerrarBtn" class="confirm" style="display:none">✅ CONFIRMAR Y CERRAR TRABAJO</button><button id="printBtn" style="display:none" onclick="window.print()">🖨️ IMPRIMIR / GUARDAR PDF</button><button id="downloadPdfBtn" style="display:none">⬇️ DESCARGAR PDF</button><button id="sharePdfBtn" style="display:none">↗ COMPARTIR PDF</button></div><div id="pdfMsg" role="status" aria-live="polite"></div><div id="msg"></div><main id="sheet" class="sheet" style="display:none">
+<header class="reportHeader">
+  <img class="logo" src="assets/login/logo%20dispro.jpg" alt="DISPROTEL Telecomunicaciones">
+  <div class="title"><h1 id="titulo">REPORTE DE SOPORTE TÉCNICO</h1><p>VISTA PREVIA · Documento técnico de la OT</p></div>
+  <span id="reportStatus" class="reportStatus">◷ NO FINALIZADO</span>
+</header>
+<div id="reporteMarca" class="sheetDraft">VISTA PREVIA · El reporte no representa un cierre de la OT.</div>
+<div class="metaRow">
+  <div class="metaUnit"><b>OT</b><span id="ot"></span></div>
+  <div class="metaUnit"><b>Fecha y hora</b><span id="fechaSolicitud"></span></div>
+  <div class="metaUnit"><b>Solicitante</b><span id="solicitado"></span></div>
+  <div class="metaUnit"><b>Técnico</b><span id="tecnico"></span></div>
+  <div class="metaUnit"><b>Grupo técnico</b><span id="grupo"></span></div>
+  <div class="metaUnit"><b>Estado de la OT</b><span id="estado"></span></div>
+</div>
+<section class="reportSection">
+ <h2>👤 CLIENTE / DATOS CONFIRMADOS</h2>
+ <div class="twoPane">
+   <div class="reportRows">
+     <div class="infoLine"><b>Cliente</b><span id="cliente" class="important"></span></div>
+     <div class="infoLine"><b>Cédula</b><span id="cedula"></span></div>
+     <div class="infoLine"><b>Teléfono</b><span id="telefono"></span></div>
+     <div class="infoLine"><b>Dirección</b><span id="direccion"></span></div>
+     <div class="infoLine"><b>Correo</b><span id="correo"></span></div>
+     <div class="infoLine"><b>Contacto de visita</b><span id="contacto"></span></div>
+   </div>
+   <div class="gpsbox"><h3>📍 UBICACIÓN GPS DEL SOPORTE</h3><div id="gps"></div></div>
+ </div>
+</section>
+<section class="reportSection">
+ <h2>📶 SERVICIO / INFORMACIÓN DE SOPORTE</h2>
+ <div class="twoPane equal">
+   <div class="reportRows">
+     <div class="infoLine"><b>Tipo de trabajo</b><span id="tipoTrabajo" class="important"></span></div>
+     <div class="infoLine"><b>Servicio</b><span id="servicio"></span></div>
+     <div class="infoLine"><b>Plan</b><span id="plan"></span></div>
+     <div class="infoLine"><b>Tipo de conexión</b><span id="tipoConexion"></span></div>
+     <div class="infoLine"><b>IP registrada</b><span id="ipCliente"></span></div>
+   </div>
+   <div class="reportRows">
+     <div class="infoLine"><b>Aceptada por</b><span id="aceptadoPor"></span></div>
+     <div class="infoLine"><b>Fecha aceptación</b><span id="fechaAceptacion"></span></div>
+     <div class="infoLine"><b>Inicio trabajo</b><span id="inicioTrabajo"></span></div>
+     <div class="infoLine"><b>Resolución</b><span id="finTrabajo"></span></div>
+     <div class="infoLine"><b>Inicio / resolución</b><span id="tiempos"></span></div>
+   </div>
+ </div>
+</section>
+<section class="reportSection">
+ <h2>🛠️ DIAGNÓSTICO Y TRABAJO REALIZADO</h2>
+ <div class="workNotes"><b>PROBLEMA REPORTADO</b><div id="problema"></div></div>
+ <div class="workGrid workDetails">
+  <div class="workNotes"><b>HALLAZGO / DIAGNÓSTICO</b><div id="diagnostico"></div></div>
+  <div class="workNotes"><b>SOLUCIÓN APLICADA</b><div id="solucion"></div></div>
+ </div>
+ <div class="workNotes" style="margin-top:10px"><b>OBSERVACIONES ADICIONALES</b><div id="observacion"></div></div>
+</section>
+<div class="miniPanels">
+ <section class="reportSection"><h2>🧰 MATERIALES Y EQUIPOS UTILIZADOS</h2><div id="items"></div></section>
+ <section class="reportSection"><h2>📡 EQUIPOS RETIRADOS / REEMPLAZADOS</h2><div id="retirados"></div></section>
+</div>
+<section class="reportSection">
+ <h2>📷 EVIDENCIAS FOTOGRÁFICAS</h2>
+ <div><h3>1. TÉCNICO EN CAMPO · EN ORDEN DE OCURRENCIA</h3><div id="evidenciasTecnico" class="photos"></div></div>
+ <div class="reportPhotoTitle"><h3>2. MESA TÉCNICA / FERNANDO · EN ORDEN DE OCURRENCIA</h3><div id="evidenciasMesa" class="photos"></div></div>
+</section>
+<div class="reportFooter"><span>DISPROTEL · <span id="otPie"></span></span><strong id="reporteNotaPie">◉ VISTA PREVIA PARA REVISIÓN</strong></div>
+</main><script>const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-soporte',MESA_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-mesa-tecnica',RET_API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-soporte-retiros',TKEY='disprotel_trabajos_test',DRAFT='disprotel_soporte_borrador_v2';const $=id=>document.getElementById(id),up=v=>String(v??'').toLocaleUpperCase('es-EC');let SESSION='',ORDEN='',DATA=null,D=null,IS_DRAFT=false;function val(v){return v===null||v===undefined||v===''?'—':String(v)}function fmt(v){try{return v?new Date(v).toLocaleString('es-EC'):'—'}catch{return val(v)}}function cleanProblem(text){return String(text||'—').replaceAll('|',' · ')}async function call(action,payload={}){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_token:SESSION,action,...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error');return d}async function callRet(action,payload={}){const r=await fetch(RET_API,{method:'POST',headers:{'Content-Type':'application/json','x-session':SESSION},body:JSON.stringify({session_token:SESSION,action,orden_id:ORDEN,...payload})});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(!r.ok)throw new Error(d.error||'Error');return d}function htmlEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 const FOTOS_CAMPO=new Set(['FACHADA','DANO_ENCONTRADO','EQUIPO_INSTALADO','TEST_VELOCIDAD','TV_CANALES','MATERIAL','SERIAL','ADICIONAL']);
 const LABELS_FOTOS={FACHADA:'Fachada / visita',DANO_ENCONTRADO:'Daño encontrado',EQUIPO_INSTALADO:'Equipo intervenido',TEST_VELOCIDAD:'Prueba de velocidad',TV_CANALES:'Televisión / canales',MATERIAL:'Material utilizado',SERIAL:'Serial del equipo',ADICIONAL:'Evidencia adicional'};
 function momentoFoto(v){const t=Date.parse(v||'');return Number.isFinite(t)?t:0}
 function renderGrupoReporte(id,rows){
  $(id).innerHTML=rows.length?rows.map((x,i)=>
   '<div class="photoItem"><img src="'+htmlEsc(x.url)+'" alt="'+htmlEsc(x.label)+'" loading="eager">'+
-  '<div class="muted"><b>'+(i+1)+'. '+htmlEsc(x.label)+'</b></div><div class="muted">'+htmlEsc(fmt(x.at))+'</div></div>'
+  '<div class="photoCaption">'+(i+1)+'. '+htmlEsc(x.label)+'</div><div class="photoDate">'+htmlEsc(fmt(x.at))+'</div></div>'
  ).join(''):'<div class="photoEmpty muted">No se registraron fotografías en este grupo.</div>';
 }
 async function evidenciasVigentesReporte(rows){
@@ -72,7 +210,7 @@ async function evidenciasVigentesReporte(rows){
  window.DISPROTEL_SOPORTE_EVIDENCIAS={tecnico,mesa:mesaFotos,mesa_disponible};
  return window.DISPROTEL_SOPORTE_EVIDENCIAS;
 }
-function renderRetirados(rows){if(!rows?.length){$('retirados').innerHTML='<div class="muted">NO SE REGISTRARON EQUIPOS RETIRADOS.</div>';return}$('retirados').innerHTML=rows.map(x=>{const d=x.detalle||{};const destino=d.transferencia?'PENDIENTE ENTREGA A BODEGA MATRIZ':d.baja?'SOLICITUD DE BAJA '+(d.baja.codigo||''):d.destino==='MANTENER'?'MINIBODEGA DEL GRUPO':d.destino||'—';return '<div class="item"><b>'+up(val(d.producto||'EQUIPO'))+' · '+up(val(d.marca||''))+' '+up(val(d.modelo||''))+'</b> · SERIAL '+up(val(d.serial))+'<br><span class="muted">MOTIVO: '+up(val(d.motivo_reemplazo))+' · CONDICIÓN: '+up(val(d.condicion))+' · DESTINO: '+up(destino)+(d.registro_historico_nuevo?' · EQUIPO HISTÓRICO RECUPERADO':'')+'</span></div>'}).join('')}function draft(){try{const d=JSON.parse(sessionStorage.getItem(DRAFT)||'null');return d?.orden_id===ORDEN?d:null}catch{return null}}function renderItems(items,fromDraft){if(!items?.length){$('items').innerHTML='<div class="muted">NO SE REGISTRARON MATERIALES O EQUIPOS.</div>';return}$('items').innerHTML=items.map(x=>{if(fromDraft)return`<div class="item"><b>${up(val(x.nombre))}</b> · ${x.tipo_control==='SERIAL'?'SERIAL '+val(x.serial):x.cantidad+' '+(x.tipo_control==='METROS'?'METRO(S)':'UNIDAD(ES)')}</div>`;return`<div class="item"><b>${up(val(x.producto?.producto))}</b> · ${x.tipo_control==='SERIAL'?'SERIAL '+val(x.serial?.serial):x.cantidad+' '+up(val(x.unidad))}</div>`}).join('')}async function cerrar(){if(!D)return;const b=$('cerrarBtn');b.disabled=true;b.textContent='CERRANDO TRABAJO...';try{const r=await call('finalize-support',{orden_id:ORDEN,diagnostico:up(D.diagnostico||''),solucion:up(D.solucion||''),observacion:up(D.observacion||''),resultado:'RESUELTO',items:(D.items||[]).map(x=>x.tipo_control==='SERIAL'?{tipo_control:'SERIAL',serial:x.serial}:{tipo_control:x.tipo_control,producto_id:x.producto_id,cantidad:x.cantidad})});sessionStorage.removeItem(DRAFT);$('draftBanner').style.display='none';b.style.display='none';$('printBtn').style.display='block';$('volver').href='trabajos-tecnicos.html';$('volver').textContent='← VOLVER A TRABAJOS';$('estado').textContent='RESUELTO';$('titulo').textContent='HOJA FINAL DEL TRABAJO TÉCNICO';$('msg').className='msg ok';$('msg').textContent='SOPORTE CERRADO CORRECTAMENTE. INVENTARIO APLICADO: '+r.total_lineas+' LÍNEA(S).';window.DISPROTEL_SOPORTE_BORRADOR=false;$('reporteMarca').style.display='none';$('reporteNotaPie').textContent='Trabajo finalizado en el sistema DISPROTEL.';try{const actualizado=await call('support-summary',{orden_id:ORDEN});const cierre=actualizado?.reporte?.resuelto_at;if(cierre){$('finTrabajo').textContent=fmt(cierre);$('tiempos').textContent=fmt(actualizado.reporte.iniciado_at)+' → '+fmt(cierre)}}catch(error){console.warn('No se pudo refrescar la fecha de cierre del reporte',error)}}catch(e){$('msg').className='msg';$('msg').textContent=up(e.message);b.disabled=false;b.textContent='✅ CONFIRMAR Y CERRAR TRABAJO'}}async function load(){ORDEN=new URLSearchParams(location.search).get('orden')||'';IS_DRAFT=new URLSearchParams(location.search).get('draft')==='1';const s=JSON.parse(sessionStorage.getItem(TKEY)||'null');if(!ordenValid()||!s?.session_token){$('msg').className='msg';$('msg').textContent='NO HAY UNA SESIÓN VÁLIDA O FALTA LA ORDEN.';return}SESSION=s.session_token;D=draft();window.DISPROTEL_SOPORTE_BORRADOR=IS_DRAFT;try{DATA=await call('support-summary',{orden_id:ORDEN});const o=DATA.orden,r=DATA.reporte||{},sv=o.servicio||{},tt=String(o.tipo_trabajo||'');
+function renderRetirados(rows){if(!rows?.length){$('retirados').innerHTML='<div class="muted">NO SE REGISTRARON EQUIPOS RETIRADOS.</div>';return}$('retirados').innerHTML=rows.map(x=>{const d=x.detalle||{};const destino=d.transferencia?'PENDIENTE ENTREGA A BODEGA MATRIZ':d.baja?'SOLICITUD DE BAJA '+(d.baja.codigo||''):d.destino==='MANTENER'?'MINIBODEGA DEL GRUPO':d.destino||'—';return '<div class="item"><b>'+up(val(d.producto||'EQUIPO'))+' · '+up(val(d.marca||''))+' '+up(val(d.modelo||''))+'</b> · SERIAL '+up(val(d.serial))+'<br><span class="muted">MOTIVO: '+up(val(d.motivo_reemplazo))+' · CONDICIÓN: '+up(val(d.condicion))+' · DESTINO: '+up(destino)+(d.registro_historico_nuevo?' · EQUIPO HISTÓRICO RECUPERADO':'')+'</span></div>'}).join('')}function draft(){try{const d=JSON.parse(sessionStorage.getItem(DRAFT)||'null');return d?.orden_id===ORDEN?d:null}catch{return null}}function renderItems(items,fromDraft){if(!items?.length){$('items').innerHTML='<div class="muted">NO SE REGISTRARON MATERIALES O EQUIPOS.</div>';return}$('items').innerHTML=items.map(x=>{if(fromDraft)return`<div class="item"><b>${up(val(x.nombre))}</b> · ${x.tipo_control==='SERIAL'?'SERIAL '+val(x.serial):x.cantidad+' '+(x.tipo_control==='METROS'?'METRO(S)':'UNIDAD(ES)')}</div>`;return`<div class="item"><b>${up(val(x.producto?.producto))}</b> · ${x.tipo_control==='SERIAL'?'SERIAL '+val(x.serial?.serial):x.cantidad+' '+up(val(x.unidad))}</div>`}).join('')}async function cerrar(){if(!D)return;const b=$('cerrarBtn');b.disabled=true;b.textContent='CERRANDO TRABAJO...';try{const r=await call('finalize-support',{orden_id:ORDEN,diagnostico:up(D.diagnostico||''),solucion:up(D.solucion||''),observacion:up(D.observacion||''),resultado:'RESUELTO',items:(D.items||[]).map(x=>x.tipo_control==='SERIAL'?{tipo_control:'SERIAL',serial:x.serial}:{tipo_control:x.tipo_control,producto_id:x.producto_id,cantidad:x.cantidad})});sessionStorage.removeItem(DRAFT);$('draftBanner').style.display='none';b.style.display='none';$('printBtn').style.display='block';$('volver').href='trabajos-tecnicos.html';$('volver').textContent='← VOLVER A TRABAJOS';$('estado').textContent='RESUELTO';$('titulo').textContent='REPORTE DE SOPORTE TÉCNICO';$('reportStatus').textContent='✓ FINALIZADO';$('reportStatus').classList.add('complete');$('msg').className='msg ok';$('msg').textContent='SOPORTE CERRADO CORRECTAMENTE. INVENTARIO APLICADO: '+r.total_lineas+' LÍNEA(S).';window.DISPROTEL_SOPORTE_BORRADOR=false;$('reporteMarca').style.display='none';$('reporteNotaPie').textContent='Trabajo finalizado en el sistema DISPROTEL.';try{const actualizado=await call('support-summary',{orden_id:ORDEN});const cierre=actualizado?.reporte?.resuelto_at;if(cierre){$('finTrabajo').textContent=fmt(cierre);$('tiempos').textContent=fmt(actualizado.reporte.iniciado_at)+' → '+fmt(cierre)}}catch(error){console.warn('No se pudo refrescar la fecha de cierre del reporte',error)}}catch(e){$('msg').className='msg';$('msg').textContent=up(e.message);b.disabled=false;b.textContent='✅ CONFIRMAR Y CERRAR TRABAJO'}}async function load(){ORDEN=new URLSearchParams(location.search).get('orden')||'';IS_DRAFT=new URLSearchParams(location.search).get('draft')==='1';const s=JSON.parse(sessionStorage.getItem(TKEY)||'null');if(!ordenValid()||!s?.session_token){$('msg').className='msg';$('msg').textContent='NO HAY UNA SESIÓN VÁLIDA O FALTA LA ORDEN.';return}SESSION=s.session_token;D=draft();window.DISPROTEL_SOPORTE_BORRADOR=IS_DRAFT;try{DATA=await call('support-summary',{orden_id:ORDEN});const o=DATA.orden,r=DATA.reporte||{},sv=o.servicio||{},tt=String(o.tipo_trabajo||'');
 if(IS_DRAFT){
  // El registro de hallazgo y solución ya se guarda en el numeral 2; el 4 es opcional.
  if(!r.canasta_confirmada_at||!Array.isArray(r.canasta_borrador))
@@ -80,4 +218,4 @@ if(IS_DRAFT){
  D={...(D||{orden_id:ORDEN}),diagnostico:r.diagnostico||'',solucion:r.solucion||'',
    observacion:r.observacion||'',items:r.canasta_borrador,basket_ok:true};
 }
-const tituloTipo=tt==='REUBICACION'?'REUBICACIÓN':tt==='CAMBIO_EQUIPOS'?'CAMBIO DE EQUIPOS':'SOPORTE TÉCNICO';if(IS_DRAFT&&!D)throw new Error('No existe el borrador de este soporte. Vuelve a Evidencias y novedades.');$('ot').textContent=up(val(o.id_orden));$('estado').textContent=IS_DRAFT?'PREVISUALIZACIÓN':o.estado==='COMPLETADA'?'RESUELTO':up(val(o.estado));$('cliente').textContent=up(val(o.cliente_nombre));$('cedula').textContent=up(val(o.cliente_identificacion));$('telefono').textContent=up(val(o.cliente_telefono));$('correo').textContent=up(val(o.cliente_correo));$('servicio').textContent=up(val(sv.codigo_servicio_legacy));$('plan').textContent=up(val(sv.plan_codigo||o.plan_solicitado));$('direccion').textContent=up(val(sv.direccion||o.cliente_direccion));const alt=o.contacto_visita_nombre&&up(o.contacto_visita_nombre)!==up(o.cliente_nombre);$('contacto').textContent=alt?up([o.contacto_visita_nombre,o.contacto_visita_telefono].filter(Boolean).join(' · ')):'—';$('solicitado').textContent=up(val(o.solicitado_por?.nombre));$('tecnico').textContent=up(val(r.tecnico?.nombre||o.aceptado_por?.nombre));$('fechaSolicitud').textContent=up(fmt(o.fecha_solicitud));$('aceptadoPor').textContent=up(val(o.aceptado_por?.nombre));$('grupo').textContent=up(val(o.grupo_asignado));$('fechaAceptacion').textContent=fmt(o.aceptado_at);$('inicioTrabajo').textContent=fmt(r.iniciado_at);$('finTrabajo').textContent=r.resuelto_at?fmt(r.resuelto_at):'EN PROCESO';$('tipoTrabajo').textContent=tt==='REUBICACION'?'REUBICACIÓN':tt==='CAMBIO_EQUIPOS'?'CAMBIO DE EQUIPOS':'SOPORTE TÉCNICO';$('tipoConexion').textContent=up(val(sv.tipo_conexion));$('ipCliente').textContent=val(sv.ip_cliente);$('otPie').textContent=o.id_orden||'—';$('tiempos').textContent=up(fmt(r.iniciado_at)+' → '+(r.resuelto_at?fmt(r.resuelto_at):'EN PROCESO'));$('problema').textContent=up(cleanProblem(o.observacion_solicitud));$('diagnostico').textContent=up(val(IS_DRAFT?D.diagnostico:r.diagnostico));$('solucion').textContent=up(val(IS_DRAFT?D.solucion:r.solucion));$('observacion').textContent=up(val(IS_DRAFT?D.observacion:r.observacion));renderItems(IS_DRAFT?D.items:DATA.items||[],IS_DRAFT);try{const rr=await callRet('list');renderRetirados(rr.retirados||[])}catch{renderRetirados([])}await evidenciasVigentesReporte(DATA.evidencias||[]);const g=D?.gps;if(IS_DRAFT&&g)$('gps').innerHTML=`<b>✅ GPS DE ESTA VISITA</b><br>LAT ${val(g.lat)} · LON ${val(g.lon)}<br>CAPTURADA: ${up(fmt(g.at))}`;else if(DATA.ultima_ubicacion?.encontrada){const u=DATA.ultima_ubicacion;$('gps').innerHTML=`<b>📍 UBICACIÓN HISTÓRICA DEL CLIENTE</b><br>${up(val(u.origen))} ${up(val(u.id_orden))} · ${up(fmt(u.fecha))}<br><a href="https://www.google.com/maps?q=${encodeURIComponent(u.latitud)},${encodeURIComponent(u.longitud)}" target="_blank" rel="noopener">ABRIR EN MAPS</a>`}else $('gps').textContent='NO SE REGISTRÓ UBICACIÓN GPS.';$('sheet').style.display='block';$('downloadPdfBtn').style.display='block';$('sharePdfBtn').style.display='block';if(IS_DRAFT){$('reporteNotaPie').textContent='Documento de previsualización; no acredita cierre de OT.';$('reporteMarca').style.display='block';$('draftBanner').style.display='block';$('cerrarBtn').style.display='block';$('volver').href='soporte-tecnico-v2.html?orden='+encodeURIComponent(ORDEN)+'&v=20261019-tarjetas';$('titulo').textContent='PREVISUALIZACIÓN · '+tituloTipo}else{$('printBtn').style.display='block';$('volver').href='trabajos-tecnicos.html';$('volver').textContent='← VOLVER A TRABAJOS'}}catch(e){$('msg').className='msg';$('msg').textContent=up(e.message)}}function ordenValid(){return !!ORDEN}$('cerrarBtn').onclick=cerrar;load();</script><script src="vendor/jspdf.umd.min.js?v=20261020"></script><script src="reporte-soporte-pdf-v1.js?v=20261020-a4-grupos1"></script></body></html>
+const tituloTipo=tt==='REUBICACION'?'REUBICACIÓN':tt==='CAMBIO_EQUIPOS'?'CAMBIO DE EQUIPOS':'SOPORTE TÉCNICO';if(IS_DRAFT&&!D)throw new Error('No existe el borrador de este soporte. Vuelve a Evidencias y novedades.');$('ot').textContent=up(val(o.id_orden));$('estado').textContent=IS_DRAFT?'PREVISUALIZACIÓN':o.estado==='COMPLETADA'?'RESUELTO':up(val(o.estado));$('reportStatus').textContent=IS_DRAFT?'◷ NO FINALIZADO':o.estado==='COMPLETADA'?'✓ FINALIZADO':'◷ EN PROCESO';$('reportStatus').classList.toggle('complete',!IS_DRAFT&&o.estado==='COMPLETADA');$('cliente').textContent=up(val(o.cliente_nombre));$('cedula').textContent=up(val(o.cliente_identificacion));$('telefono').textContent=up(val(o.cliente_telefono));$('correo').textContent=up(val(o.cliente_correo));$('servicio').textContent=up(val(sv.codigo_servicio_legacy));$('plan').textContent=up(val(sv.plan_codigo||o.plan_solicitado));$('direccion').textContent=up(val(sv.direccion||o.cliente_direccion));const alt=o.contacto_visita_nombre&&up(o.contacto_visita_nombre)!==up(o.cliente_nombre);$('contacto').textContent=alt?up([o.contacto_visita_nombre,o.contacto_visita_telefono].filter(Boolean).join(' · ')):'—';$('solicitado').textContent=up(val(o.solicitado_por?.nombre));$('tecnico').textContent=up(val(r.tecnico?.nombre||o.aceptado_por?.nombre));$('fechaSolicitud').textContent=up(fmt(o.fecha_solicitud));$('aceptadoPor').textContent=up(val(o.aceptado_por?.nombre));$('grupo').textContent=up(val(o.grupo_asignado));$('fechaAceptacion').textContent=fmt(o.aceptado_at);$('inicioTrabajo').textContent=fmt(r.iniciado_at);$('finTrabajo').textContent=r.resuelto_at?fmt(r.resuelto_at):'EN PROCESO';$('tipoTrabajo').textContent=tt==='REUBICACION'?'REUBICACIÓN':tt==='CAMBIO_EQUIPOS'?'CAMBIO DE EQUIPOS':'SOPORTE TÉCNICO';$('tipoConexion').textContent=up(val(sv.tipo_conexion));$('ipCliente').textContent=val(sv.ip_cliente);$('otPie').textContent=o.id_orden||'—';$('tiempos').textContent=up(fmt(r.iniciado_at)+' → '+(r.resuelto_at?fmt(r.resuelto_at):'EN PROCESO'));$('problema').textContent=up(cleanProblem(o.observacion_solicitud));$('diagnostico').textContent=up(val(IS_DRAFT?D.diagnostico:r.diagnostico));$('solucion').textContent=up(val(IS_DRAFT?D.solucion:r.solucion));$('observacion').textContent=up(val(IS_DRAFT?D.observacion:r.observacion));renderItems(IS_DRAFT?D.items:DATA.items||[],IS_DRAFT);try{const rr=await callRet('list');renderRetirados(rr.retirados||[])}catch{renderRetirados([])}await evidenciasVigentesReporte(DATA.evidencias||[]);const g=D?.gps;if(IS_DRAFT&&g)$('gps').innerHTML=`<b>✅ GPS DE ESTA VISITA</b><br>LAT ${val(g.lat)} · LON ${val(g.lon)}<br>CAPTURADA: ${up(fmt(g.at))}`;else if(DATA.ultima_ubicacion?.encontrada){const u=DATA.ultima_ubicacion;$('gps').innerHTML=`<b>📍 UBICACIÓN HISTÓRICA DEL CLIENTE</b><br>${up(val(u.origen))} ${up(val(u.id_orden))} · ${up(fmt(u.fecha))}<br><a href="https://www.google.com/maps?q=${encodeURIComponent(u.latitud)},${encodeURIComponent(u.longitud)}" target="_blank" rel="noopener">ABRIR EN MAPS</a>`}else $('gps').textContent='NO SE REGISTRÓ UBICACIÓN GPS.';$('sheet').style.display='block';$('downloadPdfBtn').style.display='block';$('sharePdfBtn').style.display='block';if(IS_DRAFT){$('reporteNotaPie').textContent='Documento de previsualización; no acredita cierre de OT.';$('reporteMarca').style.display='block';$('draftBanner').style.display='block';$('cerrarBtn').style.display='block';$('volver').href='soporte-tecnico-v2.html?orden='+encodeURIComponent(ORDEN)+'&v=20261019-tarjetas';$('titulo').textContent='REPORTE DE '+tituloTipo}else{$('printBtn').style.display='block';$('volver').href='trabajos-tecnicos.html';$('volver').textContent='← VOLVER A TRABAJOS'}}catch(e){$('msg').className='msg';$('msg').textContent=up(e.message)}}function ordenValid(){return !!ORDEN}$('cerrarBtn').onclick=cerrar;load();</script><script src="vendor/jspdf.umd.min.js?v=20261020"></script><script src="reporte-soporte-pdf-v1.js?v=20261020-a4-grupos1"></script></body></html>
