@@ -448,12 +448,15 @@ function comprobacionesActualesTecnico(rows){
 let FIRMA_CATEGORIAS_EV='';
 function renderTypes(){
  const ev=evidenciasVigentesSoporte(DATA?.evidencias||[]);
+ // Tipos históricos o no previstos: también deben mostrarse (nunca ocultar una foto).
+ const extras=[...new Set(ev.map(x=>String(x.tipo_foto||'')).filter(t=>t&&!TYPES.some(k=>k[0]===t)))].map(t=>[t,'📷 '+up(t).replaceAll('_',' '),'Fotografía existente de esta OT']);
+ const visibleTypes=[...TYPES,...extras];
  const signature=JSON.stringify(ev.map(x=>[
   x.id||x.offline_sync_id,x.tipo_foto,x.fecha_hora_captura,x.offline_pending,x.url
  ]));
  if(FIRMA_CATEGORIAS_EV===signature)return;
  FIRMA_CATEGORIAS_EV=signature;
- $('evTypes').innerHTML=TYPES.map(t=>{
+ $('evTypes').innerHTML=visibleTypes.map(t=>{
   const fotos=ev.filter(x=>x.tipo_foto===t[0]),has=fotos.length>0;
   const thumbs=fotos.map(x=>{
    const id=String(x.id||x.offline_sync_id||x.tipo_foto);
@@ -471,10 +474,10 @@ function renderTypes(){
   return '<div class="evChoice evIntegratedCard" data-ev-tipo="'+esc(t[0])+'">'+
    '<div class="evIntegratedTitle"><b>'+esc(t[1])+'</b><span class="evCount">'+fotos.length+'</span></div>'+
    '<div class="evInlineDescription">'+esc(t[2])+'</div>'+
-   '<div class="evMenu">'+
+   (TYPES.some(k=>k[0]===t[0])?'<div class="evMenu">'+
     '<button type="button" class="secondary" data-ev-cam="'+esc(t[0])+'">📷 '+(has&&t[0]!=='ADICIONAL'?'VOLVER A TOMAR':'TOMAR FOTO')+'</button>'+
     '<button type="button" class="secondary" data-ev-upload="'+esc(t[0])+'">⬆️ '+(has&&t[0]!=='ADICIONAL'?'REEMPLAZAR':'SUBIR FOTO')+'</button>'+
-   '</div>'+
+   '</div>':'')+
    '<div class="evInlinePhotos '+(fotos.length>1?'multiple':'')+'">'+
     (has?thumbs:'<div class="evEmpty">📷 Sin fotografía. Usa uno de los botones para añadirla.</div>')+
    '</div></div>';
