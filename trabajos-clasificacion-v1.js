@@ -24,7 +24,9 @@
   .attentionMode .job.jobCompact:not(.expanded)>:not(.workKind):not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle):not(.jobQuickContinue),.workGrid.allDetailsCollapsed .job.jobCompact:not(.expanded)>:not(.workKind):not(.jobTitle):not(.badge):not(.jobQuickMeta):not(.jobToggle):not(.jobQuickContinue){display:none!important}.workGrid.allDetailsOpen .workKind,.workGrid.allDetailsOpen .jobQuickMeta,.workGrid.allDetailsOpen .jobToggle{display:none!important}
   .jobToggle{position:relative;display:flex!important;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:7px;padding:7px 10px!important;border:1px solid #c9d9e0!important;border-radius:4px!important;background:#f5f8f9!important;color:#36515d!important;font-size:10px!important;font-weight:600!important;letter-spacing:0;box-shadow:none!important;overflow:hidden;animation:none!important}
   .jobQuickContinue{display:flex!important;align-items:center;justify-content:center;width:100%;margin-top:7px;min-height:32px!important;padding:7px 10px!important;border:1px solid #0b7469!important;border-radius:4px!important;background:#0b7469!important;color:#fff!important;font-size:11px!important;font-weight:600!important;box-shadow:none!important;cursor:pointer;transition:background-color .14s ease,opacity .14s ease,transform .08s ease!important}
-  .jobQuickContinue:hover{background:#09675e!important;opacity:.96!important;transform:none!important}.jobQuickContinue:active{transform:translateY(1px)!important;opacity:.88!important}
+  .attentionMode .job.jobClickable{cursor:pointer;touch-action:manipulation}
+.attentionMode .job.jobClickable:focus-visible{outline:3px solid #176fc4;outline-offset:3px}
+.jobQuickContinue:hover{background:#09675e!important;opacity:.96!important;transform:none!important}.jobQuickContinue:active{transform:translateY(1px)!important;opacity:.88!important}
   .jobToggle:before{content:'▾';display:inline;color:#60737c;font-size:10px}
   .jobToggle:after{content:none!important}
   .jobSupport .jobToggle{border-color:#f2c77c!important;background:linear-gradient(135deg,#fff7e8,#ffffff 48%,#ffe9bf)!important;color:#754500!important;box-shadow:0 7px 18px #f59e0b2e}
@@ -98,8 +100,28 @@
     if(cls){job.classList.add(...cls.split(/\s+/).filter(Boolean));const k=document.createElement('span');k.className='workKind';k.textContent=label;job.prepend(k)}
     const id=job.dataset.ordenId||'';
     if(id&&window.__disprotelOpenJobId===id)job.classList.add('expanded');
-    if(job.closest('#mios')&&state(job)==='EN_PROCESO'&&id&&!job.querySelector('.jobQuickContinue')){
-      const q=document.createElement('button');q.type='button';q.className='jobQuickContinue';q.textContent='▶ CONTINUAR SOPORTE';q.onclick=e=>{e.stopPropagation();if(typeof window.abrirSoporte==='function')window.abrirSoporte(id)};job.appendChild(q)
+    const tt=String(job.dataset.tipoTrabajo||'').toUpperCase();
+    const isInstallation=tt.startsWith('INSTALACION')||tt==='ACTIVACION_TV_EXISTENTE';
+    const isSupport=['SOPORTE_TECNICO','REPARACION_TRONCAL','INTERVENCION_NODO','CAMBIO_EQUIPOS','REUBICACION'].includes(tt);
+    const isActive=job.closest('#mios')&&!isClosed(job)&&!isAssigned(job);
+    const canContinue=isActive&&id&&(isInstallation||(isSupport&&state(job)==='EN_PROCESO'));
+    if(canContinue){
+      job.classList.add('jobClickable');
+      job.tabIndex=0;job.setAttribute('role','link');
+      job.setAttribute('aria-label','Continuar '+(isInstallation?'instalación':'soporte')+' en su numeral pendiente');
+      const abrir=()=>{if(typeof window.continuarOrdenDesdeTarjeta==='function')window.continuarOrdenDesdeTarjeta(id)};
+      job.addEventListener('click',e=>{
+        if(e.target.closest('button,a,input,select,textarea,[role="button"]'))return;
+        abrir();
+      });
+      job.addEventListener('keydown',e=>{
+        if(e.target!==job||!['Enter',' '].includes(e.key))return;
+        e.preventDefault();abrir();
+      });
+      const q=document.createElement('button');q.type='button';q.className='jobQuickContinue';
+      q.textContent=isInstallation?'▶ CONTINUAR INSTALACIÓN':'▶ CONTINUAR SOPORTE';
+      q.onclick=e=>{e.stopPropagation();abrir()};
+      job.appendChild(q);
     }
     const b=document.createElement('button');b.type='button';b.className='jobToggle';b.textContent=job.classList.contains('expanded')?'OCULTAR DETALLE':'VER DETALLE';
     b.onclick=()=>{job.classList.toggle('expanded');window.__disprotelOpenJobId=job.classList.contains('expanded')?id:'';b.textContent=job.classList.contains('expanded')?'OCULTAR DETALLE':'VER DETALLE'};

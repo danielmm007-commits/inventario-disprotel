@@ -50,7 +50,11 @@
     if(usuarioToco&&retomado)return;
     if(!PASOS.includes(id)||!$(id))return;
     const actual=PASOS.find(x=>$(x)?.open);
-    if(actual===id)return;
+    if(actual===id){
+      setTimeout(()=>$(id)?.scrollIntoView({behavior:'auto',block:'start'}),70);
+      retomado=true;
+      return;
+    }
     abriendo=true;
     PASOS.forEach(x=>{
       const el=$(x);
@@ -67,7 +71,9 @@
     const evid=txt('stEvidencias')+' '+txt('evMsg');
     const hayItemsGuardados=articulosGuardados();
 
-    if(ipDefinitiva()&&/SUBIDA|CARGADA|EVIDENCIA|FOTO|GPS|CIERRE/.test(evid))return 'accEvidencias';
+    // Una IP definitiva validada por el sistema habilita continuar desde el numeral 5,
+    // incluso si aún no se ha cargado ninguna fotografía.
+    if(ipDefinitiva())return 'accEvidencias';
     if(hayItemsGuardados&&/ESPERANDO IP|SOLICITUD ENVIADA|IP AÚN NO SOLICITADA|IP AUN NO SOLICITADA|IP CONFIRMADA|ASIGNADA|PENDIENTE/.test(ip))return 'accIp';
     if(!hayItemsGuardados)return 'accTrabajo';
     if(!/COMPLETO|DISPONIBLE/.test(doc))return 'accDoc';
