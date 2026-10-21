@@ -141,8 +141,8 @@ button,.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:800;cursor
   const estado=norm(o.estado),events=h.map(x=>norm(x.evento));
   if(terminal(estado))return 6;
   // Los hitos provienen de eventos y estados reales; sin extrapolar numerales técnicos.
-  if(events.some(v=>/EVIDENCIA|FOTO|CIERRE|COMPROBACION/.test(v))||/EVIDENCIA/.test(estado))return 5;
-  if(/EN_PROCESO|EJECU|TRABAJO/.test(estado)||events.some(v=>/EN_PROCESO|TRABAJO_INICIADO/.test(v)))return 4;
+  if(events.some(v=>(/EVIDENCIA|FOTO/.test(v)&&!/GPS|LLEGADA/.test(v))||/CIERRE/.test(v))||/EVIDENCIA/.test(estado))return 5;
+  if(/EN_PROCESO|EJECU|TRABAJO|ESPERANDO_IP|IP_ASIGNADA|ESPERANDO_ONU|ONU_AUTORIZADA|ACCESO_REMOTO/.test(estado)||events.some(v=>/EN_PROCESO|TRABAJO_INICIADO|IP_SOLICITADA|IP_CONFIRMADA/.test(v)))return 4;
   if(/EN_SITIO|LLEGAD/.test(estado)||events.some(v=>/LLEGADA|GPS_EVIDENCIAS_CAPTURADO/.test(v)))return 3;
   if(/EN_CAMINO|TRASLAD/.test(estado)||events.some(v=>/EN_CAMINO|TRASLAD/.test(v)))return 2;
   if(/ASIGNAD|TOMAD|ACEPTAD|RECIBID|IP_ASIGNADA/.test(estado)||o.grupo_asignado||events.some(v=>/ASIGNAD|TOMAD|RECEPCION/.test(v)))return 1;
