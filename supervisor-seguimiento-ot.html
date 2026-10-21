@@ -39,6 +39,37 @@ button,.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:800;cursor
 .event small{display:block;color:var(--muted);margin-top:4px}
 #error{color:#a92323;font-weight:800;font-size:12px}
 @media(max-width:750px){.grid{grid-template-columns:1fr}.wrap{padding:10px}.hero{padding:15px}h1{font-size:20px}.info{grid-template-columns:100px 1fr}.actions .btn,.actions button{flex:1 1 100%}}
+
+/* Seguimiento ejecutivo: resumen, avance y última acción; sin listado histórico. */
+.wrap{max-width:940px}
+.hero{padding:15px 19px}
+.hero h1{font-size:21px;line-height:1.25}
+.actions{margin:9px 0}
+.actions .btn,.actions button{font-size:12px;padding:9px 12px}
+.card.reportCard{padding:14px 16px;margin:10px 0}
+.reportTop{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.reportTop h2{margin:0}
+.otSummary{display:flex;gap:7px 14px;flex-wrap:wrap;margin-top:9px}
+.otSummary .summaryItem{font-size:11px;line-height:1.4;color:#496475}
+.otSummary .summaryItem b{display:inline;color:#153f6d;font-size:11px}
+.otSummary .summaryItem.primary{font-weight:800}
+.reportCard .steps{grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:10px;overflow-x:auto;padding:2px 0 4px}
+.reportCard .step{border-radius:9px;padding:7px 2px;min-width:74px}
+.reportCard .step .ball{width:21px;height:21px;font-size:10px}
+.reportCard .step span{font-size:9px;margin-top:6px}
+.reportCard .stepNote{margin:5px 0 0;font-size:10px}
+.latestAction{border:1px solid #d7e9f5;background:#f5faff;border-radius:11px;padding:11px 12px;margin-top:10px}
+.latestAction strong{display:block;color:#153f6d;font-size:13px}
+.latestAction small{display:block;color:#687f8b;font-size:11px;margin-top:5px}
+.reportCard .callout{margin-top:9px;padding:10px 12px}
+#error:empty{display:none}
+@media(max-width:750px){
+ .hero h1{font-size:18px}
+ .card.reportCard{padding:12px}
+ .reportCard .steps{grid-template-columns:repeat(7,76px)}
+ .otSummary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .actions .btn,.actions button{flex:1 1 auto}
+}
 </style>
 </head>
 <body>
@@ -54,20 +85,20 @@ button,.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:800;cursor
  <a class="btn" id="mesaLink" style="display:none" href="#">🧰 ATENDER EN MESA TÉCNICA</a>
 </nav>
 <div id="error" role="alert"></div>
-<section class="card">
- <h2>Orden y cliente</h2>
- <div id="datos" class="muted">Consultando información vigente…</div>
+<section class="card reportCard">
+ <div class="reportTop"><h2>Resumen de la OT</h2><span id="actualizado" class="muted" aria-live="polite"></span></div>
+ <div id="datos" class="otSummary"><span class="muted">Consultando datos…</span></div>
 </section>
-<section class="card">
- <h2>Etapa y próxima intervención</h2>
- <div id="estado" class="muted">Comprobando avance…</div>
- <div id="etapas" class="steps"></div>
- <div id="proxima" class="callout">Consultando el estado operativo…</div>
+<section class="card reportCard">
+ <div class="reportTop"><h2>Avance del trabajo</h2><div id="estado" aria-live="polite"></div></div>
+ <div id="etapas" class="steps" aria-label="Avance referencial de la orden"></div>
+ <p class="muted stepNote">El avance se muestra según los estados y registros reales de la OT; no sustituye los numerales de ejecución del técnico.</p>
 </section>
-<div class="grid">
- <section class="card"><h2>Últimos movimientos</h2><div id="historial" class="muted">Cargando historial…</div></section>
- <section class="card"><h2>Solicitudes de Mesa Técnica</h2><div id="requerimientos" class="muted">Cargando solicitudes…</div></section>
-</div>
+<section class="card reportCard">
+ <h2>Última acción registrada</h2>
+ <div id="historial" class="latestAction"><span class="muted">Consultando la última acción…</span></div>
+ <div id="proxima" class="callout">Consultando qué sigue…</div>
+</section>
 </div>
 <script>
 (()=>{
@@ -106,46 +137,64 @@ button,.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:800;cursor
   try{sessionStorage.setItem('disprotel_mesa_focus_v1',JSON.stringify({orden_id:id,focus:'mesa-ot',tab,at:Date.now()}))}catch{}
   return 'asignacion-ip.html?mesa_tab='+encodeURIComponent(tab)+'&focus=mesa-ot&orden='+encodeURIComponent(id);
  }
- function estimate(o,h,reqs){
-  const all=h.map(x=>norm(x.evento)).join('|'),s=norm(o.estado);
-  if(terminal(s))return 7;
-  if(reqs.length)return 5;
-  if(/EVIDEN|COMPROB|CIERRE/.test(s+' '+all))return 6;
-  if(/IP.*ASIGN|ONU|ACCESO.REMOTO/.test(s+' '+all))return 5;
-  if(/PROCESO|EJECU|TRABAJO.INICIADO|SOPORTE_EN_PROCESO/.test(s+' '+all))return 4;
-  if(/EN.SITIO|LLEGAD|GPS/.test(s+' '+all))return 3;
-  if(/CAMINO|TRASLADO/.test(s+' '+all))return 2;
-  if(/ACEPTAD|ASIGNAD|TOMAD|RECIBID/.test(s+' '+all))return 1;
+ function stage(o,h){
+  const estado=norm(o.estado),events=h.map(x=>norm(x.evento));
+  if(terminal(estado))return 6;
+  // Los hitos provienen de eventos y estados reales; sin extrapolar numerales técnicos.
+  if(events.some(v=>/EVIDENCIA|FOTO|CIERRE|COMPROBACION/.test(v))||/EVIDENCIA/.test(estado))return 5;
+  if(/EN_PROCESO|EJECU|TRABAJO/.test(estado)||events.some(v=>/EN_PROCESO|TRABAJO_INICIADO/.test(v)))return 4;
+  if(/EN_SITIO|LLEGAD/.test(estado)||events.some(v=>/LLEGADA|GPS_EVIDENCIAS_CAPTURADO/.test(v)))return 3;
+  if(/EN_CAMINO|TRASLAD/.test(estado)||events.some(v=>/EN_CAMINO|TRASLAD/.test(v)))return 2;
+  if(/ASIGNAD|TOMAD|ACEPTAD|RECIBID|IP_ASIGNADA/.test(estado)||o.grupo_asignado||events.some(v=>/ASIGNAD|TOMAD|RECEPCION/.test(v)))return 1;
   return 0;
+ }
+ const ACTION_LABELS={
+  ORDEN_CREADA:'OT creada',TRABAJO_TOMADO:'Trabajo tomado por el técnico',
+  RECEPCION_OT_CONFIRMADA:'Recepción confirmada',
+  SOPORTE_EN_CAMINO:'Técnico en camino',SOPORTE_EN_PROCESO:'Soporte iniciado',
+  GPS_EVIDENCIAS_CAPTURADO:'Ubicación / evidencia de llegada registrada',
+  EVIDENCIA_INSTALACION_GUARDADA:'Fotografía de instalación guardada',
+  IP_SOLICITADA:'Solicitud de IP enviada',
+  IP_CONFIRMADA_MANUAL_AUTORIZADO:'IP confirmada',
+  ACCESO_REMOTO_SOLICITADO:'Acceso remoto solicitado',
+  ACCESO_REMOTO_CONFIRMADO:'Acceso remoto confirmado',
+  TRABAJO_CONCLUIDO:'Trabajo finalizado'
+ };
+ function lastAction(h){
+  const registro=(h||[]).filter(x=>x?.evento).sort((a,b)=>(Date.parse(b.created_at)||0)-(Date.parse(a.created_at)||0))[0];
+  if(!registro)return '<span class="muted">Todavía no hay movimientos registrados.</span>';
+  const key=norm(registro.evento);
+  const label=ACTION_LABELS[key]||String(registro.evento).replaceAll('_',' ').toLocaleLowerCase('es-EC');
+  return '<strong>'+esc(label)+'</strong><small>'+
+    esc(fmt(registro.created_at))+' · '+esc(registro.realizado_por?.nombre||'Registro del sistema')+'</small>';
  }
  function render(detail,board){
   const o=detail.orden||{},h=detail.historial||[],b=(board?.orders||[]).find(x=>String(x.id)===String(orderId))||o;
-  const reqs=pendings(b),tab=tipo(o),idx=estimate(o,h,reqs);
+  const reqs=pendings(b),tab=tipo(o),idx=stage(o,h);
   $('titulo').textContent=(o.id_orden||'OT')+' · '+(o.cliente_nombre_final||o.cliente_nombre||'Cliente');
-  $('datos').innerHTML=kv('OT',o.id_orden)+kv('Tipo',String(o.tipo_trabajo||'').replaceAll('_',' '))+
-    kv('Cliente',o.cliente_nombre_final||o.cliente_nombre)+kv('Estado',o.estado)+
-    kv('Grupo',o.grupo_asignado||o.grupo_destino)+kv('Técnico responsable',o.aceptado_por?.nombre)+
-    kv('Solicitante',o.solicitado_por?.nombre)+kv('Fecha de creación',fmt(o.created_at));
-  const labels=['Creada','Asignada','En camino','En sitio','En trabajo','Mesa Técnica','Evidencias','Finalizada'];
+  const summary=(name,value,extra='')=>'<span class="summaryItem '+extra+'"><b>'+esc(name)+':</b> '+esc(value||'—')+'</span>';
+  $('datos').innerHTML=summary('Tipo',String(o.tipo_trabajo||'').replaceAll('_',' '),'primary')+
+    summary('Grupo',o.grupo_asignado||o.grupo_destino)+summary('Técnico',o.aceptado_por?.nombre)+
+    summary('Estado',o.estado);
+  const labels=['Creada','Asignada','En camino','En sitio','En ejecución','Evidencias','Finalizada'];
   $('etapas').innerHTML=labels.map((label,i)=>'<div class="step '+(i<idx?'done':i===idx?'current':'')+'"><div class="ball">'+(i<idx?'✓':i+1)+'</div><span>'+esc(label)+'</span></div>').join('');
-  $('estado').innerHTML='<span class="state '+(reqs.length?'pending':'')+'">'+esc(o.estado||'Activa')+'</span> · Etapa de referencia según estado e historial';
+  $('estado').innerHTML='<span class="state '+(reqs.length?'pending':'')+'">'+esc(o.estado||'Activa')+'</span>';
+  $('historial').innerHTML=lastAction(h);
+  $('actualizado').textContent='Actualizado '+new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'});
+  const link=$('mesaLink');
   if(reqs.length){
    $('proxima').className='callout attention';
-   $('proxima').textContent='Requiere intervención de Fernando en Mesa Técnica: '+reqs.map(x=>x.label).join(' · ');
-   const link=$('mesaLink');link.style.display='inline-block';
-   link.onclick=()=>{link.href=mesaUrl(orderId,tab)};
+   $('proxima').textContent='🧰 Pendiente para Fernando: '+reqs[0].label+(reqs.length>1?' y '+(reqs.length-1)+' solicitud(es) más.':'.');
+   link.style.display='inline-block';
    link.href='asignacion-ip.html?mesa_tab='+encodeURIComponent(tab)+'&focus=mesa-ot&orden='+encodeURIComponent(orderId);
+   link.onclick=()=>{link.href=mesaUrl(orderId,tab)};
   }else{
-   $('mesaLink').style.display='none';
+   link.style.display='none';link.onclick=null;
    $('proxima').className='callout';
    $('proxima').textContent=terminal(o.estado)?
-    'Esta OT ya terminó; el seguimiento permanece disponible en solo lectura.':
-    'Sin requerimientos pendientes para Fernando. El siguiente paso operativo corresponde al técnico en campo; aquí puedes consultar los avances y actualizar la información.';
+    '✅ Trabajo finalizado. Seguimiento disponible para consulta.':
+    '⏳ Sin requerimientos pendientes para Fernando. El trabajo continúa con el técnico de campo.';
   }
-  $('historial').innerHTML=h.length?h.map(e=>'<div class="event"><b>'+esc(String(e.evento||'').replaceAll('_',' '))+'</b><small>'+esc(fmt(e.created_at))+' · '+esc(e.realizado_por?.nombre||'Sistema')+'</small></div>').join(''):
-   '<div class="muted">No hay movimientos registrados.</div>';
-  $('requerimientos').innerHTML=reqs.length?reqs.map(x=>'<div class="event"><b>'+esc(x.label)+'</b><small>'+esc(x.estado||'PENDIENTE')+'</small></div>').join(''):
-    '<div class="muted">No hay solicitudes pendientes para Mesa Técnica en esta OT.</div>';
  }
  async function load(){
   if(loading)return;
@@ -160,6 +209,7 @@ button,.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:800;cursor
  }
  $('refresh').addEventListener('click',load);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
+ setInterval(()=>{if(!document.hidden&&!loading)load()},60000);
  load();
 })();
 </script>
