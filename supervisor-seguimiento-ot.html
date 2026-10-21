@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seguimiento de OT · Supervisión técnica DISPROTEL</title>
+<style>
+:root{--navy:#0b2a5c;--blue:#166eb6;--ink:#1d3544;--muted:#6c8190;--line:#d8e5ed;--bg:#edf5f9;--green:#16734a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:var(--ink)}
+.wrap{max-width:1040px;margin:0 auto;padding:17px}
+.hero{border-radius:17px;padding:19px 20px;background:linear-gradient(125deg,#092b5d,#176eb7);color:#fff}
+.hero small{color:#cbe4f8;font-weight:800;letter-spacing:.09em}
+h1{margin:6px 0;font-size:23px}h2{margin:0 0 10px;font-size:17px;color:var(--navy)}
+.hero .muted{color:#c7e0f5}.muted{font-size:12px;color:var(--muted);line-height:1.5}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}
+button,.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:800;cursor:pointer;font-size:13px;text-decoration:none;display:inline-block;background:var(--blue);color:#fff}
+.btn.secondary,button.secondary{background:#e6eef5;color:#24465f}
+.btn:focus-visible,button:focus-visible{outline:3px solid #6fbaff;outline-offset:2px}
+.card{border:1px solid var(--line);border-radius:15px;background:#fff;padding:16px;margin:12px 0;box-shadow:0 5px 16px #0b2a5c0b}
+.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:12px}
+.info{display:grid;grid-template-columns:130px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid #edf2f5;font-size:12px}
+.info:last-child{border-bottom:0}
+.info b{color:#576e80;font-size:11px}
+.state{display:inline-block;border-radius:999px;padding:5px 10px;color:#155b91;background:#e6f1fc;font-size:11px;font-weight:800}
+.state.pending{color:#996000;background:#fff3dd}
+.steps{display:grid;grid-template-columns:repeat(8,minmax(80px,1fr));overflow-x:auto;gap:5px;padding:10px 0}
+.step{text-align:center;border:1px solid #d9e6ed;background:#f7fafc;border-radius:10px;padding:10px 3px;min-width:75px}
+.step .ball{width:24px;height:24px;border-radius:50%;background:#dce7ed;color:#617989;display:grid;place-items:center;margin:auto;font-size:11px;font-weight:800}
+.step.done .ball{background:#17824f;color:white}
+.step.current{background:#e9f5ff;border-color:#5b9fcb;box-shadow:0 0 0 2px #3d9cdf1c}
+.step.current .ball{background:#146db4;color:#fff}
+.step span{display:block;margin-top:8px;font-size:10px;font-weight:700;line-height:1.35}
+.callout{padding:13px;border-radius:12px;border:1px solid #cfe1ed;background:#f2f9fe;margin-top:12px;font-size:12px;line-height:1.5}
+.callout.attention{background:#fff7e7;border-color:#edcf96}
+.event{padding:9px 0;border-bottom:1px solid #e8eff3;font-size:12px}
+.event:last-child{border-bottom:0}
+.event b{color:#1d4d79}
+.event small{display:block;color:var(--muted);margin-top:4px}
+#error{color:#a92323;font-weight:800;font-size:12px}
+@media(max-width:750px){.grid{grid-template-columns:1fr}.wrap{padding:10px}.hero{padding:15px}h1{font-size:20px}.info{grid-template-columns:100px 1fr}.actions .btn,.actions button{flex:1 1 100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <small>DISPROTEL · SUPERVISIÓN TÉCNICA</small>
+  <h1 id="titulo">Seguimiento de orden de trabajo</h1>
+  <div class="muted">Consulta de la actividad y etapa actual. La operación técnica sigue bajo responsabilidad del personal autorizado.</div>
+</header>
+<nav class="actions">
+ <a class="btn secondary" href="panel-supervisor-vivo-v2.html">← VOLVER A SUPERVISIÓN</a>
+ <button type="button" id="refresh">↻ ACTUALIZAR OT</button>
+ <a class="btn" id="mesaLink" style="display:none" href="#">🧰 ATENDER EN MESA TÉCNICA</a>
+</nav>
+<div id="error" role="alert"></div>
+<section class="card">
+ <h2>Orden y cliente</h2>
+ <div id="datos" class="muted">Consultando información vigente…</div>
+</section>
+<section class="card">
+ <h2>Etapa y próxima intervención</h2>
+ <div id="estado" class="muted">Comprobando avance…</div>
+ <div id="etapas" class="steps"></div>
+ <div id="proxima" class="callout">Consultando el estado operativo…</div>
+</section>
+<div class="grid">
+ <section class="card"><h2>Últimos movimientos</h2><div id="historial" class="muted">Cargando historial…</div></section>
+ <section class="card"><h2>Solicitudes de Mesa Técnica</h2><div id="requerimientos" class="muted">Cargando solicitudes…</div></section>
+</div>
+</div>
+<script>
+(()=>{
+ 'use strict';
+ const $=id=>document.getElementById(id);
+ const API='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-panel-supervisor';
+ const orderId=new URLSearchParams(location.search).get('orden')||'';
+ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
+ const fmt=v=>{if(!v)return'—';const t=Date.parse(v);return Number.isFinite(t)?new Date(t).toLocaleString('es-EC'):String(v)};
+ const kv=(k,v)=>'<div class="info"><b>'+esc(k)+'</b><span>'+esc(v||'—')+'</span></div>';
+ const terminal=s=>['COMPLETADA','FINALIZADA','CANCELADA','CANCELADA_EN_SITIO','NO_EJECUTADA_CLIENTE'].includes(norm(s));
+ let loading=false;
+ let session={};try{session=JSON.parse(sessionStorage.getItem('disprotel_login_general_v2')||'{}')||{}}catch{}
+ async function call(body){
+  const response=await fetch(API,{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','x-session':session.session_token},body:JSON.stringify(body)});
+  const res=await response.json().catch(()=>({error:'Respuesta incorrecta del servidor'}));
+  if(!response.ok||res.error)throw Error(res.error||'No fue posible consultar esta OT.');
+  return res;
+ }
+ function tipo(o){return norm(o.tipo_trabajo).includes('INSTALACION')?'INSTALACIONES':'SOPORTES'}
+ function pendings(o){
+  const out=[];
+  if(o?.ip_solicitud)out.push({label:'🌐 Confirmar IP',estado:o.ip_solicitud.estado});
+  if(o?.onu_solicitud)out.push({label:'📡 Activar / verificar ONU',estado:o.onu_solicitud.estado});
+  if(o?.acceso_remoto)out.push({label:'🔐 Acceso remoto',estado:o.acceso_remoto.estado});
+  for(const r of o?.mesa_requerimientos||[]){
+   if(norm(r.estado)!=='PENDIENTE')continue;
+   const acts=(r.acciones||[]).map(x=>String(x).replaceAll('_',' ')).join(' · ');
+   out.push({label:'🧰 '+(acts||'Solicitud de campo'),estado:r.estado});
+  }
+  return out;
+ }
+ function mesaUrl(id,kind){
+  const tab=kind||'SOPORTES';
+  try{sessionStorage.setItem('disprotel_mesa_focus_v1',JSON.stringify({orden_id:id,focus:'mesa-ot',tab,at:Date.now()}))}catch{}
+  return 'asignacion-ip.html?mesa_tab='+encodeURIComponent(tab)+'&focus=mesa-ot&orden='+encodeURIComponent(id);
+ }
+ function estimate(o,h,reqs){
+  const all=h.map(x=>norm(x.evento)).join('|'),s=norm(o.estado);
+  if(terminal(s))return 7;
+  if(reqs.length)return 5;
+  if(/EVIDEN|COMPROB|CIERRE/.test(s+' '+all))return 6;
+  if(/IP.*ASIGN|ONU|ACCESO.REMOTO/.test(s+' '+all))return 5;
+  if(/PROCESO|EJECU|TRABAJO.INICIADO|SOPORTE_EN_PROCESO/.test(s+' '+all))return 4;
+  if(/EN.SITIO|LLEGAD|GPS/.test(s+' '+all))return 3;
+  if(/CAMINO|TRASLADO/.test(s+' '+all))return 2;
+  if(/ACEPTAD|ASIGNAD|TOMAD|RECIBID/.test(s+' '+all))return 1;
+  return 0;
+ }
+ function render(detail,board){
+  const o=detail.orden||{},h=detail.historial||[],b=(board?.orders||[]).find(x=>String(x.id)===String(orderId))||o;
+  const reqs=pendings(b),tab=tipo(o),idx=estimate(o,h,reqs);
+  $('titulo').textContent=(o.id_orden||'OT')+' · '+(o.cliente_nombre_final||o.cliente_nombre||'Cliente');
+  $('datos').innerHTML=kv('OT',o.id_orden)+kv('Tipo',String(o.tipo_trabajo||'').replaceAll('_',' '))+
+    kv('Cliente',o.cliente_nombre_final||o.cliente_nombre)+kv('Estado',o.estado)+
+    kv('Grupo',o.grupo_asignado||o.grupo_destino)+kv('Técnico responsable',o.aceptado_por?.nombre)+
+    kv('Solicitante',o.solicitado_por?.nombre)+kv('Fecha de creación',fmt(o.created_at));
+  const labels=['Creada','Asignada','En camino','En sitio','En trabajo','Mesa Técnica','Evidencias','Finalizada'];
+  $('etapas').innerHTML=labels.map((label,i)=>'<div class="step '+(i<idx?'done':i===idx?'current':'')+'"><div class="ball">'+(i<idx?'✓':i+1)+'</div><span>'+esc(label)+'</span></div>').join('');
+  $('estado').innerHTML='<span class="state '+(reqs.length?'pending':'')+'">'+esc(o.estado||'Activa')+'</span> · Etapa de referencia según estado e historial';
+  if(reqs.length){
+   $('proxima').className='callout attention';
+   $('proxima').textContent='Requiere intervención de Fernando en Mesa Técnica: '+reqs.map(x=>x.label).join(' · ');
+   const link=$('mesaLink');link.style.display='inline-block';
+   link.onclick=()=>{link.href=mesaUrl(orderId,tab)};
+   link.href='asignacion-ip.html?mesa_tab='+encodeURIComponent(tab)+'&focus=mesa-ot&orden='+encodeURIComponent(orderId);
+  }else{
+   $('mesaLink').style.display='none';
+   $('proxima').className='callout';
+   $('proxima').textContent=terminal(o.estado)?
+    'Esta OT ya terminó; el seguimiento permanece disponible en solo lectura.':
+    'Sin requerimientos pendientes para Fernando. El siguiente paso operativo corresponde al técnico en campo; aquí puedes consultar los avances y actualizar la información.';
+  }
+  $('historial').innerHTML=h.length?h.map(e=>'<div class="event"><b>'+esc(String(e.evento||'').replaceAll('_',' '))+'</b><small>'+esc(fmt(e.created_at))+' · '+esc(e.realizado_por?.nombre||'Sistema')+'</small></div>').join(''):
+   '<div class="muted">No hay movimientos registrados.</div>';
+  $('requerimientos').innerHTML=reqs.length?reqs.map(x=>'<div class="event"><b>'+esc(x.label)+'</b><small>'+esc(x.estado||'PENDIENTE')+'</small></div>').join(''):
+    '<div class="muted">No hay solicitudes pendientes para Mesa Técnica en esta OT.</div>';
+ }
+ async function load(){
+  if(loading)return;
+  if(!orderId){$('error').textContent='No se indicó la OT.';return}
+  if(!session.session_token){$('error').textContent='La sesión de Fernando no está disponible. Regresa a Supervisión Técnica.';return}
+  loading=true;$('refresh').disabled=true;$('error').textContent='';
+  try{
+   const [detail,board]=await Promise.all([call({action:'order-detail',orden_id:orderId}),call({action:'dashboard'}).catch(()=>({orders:[]}))]);
+   render(detail,board);
+  }catch(e){$('error').textContent=String(e.message||e)}
+  finally{loading=false;$('refresh').disabled=false}
+ }
+ $('refresh').addEventListener('click',load);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
+ load();
+})();
+</script>
+</body></html>
