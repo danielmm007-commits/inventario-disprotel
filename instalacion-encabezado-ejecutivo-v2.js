@@ -9,7 +9,7 @@ const txt=id=>String(document.getElementById(id)?.textContent||'').trim();
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const upper=v=>String(v??'').toLocaleUpperCase('es-EC');
 const pick=(...vs)=>vs.find(v=>String(v??'').trim())||'';
-const PASOS=['Datos confirmados','Documento de identidad','Equipos y materiales','IP y plan del servicio','Evidencias y cierre'];
+const PASOS=['Datos del cliente y servicio','Documento de identidad','Equipos y materiales','Activación del servicio · ONU e IP','Evidencias y cierre','Acceso remoto, reporte y finalización'];
 let signature='',watching=false;
 function style(){
  if(document.getElementById('execExecutiveStyle'))return;
@@ -37,7 +37,7 @@ function style(){
  '.execStaff b{display:block;font-size:12px;line-height:1.35;color:#284a61;overflow-wrap:anywhere}',
  '.execProgressHead{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12px;font-weight:800;color:#214c72}',
  '.execProgressHead span{font-size:11px;color:#688498}',
- '.execSteps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin-top:9px}',
+ '.execSteps{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin-top:9px}',
  '.execStep{height:29px;border-radius:7px;border:1px solid #dce5ec;background:#f2f6f9;display:grid;place-items:center;font-weight:900;font-size:11px;color:#688092}',
  '.execStep.done{background:#e8f7ed;border-color:#bce3c9;color:#147b4c}',
  '.execStep.current{background:#e9f3ff;border-color:#91c0ef;color:#156cb5}',
@@ -69,14 +69,18 @@ function estadoGeneral(est){
 function avance(){
  const status=id=>upper(txt(id));
  const estado=typeof O==='undefined'?'':upper(O?.estado);
- const final=/COMPLETADA|FINALIZADA/.test(estado);
+ // El sexto paso NO equivale a acceso remoto confirmado. Sólo se completa
+ // cuando la función de cierre valida la OT y devuelve estado COMPLETADA,
+ // o cuando el resumen oficial de cierre confirma el resultado.
+ const final=estado==='COMPLETADA'||estado==='FINALIZADA'||/^✅\s*COMPLETO$/.test(status('stFinalizarReporte'));
  const data=/CONFIRMAD|COMPLET/.test(status('stDatos'));
  const doc=/COMPLETO|DISPONIBLE/.test(status('stDoc'));
  const material=/GUARDADO/.test(status('stTrabajo'));
  const ip=/IP CONFIRMADA/.test(status('ipEstado'))||(/✅/.test(txt('stIp'))&&!/ESPERANDO|PENDIENTE|TENTATIVA/.test(status('stIp')))||estado==='IP_ASIGNADA';
- const flags=[data,doc,material,ip,final];
- const current=final?4:ip?4:material?3:doc?2:data?1:0;
- return {flags,current,ip,final};
+ const evid=/^✅\s*COMPLETO$/.test(status('stEvidencias'));
+ const flags=[data,doc,material,ip,evid,final];
+ const current=final?5:evid?5:ip?4:material?3:doc?2:data?1:0;
+ return {flags,current,ip,final,evid};
 }
 function render(){
  try{
@@ -93,7 +97,7 @@ function render(){
   const tech=pick(s.nombre,s.usuario,'Técnico no indicado');
   const group=pick(s.unidad_grupo,s.grupo,O.grupo_asignado,'Grupo no indicado');
   const ot=pick(O.id_orden,O.id,'OT');
-  const p=avance(),st=estadoGeneral(O.estado);
+  const p=avance(),st=p.final?['Finalizada',true]:estadoGeneral(O.estado);
   const key=JSON.stringify([ot,O.tipo_trabajo,O.estado,name,address,tel,tech,group,p]);
   if(key===signature)return true;
   style();hero.classList.add('execExec');
@@ -112,9 +116,9 @@ function render(){
    '<div class="execStaff"><div><span class="execLabel">TÉCNICO RESPONSABLE</span><b>'+esc(tech)+'</b></div>'+
     '<div><span class="execLabel">GRUPO OPERATIVO</span><b>'+esc(group)+'</b></div></div>'+
    '<hr class="execSep"/>'+
-   '<div class="execProgressHead"><b>Avance de instalación</b><span>Paso '+(p.current+1)+' de 5</span></div>'+
+   '<div class="execProgressHead"><b>Avance de instalación</b><span>Paso '+(p.current+1)+' de '+PASOS.length+'</span></div>'+
    '<div class="execSteps" role="img" aria-label="Avance de la OT: '+esc(current)+'">'+steps+'</div>'+
-   '<div class="execNext"><span style="font-size:18px">'+(p.final?'✅':p.current===4?'📷':'🛠️')+'</span><div><strong>'+esc(current)+'</strong><small>'+(p.final?'Proceso finalizado':'Continuar desde la actividad pendiente')+'</small></div></div>';
+   '<div class="execNext"><span style="font-size:18px">'+(p.final?'✅':p.current===5?'🔐':p.current===4?'📷':'🛠️')+'</span><div><strong>'+esc(current)+'</strong><small>'+(p.final?'Instalación finalizada':'Continuar desde la actividad pendiente')+'</small></div></div>';
   signature=key;return true;
  }catch(e){console.warn('Encabezado ejecutivo DISPROTEL',e);return false}
 }
@@ -122,11 +126,12 @@ function watch(){
  if(watching)return;watching=true;
  let timer=0;const later=()=>{clearTimeout(timer);timer=setTimeout(render,80)};
  const obs=new MutationObserver(later);
- ['stDatos','stDoc','stTrabajo','stIp','stEvidencias','ipEstado'].forEach(id=>{
+ ['stDatos','stDoc','stTrabajo','stIp','stEvidencias','stFinalizarReporte','ipEstado'].forEach(id=>{
   const el=document.getElementById(id);if(el)obs.observe(el,{childList:true,subtree:true,characterData:true});
  });
  document.addEventListener('disprotel:router-cambiado',later);
  window.addEventListener('disprotel:ot-sincronizar',later);
+ window.addEventListener('disprotel:instalacion-finalizada',later);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)later()});
  setInterval(()=>{if(!document.hidden)render()},12000);
 }
