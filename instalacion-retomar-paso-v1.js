@@ -5,7 +5,7 @@
   const PASOS=['accDatos','accDoc','accTrabajo','accIp','accEvidencias','accFinalizarReporte'];
   const $=id=>document.getElementById(id);
   const txt=id=>String($(id)?.textContent||'').toUpperCase();
-  let abriendo=false,retomado=false,usuarioToco=false;
+  let usuarioToco=false;
 
   function orden(){
     try{return new URLSearchParams(location.search).get('orden')||O?.id||''}
@@ -46,24 +46,6 @@
     return /IP DEFINITIVA|IP CONFIRMADA|✅/.test(ip)&&!/ESPERANDO IP|SOLICITUD ENVIADA|IP TENTATIVA|PENDIENTE|IP AÚN NO SOLICITADA|IP AUN NO SOLICITADA/.test(ip);
   }
 
-  function abrir(id){
-    if(usuarioToco&&retomado)return;
-    if(!PASOS.includes(id)||!$(id))return;
-    const actual=PASOS.find(x=>$(x)?.open);
-    if(actual===id){
-      setTimeout(()=>$(id)?.scrollIntoView({behavior:'auto',block:'start'}),70);
-      retomado=true;
-      return;
-    }
-    abriendo=true;
-    PASOS.forEach(x=>{
-      const el=$(x);
-      if(el)el.open=x===id;
-    });
-    setTimeout(()=>$(id)?.scrollIntoView({behavior:'smooth',block:'start'}),80);
-    setTimeout(()=>{abriendo=false;retomado=true},220);
-  }
-
   function pasoPorEstado(){
     if(document.body.classList.contains('otSoloLectura'))return null;
     const doc=txt('stDoc')+' '+txt('docEstado');
@@ -94,7 +76,12 @@
   function retomar(){
     if(usuarioToco)return;
     const target=objetivo();
-    if(target)abrir(target);
+    // La etapa pendiente puede identificarse sin abrir ningún acordeón.
+    // El técnico decide cuándo desplegarla pulsando su encabezado.
+    PASOS.forEach(id=>{
+      const el=$(id);
+      if(el)el.dataset.pasoPendiente=(id===target?'1':'0');
+    });
   }
 
   function instalarMemoriaUsuario(){
@@ -104,12 +91,14 @@
 
     document.addEventListener('toggle',ev=>{
       const el=ev.target;
-      if(abriendo||!el?.matches?.('details.card')||!el.open)return;
+      if(!el?.matches?.('details.card')||!el.open)return;
       if(!usuarioToco)return;
       guardarPaso(el.id);
     },true);
 
     document.addEventListener('click',ev=>{
+      // Incluye teclado (Enter/Espacio), además del toque o clic.
+      if(ev.target?.closest?.('details.card>summary'))usuarioToco=true;
       const b=ev.target?.closest?.('button,a');
       if(!b)return;
       usuarioToco=true;
@@ -127,7 +116,14 @@
   }
 
   function iniciarRetomar(){
-    setTimeout(retomar,180);
+    setTimeout(()=>{
+      if(usuarioToco)return;
+      // Al entrar, el numeral 5 permanece cerrado incluso cuando la IP
+      // ya está asignada o se llega desde una tarjeta con ?retomar=1.
+      const evidencias=$('accEvidencias');
+      if(evidencias)evidencias.open=false;
+      retomar();
+    },180);
   }
 
   let tries=0;
