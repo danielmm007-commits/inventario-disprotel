@@ -262,13 +262,17 @@ async function requerimientosMesa(s:any,ordenId:string){
   const q=await s.from('orden_mesa_requerimientos').select('id,acciones,estado,solicitado_at,atendido_at,canal_resolucion,resultado').eq('orden_id',ordenId).order('solicitado_at',{ascending:false}).limit(20);
   if(q.error)throw q.error;
   let rows=q.data||[];
-  rows=await Promise.all(rows.map((r:any)=>Array.isArray(r.acciones)&&r.acciones.includes('CONFIRMAR_IP_ACTUAL')?sincronizarVerificacionIp(s,ordenId,r):r));
+  // Solo verificaciones IP pendientes necesitan reconciliar resultado del scanner.
+  rows=await Promise.all(rows.map((r:any)=>r.estado==='PENDIENTE'&&Array.isArray(r.acciones)&&r.acciones.includes('CONFIRMAR_IP_ACTUAL')?sincronizarVerificacionIp(s,ordenId,r):r));
   for(const r of rows){
     const historialAcceso=r?.resultado?.verificacion_acceso_remoto;
+    // La identidad ya está registrada en el requerimiento. No repetir SELECT
+    // de la foto histórica en cada consulta del tablero (el visor valida al abrir).
     if(historialAcceso?.estado==='CONFIRMADO'&&historialAcceso.evidencia_id){
-      const source=historialAcceso.evidencia_origen==='INSTALACION'
-        ?{evidencia_id:historialAcceso.evidencia_id}:{soporte_evidencia_id:historialAcceso.evidencia_id};
-      r.resultado={...(r.resultado||{}),evidencia_acceso_remoto_historica:await accesoEvidencia(s,source)};
+      const origen=historialAcceso.evidencia_origen==='INSTALACION'?'INSTALACION':'SOPORTE';
+      r.resultado={...(r.resultado||{}),evidencia_acceso_remoto_historica:{
+        id:historialAcceso.evidencia_id,origen,url:null
+      }};
     }
   }
   return rows;
