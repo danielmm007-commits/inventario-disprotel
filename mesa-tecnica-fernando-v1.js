@@ -62,6 +62,20 @@ function crear(){const app=$('app'),ref=$('secPend');if(!app||!ref)return;css();
 if(!document.body.dataset.mesaTabsV7){document.body.dataset.mesaTabsV7='1';$('tabPend')?.addEventListener('click',()=>setTimeout(()=>{box.style.display='';ocultarLegacy();cargar(true)},0));$('tabHist')?.addEventListener('click',()=>setTimeout(()=>{box.style.display='none'},0))}}
 function badge(txt,ok=false,wait=false){return '<span class="statusBadge '+(ok?'ok':wait?'wait':'')+'">'+esc(txt)+'</span>'}
 function clienteStep(o){const ok=!!o.mesa?.cliente_registrado;return `<div class="step"><b>👤 CLIENTE / SERVICIO</b><div class="stepState">${ok?'✅ Registrado por Mesa técnica':'⏳ Pendiente de registrar/activar en sistema'}</div>${ok?'':'<button onclick="confirmarClienteMesa(\''+o.id+'\')">✅ MARCAR REGISTRADO</button>'}</div>`}
+const esperandoFotoOnu=new Set();
+window.verFotoOnuMesa=async function(ordenId){
+ if(esperandoFotoOnu.has(ordenId))return;
+ const tab=window.open('about:blank','_blank');
+ if(!tab){alert('Permite ventanas emergentes para abrir la foto ONU');return}
+ try{tab.opener=null}catch{}
+ esperandoFotoOnu.add(ordenId);
+ try{
+   const result=await mesa('view-onu-photo',{orden_id:ordenId});
+   if(!result.url)throw new Error('No se recibió enlace de la foto ONU');
+   tab.location.replace(result.url);
+ }catch(e){try{tab.close()}catch{}alert('No se pudo abrir la foto ONU: '+(e?.message||e))}
+ finally{esperandoFotoOnu.delete(ordenId)}
+};
 function onuStep(o){
  const x=o.onu;if(!x)return '<div class="step"><b>📡 ACTIVAR / CAMBIAR ONU</b><div class="stepState">⚪ No solicitada</div></div>';
  const ok=x.estado==='CONFIRMADO',corr=x.estado==='REQUIERE_CORRECCION';
@@ -70,7 +84,7 @@ function onuStep(o){
  if(x.onu_pon)detalle+='<div class="stepState"><b>PON reportado:</b> '+esc(x.onu_pon)+'</div>';
  if(x.olt_nombre)detalle+='<div class="stepState"><b>OLT reportada:</b> '+esc(x.olt_nombre)+'</div>';
  const sel=x.onu_sn?'<div class="ipCandidate" style="margin-top:7px"><b>ONU IDENTIFICADA POR CAMPO</b><div class="stepState">'+esc(x.onu_modelo||'ONU/ONT')+' · '+esc(x.onu_sn_display||x.onu_sn||'')+'</div><button type="button" onclick="abrirRegistroOnuManual(\''+esc(o.id)+'\')" style="margin-top:8px">✍️ DATOS ADMINISTRATIVOS Y APROBACIÓN MANUAL</button></div>':'';
- const evidencia=x.evidencia_url?'<div class="stepState" style="margin-top:7px"><b>📷 EVIDENCIA SMARTOLT</b></div><img src="'+esc(x.evidencia_url)+'" onclick="window.open(this.src,\'_blank\')">':'';
+ const evidencia=x.evidencia_disponible||x.storage_path?'<div class="stepState" style="margin-top:7px"><b>📷 EVIDENCIA SMARTOLT GUARDADA</b></div><button type="button" class="secondary" onclick="verFotoOnuMesa(\''+esc(o.id)+'\')">🖼️ VER FOTO ONU</button>':'';
  const accion=ok?'':'<div class="remoteTools"><label class="btnMini">🖼️ CARGAR ARCHIVO<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="subirOnuMesa(event,\''+o.id+'\')"></label><div class="remotePaste" tabindex="0" contenteditable="true" spellcheck="false" onclick="this.focus()" onkeydown="if(event.key!==\'v\'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarOnuMesa(event,\''+o.id+'\')">📋 PEGAR CAPTURA Ctrl+V</div></div>';
  return '<div class="step"><b>📡 ACTIVAR / CAMBIAR ONU</b><div class="stepState">'+(ok?'✅ Activación registrada con evidencia':corr?'⚠️ Requiere corrección: '+esc(x.observacion||''):'Fernando activa la ONU en SmartOLT y adjunta la captura como evidencia.')+'</div>'+detalle+sel+evidencia+accion+'</div>';
 }
