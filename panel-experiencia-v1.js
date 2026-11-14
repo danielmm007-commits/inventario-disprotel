@@ -310,6 +310,29 @@ function ensureMenuShell(){
       loadModuleFrame(btn.dataset.href);
       document.body.classList.add('moduleOpen');aside.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===btn))
     });
+    // Enlaces profundos de Mesa: usar la misma navegación del menú lateral.
+    // No recargar principal.html ni salir del marco hacia una página completa.
+    window.addEventListener('disprotel:abrir-modulo-en-panel',event=>{
+      const detail=event?.detail||{};
+      if(detail.handled)return;
+      let url;
+      try{url=new URL(String(detail.url||''),location.href)}catch{return}
+      if(url.origin!==location.origin||url.pathname.split('/').pop()!=='asignacion-ip.html')return;
+      const href=url.pathname.split('/').pop()+url.search+url.hash;
+      const button=[...aside.querySelectorAll('button[data-href]')].find(btn=>{
+        try{return new URL(btn.dataset.href,location.href).pathname===url.pathname}catch{return false}
+      });
+      const title=button?.querySelector('span')?.textContent||'Supervisión técnica';
+      localStorage.setItem(moduleStateKey,JSON.stringify({
+        href:button?.dataset.href||'asignacion-ip.html',
+        title,childHref:href,scrollY:0
+      }));
+      mobileBar.querySelector('.mobileModuleTitle').textContent=title;
+      document.body.classList.add('moduleOpen');
+      aside.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===button));
+      loadModuleFrame(href);
+      detail.handled=true;
+    });
     const restoreSavedModule=()=>{try{
       const saved=JSON.parse(localStorage.getItem(moduleStateKey)||'null');if(!saved?.href)return;
       const wanted=new URL(saved.href,location.href).pathname,restore=[...aside.querySelectorAll('[data-href]')].find(btn=>new URL(btn.dataset.href,location.href).pathname===wanted);
