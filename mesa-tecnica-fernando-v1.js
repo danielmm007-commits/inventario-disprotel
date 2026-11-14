@@ -99,8 +99,23 @@ function ipAccesoRemotoMesa(o){
  if(p.length!==4||p.some(n=>!/^\d{1,3}$/.test(n)||Number(n)>255))return '';
  return p.map(n=>String(Number(n))).join('.');
 }
+const fotosMesaPendientes=new Set();
+window.verFotoMesa=async function(ordenId,kind,requerimientoId='',indice=-1){
+ const key=[ordenId,kind,requerimientoId,indice].join(':');
+ if(fotosMesaPendientes.has(key))return;
+ const tab=window.open('about:blank','_blank');
+ if(!tab){alert('Permite ventanas emergentes para ver la fotografía');return}
+ try{tab.opener=null}catch{}
+ fotosMesaPendientes.add(key);
+ try{
+  const d=await mesa('view-mesa-photo',{orden_id:ordenId,kind,requerimiento_id:requerimientoId,indice});
+  if(!d.url)throw new Error('No se generó el enlace de fotografía');
+  tab.location.replace(d.url);
+ }catch(e){try{tab.close()}catch{}alert('No se pudo abrir la fotografía: '+(e?.message||e))}
+ finally{fotosMesaPendientes.delete(key)}
+};
 function remotoStep(o){const a=o.acceso||{estado:'PENDIENTE'},ip=ipAccesoRemotoMesa(o),ev=a.evidencia||null,tipo=up(o.servicio_actual?.tipo_conexion||''),radio=tipo==='RADIO',fibra=tipo==='FIBRA',etiquetaEquipo=radio?'Antena/CPE y WiFi':fibra?'Router WiFi · ONU Bridge/CATV':'Equipo del cliente';
- if(a.estado==='CONFIRMADO')return `<div class="step remoteWide"><b>🔐 ACCESO REMOTO</b><div class="stepState">✅ Confirmado por Mesa técnica</div>${ev?.url?`<div class="remoteEvidence"><div class="stepState"><b>📷 EVIDENCIA DE ACCESO REMOTO</b></div><img src="${esc(ev.url)}" alt="Evidencia acceso remoto"></div>`:''}</div>`;
+ if(a.estado==='CONFIRMADO')return `<div class="step remoteWide"><b>🔐 ACCESO REMOTO</b><div class="stepState">✅ Confirmado por Mesa técnica</div>${ev?.id?`<div class="remoteEvidence"><div class="stepState"><b>📷 EVIDENCIA DE ACCESO REMOTO</b></div><button type="button" class="secondary" onclick="verFotoMesa(\'${o.id}\',\'REMOTE\')">🖼️ VER FOTOGRAFÍA</button></div>`:''}</div>`;
  if(a.estado==='REQUIERE_CORRECCION')return `<div class="step remoteWide"><b>🔐 ACCESO REMOTO</b><div class="stepState">⚠️ Devuelto al técnico: ${esc(a.observacion||'')}</div></div>`;
  if(a.estado!=='SOLICITADO')return `<div class="step remoteWide"><b>🔐 ACCESO REMOTO</b><div class="stepState">⚪ Aún no solicitado por el técnico</div></div>`;
  const acceso=ip?
@@ -111,7 +126,7 @@ function remotoStep(o){const a=o.acceso||{estado:'PENDIENTE'},ip=ipAccesoRemotoM
    '<a href="https://'+esc(ip)+':5000" target="_blank" rel="noopener noreferrer">🔒 WIFI · https://'+esc(ip)+':5000</a>'+
    '</div><div class="stepState">Abrir en otra pestaña. Requiere acceso a la red del cliente o VPN y un servicio web habilitado.</div>':
    '<div class="stepState">⚠️ IP no disponible o servicio ambiguo. Verificar la IP correcta antes de abrir el equipo.</div>';
- const evidencia=ev?.url?`<div class="remoteEvidence"><div class="stepState"><b>📷 EVIDENCIA DE ACCESO REMOTO</b></div><img src="${esc(ev.url)}" alt="Evidencia acceso remoto"><div class="stepState">✅ Evidencia guardada. Puedes reemplazarla o eliminarla.</div><button class="remoteDanger" onclick="eliminarAR('${o.id}')">🗑️ ELIMINAR EVIDENCIA</button></div>`:'<div class="stepState">📎 Falta evidencia. Pega una captura o carga una imagen.</div>';
+ const evidencia=ev?.id?`<div class="remoteEvidence"><div class="stepState"><b>📷 EVIDENCIA DE ACCESO REMOTO</b></div><button type="button" class="secondary" onclick="verFotoMesa(\'${o.id}\',\'REMOTE\')">🖼️ VER FOTOGRAFÍA</button><div class="stepState">✅ Evidencia guardada. Puedes reemplazarla o eliminarla.</div><button class="remoteDanger" onclick="eliminarAR('${o.id}')">🗑️ ELIMINAR EVIDENCIA</button></div>`:'<div class="stepState">📎 Falta evidencia. Pega una captura o carga una imagen.</div>';
  return `<div class="step remoteWide"><b>🔐 ACCESO REMOTO</b><div class="stepState">⏳ Técnico solicita confirmación</div>${acceso}${evidencia}<div class="remoteTools"><label class="btnMini">📷 CÁMARA<input type="file" accept="image/*" capture="environment" style="display:none" onchange="seleccionarAR(event,'${o.id}')"></label><label class="btnMini">🖼️ GALERÍA<input type="file" accept="image/*" style="display:none" onchange="seleccionarAR(event,'${o.id}')"></label></div><div class="remotePaste" tabindex="0" contenteditable="true" spellcheck="false" onclick="this.focus()" onkeydown="if(event.key!=='v'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarPortapapelesAR(event,'${o.id}')">📋 Clic aquí y pega con Ctrl+V</div><button class="remoteOk" ${ev?.id?'':'disabled style="opacity:.45;cursor:not-allowed"'} onclick="confirmarAR('${o.id}')">✅ CONFIRMAR ACCESO REMOTO</button><button class="secondary" onclick="corregirAR('${o.id}')">⚠️ PEDIR CORRECCIÓN</button></div>`}
 const SMARTOLT_DIAG='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/smartolt-diagnostico';
 const POWER_EVIDENCE_URL_CACHE=new Map();
@@ -135,7 +150,7 @@ function avisoPotenciaHtml(o,r){
  const msg=x?'<div class="opticaAviso '+(x.estado==='CORREGIDO_EN_CAMPO'?'corregido':'')+'"><b>'+
  (x.estado==='REQUIERE_CORRECCION'?'⚠️ BRYAN DEBE CORREGIR LA POTENCIA':'✅ BRYAN CORRIGIÓ · HACER NUEVA LECTURA')+
  '</b><p>'+esc(x.observacion||'')+'</p>'+
- (x.url?'<a href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(x.url)+'" alt="Captura provisional"></a>':'')+
+ (x.storage_path?'<button type="button" class="secondary" onclick="verFotoMesa(\''+esc(o.id)+'\',\'POWER_REVIEW\',\''+esc(r.id)+'\')">🖼️ VER CAPTURA PROVISIONAL</button>':'')+
  '<div class="stepState">📷 Diagnóstico provisional. NO es la evidencia final.</div>'+
  (x.trabajo_realizado?'<div class="stepState"><b>Trabajo de Bryan:</b> '+esc(x.trabajo_realizado)+'</div>':'')+'</div>':'';
  return '<div class="opticaAvisoPanel">'+msg+
@@ -168,8 +183,8 @@ function potenciaStep(o,r){
    ['Distancia',v.distancia_m!=null?String(v.distancia_m)+' m':'—'],['Fuente',v.fuente||'SMARTOLT'],['Lectura',v.leido_at?fmt(v.leido_at):'—'],['Vigencia',v.leido_at&&Date.now()-Date.parse(v.leido_at)<=15*60000?'Reciente':'HISTÓRICA (sin lectura reciente)']
  ];
  const data='<div class="powerMirrorData"><div class="stepState" style="margin-top:0"><b>📊 LECTURA ÓPTICA</b></div>'+vals.map(x=>'<div style="margin-top:3px"><b>'+esc(x[0])+':</b> '+esc(x[1])+'</div>').join('')+'</div>';
- const evidenceBody=ev?.url
-   ?'<img data-power-evidence="'+esc(r.id)+'" src="'+esc(ev.url)+'" alt="Evidencia potencia SmartOLT" onclick="window.open(this.src,\'_blank\')"><div class="stepState">✅ Captura SmartOLT guardada'+(ev.subido_at?' · '+esc(fmt(ev.subido_at)):'')+'</div>'
+ const evidenceBody=ev?.storage_path
+   ?'<button type="button" data-power-evidence="'+esc(r.id)+'" class="secondary" onclick="verFotoMesa(\''+esc(o.id)+'\',\'POWER\',\''+esc(r.id)+'\')">🖼️ VER CAPTURA SMARTOLT</button><div class="stepState">✅ Captura SmartOLT guardada'+(ev.subido_at?' · '+esc(fmt(ev.subido_at)):'')+'</div>'
    :'<div class="stepState" style="margin-top:0">📎 Falta captura de SmartOLT. Pega un recorte o carga la imagen antes de confirmar.</div>';
  const controls=done||revision?.estado==='REQUIERE_CORRECCION'?'':'<div class="remoteTools"><label class="btnMini">🖼️ CARGAR ARCHIVO<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="seleccionarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')"></label><div class="remotePaste" tabindex="0" contenteditable="true" spellcheck="false" onclick="this.focus()" onkeydown="if(event.key!==\'v\'&&!event.ctrlKey&&!event.metaKey)event.preventDefault()" onpaste="pegarPotenciaMesa(event,\''+o.id+'\',\''+r.id+'\')">📋 PEGAR CAPTURA Ctrl+V</div></div>';
  const evidence='<div class="powerMirrorEvidence"><div class="stepState" style="margin-top:0"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+evidenceBody+controls+'</div>';
@@ -209,16 +224,14 @@ function evidenciaAccesoEnRequerimiento(o,r){
  // Cada solicitud solo puede mostrar la evidencia que efectivamente confirmo esa solicitud.
  // No asociar una captura posterior o de otra solicitud a un hito anterior.
  if(comprobante?.estado!=='CONFIRMADO')return '<div class="stepState">✅ Atendido. Captura histórica no vinculada en este requerimiento.</div>';
- if(!comprobante.evidencia_id||!ev?.id||String(comprobante.evidencia_id)!==String(ev.id)||!ev.url)
-   return '<div class="stepState">✅ Acceso remoto confirmado. La miniatura histórica no está disponible en esta vista.</div>';
- const url=esc(ev.url);
+ if(!comprobante.evidencia_id||!ev?.id||String(comprobante.evidencia_id)!==String(ev.id) )
+   return '<div class="stepState">✅ Acceso remoto confirmado. La fotografía histórica no está disponible en esta vista.</div>';
  return '<div class="mesaReqRemoteProof">'+
-   '<a class="mesaReqRemotePreview" href="'+url+'" target="_blank" rel="noopener noreferrer" title="Abrir evidencia de acceso remoto">'+
-     '<img src="'+url+'" loading="lazy" alt="Miniatura de evidencia de acceso remoto"></a>'+
+   '<button type="button" class="secondary" onclick="verFotoMesa(\''+esc(o.id)+'\',\'REMOTE_HISTORY\',\''+esc(r.id)+'\')">🖼️ VER EVIDENCIA DE ACCESO REMOTO</button>'+
    '<div class="mesaReqRemoteMeta"><b>📷 EVIDENCIA DE ACCESO REMOTO</b>'+
      '<div class="stepState">✅ Captura confirmada por Mesa Técnica</div>'+
      (comprobante.confirmado_at?'<div class="stepState">'+esc(fmt(comprobante.confirmado_at))+'</div>':'')+
-     '<div class="stepState">Toca la miniatura para verla completa.</div>'+(comprobante.rectificada_at?'<div class="rectificationNote">✏️ Captura rectificada: '+esc(fmt(comprobante.rectificada_at))+'</div>':'')+(puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REPETIR COMPROBACIÓN DE ACCESO</button>':'')+
+     '<div class="stepState">Pulsa VER EVIDENCIA para abrir la fotografía.</div>'+(comprobante.rectificada_at?'<div class="rectificationNote">✏️ Captura rectificada: '+esc(fmt(comprobante.rectificada_at))+'</div>':'')+(puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<button type="button" class="secondary" onclick="repetirVerificacionMesa(\''+o.id+'\',\''+r.id+'\')">🔄 REPETIR COMPROBACIÓN DE ACCESO</button>':'')+
  (puedeRepetirVerificacion(o,r,'VERIFICAR_ACCESO_REMOTO')?'<label class="mesaRectifyControl">✏️ RECTIFICAR CAPTURA<input type="file" accept="image/jpeg,image/png,image/webp" onchange="rectificarAccesoRemotoMesa(event,\''+o.id+'\')"></label>':'')+'</div></div>';
 }
 function comprobacionesRemotasVisibles(rows){
