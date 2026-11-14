@@ -15,7 +15,28 @@
  for(const [id,tipo] of [['docFrenteCamInput','CEDULA_FRENTE'],['docFrenteGalInput','CEDULA_FRENTE'],['docReversoCamInput','CEDULA_REVERSO'],['docReversoGalInput','CEDULA_REVERSO']]){$(id).addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{await subir(f,tipo);toastDoc('Documento actualizado');await cargar()}catch(err){toastDoc(err.message||String(err),true)}finally{e.target.value=''}})}
  cargarVisor();cargarCompartir();
  }
- function pinta(id,d,label){const box=$(id);if(!box)return;if(d?.disponible&&d?.url){box.innerHTML=`<img class="docThumb" src="${d.url}" alt="${label}"><div class="docEstadoMini">✓ CARGADO${d.created_at?' · '+new Date(d.created_at).toLocaleDateString('es-EC'):''}</div>`;cargarVisor();cargarCompartir();setTimeout(()=>{window.VisorEvidencias?.aplicar(box);window.CompartirDocumentos?.aplicar()},0)}else{box.innerHTML='<div class="docMissing">DATO FALTANTE<br>Documento no cargado</div>'}}
+ const cargandoVista=new Set();
+ function pinta(id,d,label){
+  const box=$(id);if(!box)return;
+  if(!d?.disponible||!d?.id){box.innerHTML='<div class="docMissing">DATO FALTANTE<br>Documento no cargado</div>';return}
+  box.replaceChildren();
+  const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent='🖼️ VER DOCUMENTO';
+  const status=document.createElement('div');status.className='docEstadoMini';status.textContent='✓ CARGADO'+(d.created_at?' · '+new Date(d.created_at).toLocaleDateString('es-EC'):'');
+  box.append(b,status);
+  b.onclick=async()=>{
+   if(cargandoVista.has(id))return;cargandoVista.add(id);b.disabled=true;
+   try{
+    const res=await post(API_DOC,{action:'view-document',documento_id:d.id});
+    if(!res.url)throw new Error('Enlace de documento no disponible');
+    if(!box.isConnected)return;
+    const img=document.createElement('img');img.className='docThumb';img.alt=label;img.loading='lazy';img.decoding='async';img.src=res.url;
+    box.replaceChildren(img,status);
+    cargarVisor();cargarCompartir();
+    setTimeout(()=>{window.VisorEvidencias?.aplicar(box);window.CompartirDocumentos?.aplicar()},0);
+   }catch(e){b.disabled=false;toastDoc(e.message||'No se pudo ver el documento',true)}
+   finally{cargandoVista.delete(id)}
+  };
+ }
  async function cargar(){try{const d=await post(API_DOC,{});pinta('docFrenteVista',d.frente,'Frente de cédula');pinta('docReversoVista',d.reverso,'Reverso de cédula')}catch(e){const b=$('docDomicilio');if(b)b.querySelector('.muted').textContent='No se pudo consultar el documento: '+e.message}}
  function leerDataURL(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result||''));r.onerror=rej;r.readAsDataURL(blob)})}
  async function normalizar(file){if(!file.type.startsWith('image/'))throw new Error('Selecciona una imagen válida');const img=await createImageBitmap(file);const max=1600,scale=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);const ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);const blob=await new Promise(res=>c.toBlob(res,'image/jpeg',.86));if(!blob)throw new Error('No se pudo procesar la imagen');return blob}
