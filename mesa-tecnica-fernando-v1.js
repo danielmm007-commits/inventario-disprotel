@@ -269,7 +269,7 @@ function batchHtml(o){
     '</b><div class="stepState">'+esc(fmt(r.solicitado_at))+
     (done&&r.atendido_at?' · atendido '+esc(fmt(r.atendido_at)):'')+
     '</div></div>'+(done?badge('ATENDIDO',true):badge('PENDIENTE'))+
-    '</div><div class="mesaReqActions">'+chips+'</div>'+(r.resultado?.motivo_repeticion?'<div class="stepState" style="padding:8px 10px;margin:6px 0;border-left:3px solid #4a84a8"><b>📝 Motivo de la nueva revisión:</b> '+esc(r.resultado.motivo_repeticion)+'</div>':'')+detalle+'</div>';
+    '</div><div class="mesaReqActions">'+chips+'</div>'+(r.resultado?.respuesta_mesa?'<div class="stepState"><b>Respuesta de Fernando:</b> '+esc(r.resultado.respuesta_mesa.estado)+' · '+esc(r.resultado.respuesta_mesa.texto||'')+(r.resultado.respuesta_mesa.storage_path?' <button type="button" class="secondary" onclick="verFotoMesa(\''+esc(o.id)+'\',\'GENERAL_RESULT\',\''+esc(r.id)+'\')">🖼️ VER EVIDENCIA</button>':'')+'</div>':'')+(r.resultado?.motivo_repeticion?'<div class="stepState" style="padding:8px 10px;margin:6px 0;border-left:3px solid #4a84a8"><b>📝 Motivo de la nueva revisión:</b> '+esc(r.resultado.motivo_repeticion)+'</div>':'')+detalle+'</div>';
  }).join('')+'</div>';
 }
 function supportDynamicSteps(o){const pending=(o.requerimientos||[]).filter(r=>r.estado==='PENDIENTE'),acts=new Set(pending.flatMap(r=>r.acciones||[]));let out='';if(acts.has('ASIGNAR_NUEVA_IP'))out+=ipStep(o);if(acts.has('VERIFICAR_ACCESO_REMOTO'))out+=remotoStep(o);return out}
@@ -415,7 +415,34 @@ window.rectificarPotenciaMesa=async(e,id,rid)=>{
  catch(err){alert('No se pudo rectificar la captura óptica: '+err.message)}finally{e.target.value=''}
 };
 window.confirmarPotenciaMesa=async(id,rid)=>{if(!confirm('¿Confirmar la lectura óptica junto con la captura de SmartOLT?'))return;try{await mesa('confirm-power-check',{orden_id:id,requerimiento_id:rid});await cargar(true)}catch(e){alert(e.message)}};
-window.resolverReqMesa=async(id,rid)=>{if(!confirm('¿Marcar este requerimiento completo como atendido?'))return;try{await mesa('resolve-support-request',{orden_id:id,requerimiento_id:rid,canal_resolucion:'SISTEMA'});await cargar(true)}catch(e){alert(e.message)}};
+window.resolverReqMesa=(id,rid)=>{
+ const btn=[...document.querySelectorAll('.mesaReq button')].find(b=>b.getAttribute('onclick')?.includes("resolverReqMesa('"+id+"','"+rid+"')"));
+ const card=btn?.closest('.mesaReq');
+ if(!card)return alert('No se encontró el requerimiento. Actualiza Mesa.');
+ const existing=card.querySelector('.mesaResultadoForm');if(existing){existing.remove();return}
+ const form=document.createElement('div');form.className='mesaResultadoForm';form.style.cssText='margin-top:10px;padding:12px;border:1px solid #aac9db;border-radius:10px;display:grid;gap:8px';
+ const title=document.createElement('strong');title.textContent='RESPUESTA DE MESA TÉCNICA';
+ const status=document.createElement('select');
+ [['REALIZADO','✅ Realizado'],['CONFIRMADO','✅ Confirmado'],['REQUIERE_CORRECCION','⚠️ Requiere corrección']].forEach(([value,label])=>{const o=document.createElement('option');o.value=value;o.textContent=label;status.appendChild(o)});
+ const comment=document.createElement('textarea');comment.rows=3;comment.maxLength=1500;comment.placeholder='Descripción opcional: acceso al segundo WiFi confirmado';
+ const photoLabel=document.createElement('label');photoLabel.textContent='📷 Foto opcional (JPEG/PNG/WEBP, máximo 2 MB)';
+ const photo=document.createElement('input');photo.type='file';photo.accept='image/jpeg,image/png,image/webp';photoLabel.appendChild(photo);
+ const send=document.createElement('button');send.type='button';send.textContent='✅ ENVIAR RESULTADO';
+ const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancelar';cancel.onclick=()=>form.remove();
+ send.onclick=async()=>{
+  if(send.disabled)return;
+  const detalle=comment.value.trim(),estado=status.value,file=photo.files?.[0];
+  if(estado==='REQUIERE_CORRECCION'&&detalle.length<8)return alert('Describe qué debe corregir el técnico.');
+  if(file&&(file.size>2*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type)))return alert('Foto máximo 2 MB en JPEG, PNG o WEBP.');
+  send.disabled=true;
+  try{
+   const request={orden_id:id,requerimiento_id:rid,estado_resultado:estado,detalle_resultado:detalle};
+   if(file){request.mime_type=file.type;request.base64=await dataUrl(file)}
+   await mesa('resolve-support-request',request);await cargar(true);
+  }catch(e){send.disabled=false;alert('No se pudo guardar: '+(e.message||e))}
+ };
+ form.append(title,status,comment,photoLabel,send,cancel);card.appendChild(form);comment.focus();
+};
 window.confirmarClienteMesa=async id=>{if(!confirm('¿Confirmar que el cliente/servicio ya fue registrado o activado en el sistema?'))return;try{await mesa('confirm-client',{orden_id:id});await cargar(true)}catch(e){alert(e.message)}};
 async function dataUrl(f){return await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result||''));r.onerror=rej;r.readAsDataURL(f)})}
 window.subirOnuMesa=async(e,id)=>{const f=e.target.files?.[0];if(!f)return;try{await mesa('onu-upload',{orden_id:id,mime_type:f.type||'image/jpeg',base64:await dataUrl(f)});await cargar(true)}catch(err){alert(err.message)}finally{e.target.value=''}};
