@@ -756,7 +756,7 @@ if(action==='report-support-correction'){
       if(!assigned(o,me))return reply({error:'La OT no está asignada a este técnico'},403);
       if(!rid)return reply({error:'Requerimiento obligatorio'},400);
       const {data:r,error:rErr}=await s.from('orden_mesa_requerimientos')
-        .select('id,estado,acciones,resultado').eq('id',rid).eq('orden_id',o.id).maybeSingle();
+        .select('id,estado,acciones,resultado,updated_at').eq('id',rid).eq('orden_id',o.id).maybeSingle();
       if(rErr)throw rErr;if(!r)return reply({error:'Solicitud no encontrada'},404);
       if(r.estado!=='PENDIENTE')return reply({error:'Esta intervención ya no está pendiente'},409);
       const respuesta=r.resultado?.respuesta_mesa;
@@ -774,7 +774,7 @@ if(action==='report-support-correction'){
       // Filtro optimista para no sobrescribir una nueva respuesta de Fernando en paralelo.
       const {data:saved,error:saveErr}=await s.from('orden_mesa_requerimientos').update({resultado,updated_at:ahora})
         .eq('id',rid).eq('orden_id',o.id).eq('estado','PENDIENTE')
-        .eq('resultado',r.resultado).select('id');
+        .eq('updated_at',r.updated_at).select('id');
       if(saveErr)throw saveErr;
       if(!saved?.length)return reply({error:'La intervención cambió. Actualiza la pantalla antes de informar'},409);
       await s.from('orden_historial').insert({orden_id:o.id,evento:'MESA_TECNICA_CORRECCION_REALIZADA',
