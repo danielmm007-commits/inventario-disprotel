@@ -217,7 +217,10 @@
    // Mismo enlace que utiliza el boton ATENDER de Supervisión Técnica.
    const url='asignacion-ip.html?mesa_tab='+encodeURIComponent(tab)+
       '&focus='+encodeURIComponent(focus)+'&orden='+encodeURIComponent(uuid);
-   location.assign(url);
+   const navigation={url,handled:false};
+   window.dispatchEvent(new CustomEvent('disprotel:abrir-modulo-en-panel',{detail:navigation}));
+   // Respaldo solo si el panel aún no se ha iniciado.
+   if(!navigation.handled)location.assign(url);
  }
  function updateBadge(){
    const badge=document.getElementById('disprotelMesaPendientesBadge');
