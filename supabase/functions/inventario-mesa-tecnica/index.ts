@@ -279,7 +279,7 @@ async function requerimientosMesa(s:any,ordenId:string){
 }
 const MESA_PREPARACION=new Set(['VERIFICAR_POTENCIA','ACTIVAR_CAMBIAR_ONU','CONFIRMAR_IP_ACTUAL','ASIGNAR_NUEVA_IP','REVISAR_RADIO_CPE','OTRA_ACCION']);
 const MESA_FINAL=new Set(['VERIFICAR_ACCESO_REMOTO','VERIFICAR_CONECTIVIDAD']);
-async function validarSecuenciaSoporte(s:any,o:any,acciones:string[]){
+async function validarSecuenciaSoporte(s:any,o:any,acciones:string[],motivoRepeticion=''){
   const clean=[...new Set((acciones||[]).map(x=>String(x||'').toUpperCase()))];
   const accionesIp=['CONFIRMAR_IP_ACTUAL','ASIGNAR_NUEVA_IP'];
   const pideIp=clean.some(x=>accionesIp.includes(x)),pideRemoto=clean.includes('VERIFICAR_ACCESO_REMOTO');
@@ -288,15 +288,24 @@ async function validarSecuenciaSoporte(s:any,o:any,acciones:string[]){
   if(pideIp&&pideRemoto)
     throw new Error('La IP se consulta o asigna ANTES del acceso remoto. Envía cada intervención por separado.');
   const st=await state(s,o);
-  const solicitadas=new Set((st.requerimientos||[]).flatMap((x:any)=>Array.isArray(x.acciones)?x.acciones:[]));
-  // No basarse solo en state(), porque ese resumen puede limitar filas históricas.
-  const anteriores=await s.from('orden_mesa_requerimientos').select('id,acciones')
-    .eq('orden_id',o.id).overlaps('acciones',clean).limit(50);
+  // Repetir solo verificaciones que no reinicien IP, ONU o acceso remoto.
+  const anteriores=await s.from('orden_mesa_requerimientos').select('id,acciones,estado')
+    .eq('orden_id',o.id).overlaps('acciones',clean).limit(100);
   if(anteriores.error)throw anteriores.error;
-  const enHistorial=new Set((anteriores.data||[])
+  const pendientes=new Set((anteriores.data||[]).filter((r:any)=>r.estado==='PENDIENTE')
     .flatMap((r:any)=>Array.isArray(r.acciones)?r.acciones:[]));
-  const repetidas=clean.filter((x:string)=>solicitadas.has(x)||enHistorial.has(x));
-  if(repetidas.length)throw new Error('Esta acción ya fue solicitada a Mesa Técnica: '+repetidas.join(', ')+'. Revisa el resultado existente antes de volver a solicitarla.');
+  const duplicadas=clean.filter((x:string)=>pendientes.has(x));
+  if(duplicadas.length)throw new Error('Ya hay una solicitud pendiente de esta intervención: '+duplicadas.join(', '));
+  const atendidas=new Set((anteriores.data||[]).filter((r:any)=>r.estado==='ATENDIDO')
+    .flatMap((r:any)=>Array.isArray(r.acciones)?r.acciones:[]));
+  const repetidas=clean.filter((x:string)=>atendidas.has(x));
+  const repetibles=new Set(['VERIFICAR_POTENCIA','CONFIRMAR_IP_ACTUAL','REVISAR_RADIO_CPE','VERIFICAR_CONECTIVIDAD','OTRA_ACCION']);
+  if(repetidas.some((x:string)=>!repetibles.has(x)))
+    throw new Error('Esta acción modifica IP, ONU o acceso remoto y no se puede reiniciar desde una petición repetida. Solicita OTRA ACCIÓN para una nueva revisión conservando los datos confirmados.');
+  if(repetidas.length) {
+    const motivo=String(motivoRepeticion||'').trim();
+    if(motivo.length<8)throw new Error('Indica el motivo de repetir la intervención (mínimo 8 caracteres).');
+  }
 
   if(pideIp){
     // También proteger solicitudes históricas más antiguas que las 20 mostradas por state().
@@ -344,13 +353,18 @@ Deno.serve(async req=>{
       }
       acciones=[...new Set(acciones)];
       if(acciones.includes('ASIGNAR_NUEVA_IP')&&!o.router_cobertura_id)return reply({error:'La OT necesita router de cobertura para asignar una nueva IP'},400);
-      await validarSecuenciaSoporte(s,o,acciones);
+      await validarSecuenciaSoporte(s,o,acciones,String(body.motivo_repeticion||''));
       await ensureMesa(s,o,me);
       const reqLote=await crearRequerimientoLote(s,o,me,acciones);
+      const motivoRepeticion=String(body.motivo_repeticion||'').trim().slice(0,500);
+      if(motivoRepeticion){
+        const reg=await s.from('orden_mesa_requerimientos').update({resultado:{motivo_repeticion:motivoRepeticion},updated_at:new Date().toISOString()}).eq('id',reqLote.id);
+        if(reg.error)throw reg.error;
+      }
       if(acciones.includes('ACTIVAR_CAMBIAR_ONU'))await ensureOnu(s,o,me);
       if(acciones.includes('ASIGNAR_NUEVA_IP'))await ensureIp(s,o,me,true);
       if(acciones.includes('VERIFICAR_ACCESO_REMOTO'))await ensureRemote(s,o,me);
-      await s.from('orden_historial').insert({orden_id:o.id,evento:'MESA_TECNICA_SOPORTE_SOLICITADO',detalle:{requerimiento_id:reqLote.id,acciones:reqLote.acciones},realizado_por_id:me.id});
+      await s.from('orden_historial').insert({orden_id:o.id,evento:'MESA_TECNICA_SOPORTE_SOLICITADO',detalle:{requerimiento_id:reqLote.id,acciones:reqLote.acciones,motivo_repeticion:motivoRepeticion||null},realizado_por_id:me.id});
       return reply({ok:true,requerimiento:reqLote,...await state(s,o)});
     }
     if(action==='request-remote'){
