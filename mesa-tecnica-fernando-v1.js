@@ -269,7 +269,7 @@ function batchHtml(o){
     '</b><div class="stepState">'+esc(fmt(r.solicitado_at))+
     (done&&r.atendido_at?' · atendido '+esc(fmt(r.atendido_at)):'')+
     '</div></div>'+(done?badge('ATENDIDO',true):badge('PENDIENTE'))+
-    '</div><div class="mesaReqActions">'+chips+'</div>'+detalle+'</div>';
+    '</div><div class="mesaReqActions">'+chips+'</div>'+(r.resultado?.motivo_repeticion?'<div class="stepState" style="padding:8px 10px;margin:6px 0;border-left:3px solid #4a84a8"><b>📝 Motivo de la nueva revisión:</b> '+esc(r.resultado.motivo_repeticion)+'</div>':'')+detalle+'</div>';
  }).join('')+'</div>';
 }
 function supportDynamicSteps(o){const pending=(o.requerimientos||[]).filter(r=>r.estado==='PENDIENTE'),acts=new Set(pending.flatMap(r=>r.acciones||[]));let out='';if(acts.has('ASIGNAR_NUEVA_IP'))out+=ipStep(o);if(acts.has('VERIFICAR_ACCESO_REMOTO'))out+=remotoStep(o);return out}
