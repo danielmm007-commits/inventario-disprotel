@@ -425,7 +425,7 @@ window.resolverReqMesa=(id,rid)=>{
  const status=document.createElement('select');
  [['REALIZADO','✅ Realizado'],['CONFIRMADO','✅ Confirmado'],['REQUIERE_CORRECCION','⚠️ Requiere corrección']].forEach(([value,label])=>{const o=document.createElement('option');o.value=value;o.textContent=label;status.appendChild(o)});
  const comment=document.createElement('textarea');comment.rows=3;comment.maxLength=1500;comment.placeholder='Descripción opcional: acceso al segundo WiFi confirmado';
- const photoLabel=document.createElement('label');photoLabel.textContent='📷 Foto opcional (JPEG/PNG/WEBP, máximo 2 MB)';
+ const photoLabel=document.createElement('label');photoLabel.textContent='📷 Foto opcional (se comprime antes de subir; hasta 12 MB de origen)';
  const photo=document.createElement('input');photo.type='file';photo.accept='image/jpeg,image/png,image/webp';photoLabel.appendChild(photo);
  const send=document.createElement('button');send.type='button';send.textContent='✅ ENVIAR RESULTADO';
  const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancelar';cancel.onclick=()=>form.remove();
@@ -433,17 +433,39 @@ window.resolverReqMesa=(id,rid)=>{
   if(send.disabled)return;
   const detalle=comment.value.trim(),estado=status.value,file=photo.files?.[0];
   if(estado==='REQUIERE_CORRECCION'&&detalle.length<8)return alert('Describe qué debe corregir el técnico.');
-  if(file&&(file.size>2*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type)))return alert('Foto máximo 2 MB en JPEG, PNG o WEBP.');
+  if(file&&(file.size>12*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type)))return alert('Selecciona una imagen JPEG, PNG o WEBP de máximo 12 MB para comprimirla.');
   send.disabled=true;
   try{
    const request={orden_id:id,requerimiento_id:rid,estado_resultado:estado,detalle_resultado:detalle};
-   if(file){request.mime_type=file.type;request.base64=await dataUrl(file)}
+   if(file){const foto=await optimizarFotoMesa(file);request.mime_type=foto.type;request.base64=await dataUrl(foto)}
    await mesa('resolve-support-request',request);await cargar(true);
   }catch(e){send.disabled=false;alert('No se pudo guardar: '+(e.message||e))}
  };
  form.append(title,status,comment,photoLabel,send,cancel);card.appendChild(form);comment.focus();
 };
 window.confirmarClienteMesa=async id=>{if(!confirm('¿Confirmar que el cliente/servicio ya fue registrado o activado en el sistema?'))return;try{await mesa('confirm-client',{orden_id:id});await cargar(true)}catch(e){alert(e.message)}};
+
+async function optimizarFotoMesa(file){
+ // Se ejecuta exclusivamente al adjuntar, nunca durante Realtime, render o visualización.
+ const url=URL.createObjectURL(file);
+ try{
+  const img=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error('No se pudo leer la fotografía'));i.src=url});
+  const max=1600,escala=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(img.naturalWidth*escala));
+  canvas.height=Math.max(1,Math.round(img.naturalHeight*escala));
+  const ctx=canvas.getContext('2d');
+  if(!ctx)throw new Error('Este navegador no permite optimizar imágenes');
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  let blob=await new Promise((ok,no)=>canvas.toBlob(b=>b?ok(b):no(new Error('No se pudo comprimir la fotografía')),'image/jpeg',.84));
+  if(blob.size>2*1024*1024){
+   blob=await new Promise((ok,no)=>canvas.toBlob(b=>b?ok(b):no(new Error('No se pudo comprimir la fotografía')),'image/jpeg',.68));
+  }
+  if(blob.size>2*1024*1024)throw new Error('La imagen optimizada supera 2 MB. Selecciona una fotografía más pequeña.');
+  return blob;
+ }finally{URL.revokeObjectURL(url)}
+}
 async function dataUrl(f){return await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result||''));r.onerror=rej;r.readAsDataURL(f)})}
 window.subirOnuMesa=async(e,id)=>{const f=e.target.files?.[0];if(!f)return;try{await mesa('onu-upload',{orden_id:id,mime_type:f.type||'image/jpeg',base64:await dataUrl(f)});await cargar(true)}catch(err){alert(err.message)}finally{e.target.value=''}};
 window.pegarOnuMesa=async(e,id)=>{e.preventDefault();const items=[...(e.clipboardData?.items||[])],it=items.find(x=>String(x.type||'').startsWith('image/'));if(!it){alert('El portapapeles no contiene una imagen.');return}const f=it.getAsFile();if(!f)return;try{await mesa('onu-upload',{orden_id:id,mime_type:f.type||'image/png',base64:await dataUrl(f)});await cargar(true)}catch(err){alert(err.message)}};
