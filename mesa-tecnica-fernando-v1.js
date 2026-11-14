@@ -263,7 +263,14 @@ function batchHtml(o){
   else if(soloIpActual)detalle=ipActualStep(o,r);
   else if(soloOnu)detalle=onuStep(o);
   else if(soloRemoto)detalle=done?evidenciaAccesoEnRequerimiento(o,r):'<div class="stepState">⏳ Adjunta y confirma el acceso remoto en el panel de esta OT.</div>';
-  else if(!done)detalle='<button onclick="resolverReqMesa(\''+o.id+'\',\''+r.id+'\')">✅ REGISTRAR RESULTADO</button>';
+  else if(!done){
+    const resp=r.resultado?.respuesta_mesa||null,corr=r.resultado?.correccion_campo||null;
+    const esperando=resp?.estado==='REQUIERE_CORRECCION'&&(!corr?.corregido_at||Date.parse(corr.corregido_at)<Date.parse(resp.respondido_at));
+    const nueva=resp?.estado==='REQUIERE_CORRECCION'&&!esperando;
+    detalle=(esperando?'<div class="stepState" style="border-left:3px solid #d48c25;padding:8px;margin:6px 0"><b>⏳ ESPERANDO CORRECCIÓN DE BRYAN</b><div>No debe cerrarse hasta que el técnico informe que corrigió.</div></div>':'')+
+      (nueva?'<div class="stepState" style="border-left:3px solid #19865a;padding:8px;margin:6px 0"><b>✅ BRYAN INFORMA: YA CORREGÍ · VOLVER A VERIFICAR</b><div>'+esc(corr.observacion||'')+'</div><div>'+esc(fmt(corr.corregido_at))+'</div></div>':'')+
+      (esperando?'':'<button onclick="resolverReqMesa(\''+o.id+'\',\''+r.id+'\')">✅ '+(nueva?'REGISTRAR NUEVA VERIFICACIÓN':'REGISTRAR RESULTADO')+'</button>');
+  }
   return '<div class="mesaReq '+(done?'done':'')+'"><div class="mesaReqTop"><div><b>'+
     (done?'✅ REQUERIMIENTO ATENDIDO':'⏳ REQUERIMIENTO PENDIENTE')+
     '</b><div class="stepState">'+esc(fmt(r.solicitado_at))+
