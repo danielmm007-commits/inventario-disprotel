@@ -471,12 +471,14 @@ Deno.serve(async req=>{
           const q=await s.from(install?'instalacion_evidencias':'soporte_evidencias').select(column).eq('id',e.id).maybeSingle();
           if(q.error)throw q.error;path=String(q.data?.[column]||'');bucket=install?'instalacion-evidencias':'soporte-evidencias';
         }
-      }else if(kind==='REMOTE_HISTORY'||kind==='ONU_HISTORY'||kind==='POWER'||kind==='POWER_REVIEW'||kind==='POWER_ALERT'){
+      }else if(kind==='REMOTE_HISTORY'||kind==='ONU_HISTORY'||kind==='POWER'||kind==='POWER_REVIEW'||kind==='POWER_ALERT'||kind==='GENERAL_RESULT'){
         if(!reqId)return reply({error:'Requerimiento obligatorio'},400);
         const q=await s.from('orden_mesa_requerimientos').select('resultado').eq('id',reqId).eq('orden_id',o.id).maybeSingle();
         if(q.error)throw q.error;if(!q.data)return reply({error:'Requerimiento no disponible'},404);
         const data=q.data.resultado||{};
-        if(kind==='REMOTE_HISTORY'){
+        if(kind==='GENERAL_RESULT'){
+          path=String(data.respuesta_mesa?.storage_path||'');bucket='soporte-evidencias';
+        }else if(kind==='REMOTE_HISTORY'){
           const info=data.verificacion_acceso_remoto;
           if(info?.estado==='CONFIRMADO'&&info.evidencia_id){
             const install=info.evidencia_origen==='INSTALACION',column=install?'storage_path':'storage_path_original';
@@ -752,17 +754,59 @@ if(action==='resolve-support-request'){
       if(!supervisor(me))return reply({error:'No autorizado'},403);
       const o=await order(s,String(body.orden_id||'')),rid=String(body.requerimiento_id||'').trim();
       if(!rid)return reply({error:'Requerimiento obligatorio'},400);
-      const {data:r,error:rErr}=await s.from('orden_mesa_requerimientos').select('id,acciones,estado').eq('id',rid).eq('orden_id',o.id).maybeSingle();if(rErr)throw rErr;if(!r)return reply({error:'Requerimiento no encontrado'},404);
-      if(r.estado==='ATENDIDO')return reply({ok:true,...await state(s,o)});
+      const {data:r,error:rErr}=await s.from('orden_mesa_requerimientos')
+        .select('id,acciones,estado,resultado').eq('id',rid).eq('orden_id',o.id).maybeSingle();
+      if(rErr)throw rErr;if(!r)return reply({error:'Requerimiento no encontrado'},404);
+      if(r.estado==='ATENDIDO')return reply({error:'Este requerimiento ya está atendido'},409);
+      if(r.estado!=='PENDIENTE')return reply({error:'El requerimiento no está pendiente'},409);
       const evidenciaObligatoria=['VERIFICAR_POTENCIA','CONFIRMAR_IP_ACTUAL','ACTIVAR_CAMBIAR_ONU','ASIGNAR_NUEVA_IP','VERIFICAR_ACCESO_REMOTO'];
       const bloqueadas=(r.acciones||[]).filter((x:string)=>evidenciaObligatoria.includes(x));
-      if(bloqueadas.length)return reply({error:'Este requerimiento necesita evidencia técnica y no puede cerrarse manualmente: '+bloqueadas.join(', ')},409);
-      const now=new Date().toISOString(),canal=String(body.canal_resolucion||'SISTEMA').trim().toUpperCase();
-      const {error:uErr}=await s.from('orden_mesa_requerimientos').update({estado:'ATENDIDO',atendido_por_id:me.id,atendido_at:now,canal_resolucion:canal,updated_at:now}).eq('id',rid);if(uErr)throw uErr;
-      await s.from('orden_historial').insert({orden_id:o.id,evento:'MESA_TECNICA_REQUERIMIENTO_ATENDIDO',detalle:{requerimiento_id:rid,acciones:r.acciones,canal_resolucion:canal},realizado_por_id:me.id});
+      if(bloqueadas.length)return reply({error:'Esta intervención necesita su comprobación específica: '+bloqueadas.join(', ')},409);
+      const estado=String(body.estado_resultado||'').toUpperCase().trim();
+      if(!['REALIZADO','CONFIRMADO','REQUIERE_CORRECCION'].includes(estado))
+        return reply({error:'Selecciona el resultado de la intervención'},400);
+      const detalle=String(body.detalle_resultado||'').trim().slice(0,1500);
+      if(estado==='REQUIERE_CORRECCION'&&detalle.length<8)
+        return reply({error:'Explica qué debe corregir el técnico'},400);
+      const mime=String(body.mime_type||'').toLowerCase();
+      const base64=String(body.base64||'');
+      if(base64&&!['image/jpeg','image/png','image/webp'].includes(mime))
+        return reply({error:'Solo se permiten imágenes JPEG, PNG o WEBP'},400);
+      if(base64.length>4*1024*1024)return reply({error:'Imagen demasiado grande; máximo 2 MB'},400);
+      const now=new Date().toISOString();let imagePath='';
+      if(base64){
+        const bytes=decodeBase64(base64);
+        if(!bytes.length||bytes.length>2*1024*1024)
+          return reply({error:'La imagen debe tener máximo 2 MB'},400);
+        const ext=mime==='image/png'?'png':mime==='image/webp'?'webp':'jpg';
+        imagePath='mesa-resultados/'+o.id+'/'+rid+'/'+crypto.randomUUID()+'.'+ext;
+        const uploaded=await s.storage.from('soporte-evidencias')
+          .upload(imagePath,bytes,{contentType:mime,upsert:false});
+        if(uploaded.error)throw uploaded.error;
+      }
+      const respuesta={estado,texto:detalle||estado,storage_path:imagePath||null,
+        respondido_at:now,respondido_por_id:me.id};
+      const before=r.resultado||{},hist=Array.isArray(before.respuestas_mesa)?before.respuestas_mesa:[];
+      const resultado={...before,respuesta_mesa:respuesta,respuestas_mesa:[...hist,respuesta]};
+      const final=estado==='REQUIERE_CORRECCION'?'PENDIENTE':'ATENDIDO';
+      const update:any={resultado,estado:final,updated_at:now};
+      if(final==='ATENDIDO'){
+        update.atendido_por_id=me.id;update.atendido_at=now;update.canal_resolucion='SISTEMA';
+      }
+      const saved=await s.from('orden_mesa_requerimientos').update(update)
+        .eq('id',rid).eq('orden_id',o.id).eq('estado','PENDIENTE').select('id');
+      if(saved.error||!saved.data?.length){
+        if(imagePath)await s.storage.from('soporte-evidencias').remove([imagePath]);
+        if(saved.error)throw saved.error;
+        return reply({error:'El requerimiento cambió; actualiza el panel'},409);
+      }
+      await s.from('orden_historial').insert({orden_id:o.id,
+        evento:final==='ATENDIDO'?'MESA_TECNICA_REQUERIMIENTO_ATENDIDO':'MESA_TECNICA_CORRECCION_SOLICITADA',
+        detalle:{requerimiento_id:rid,acciones:r.acciones,estado,texto:respuesta.texto,
+          evidencia:!!imagePath},realizado_por_id:me.id});
       return reply({ok:true,...await state(s,o)});
     }
-    if(action==='board'){
+        if(action==='board'){
       if(!supervisor(me))return reply({error:'No autorizado'},403);
       const {data:rows,error:rErr}=await s.from('orden_mesa_tecnica_estado').select('orden_id,solicitado_at,cliente_registrado,cliente_registrado_at').not('solicitado_at','is',null).order('solicitado_at',{ascending:true}).limit(100);if(rErr)throw rErr;
       const ids=(rows||[]).map((x:any)=>x.orden_id);if(!ids.length)return reply({ok:true,instalaciones:[],soportes:[]});
