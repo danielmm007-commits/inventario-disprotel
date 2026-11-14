@@ -461,10 +461,9 @@ function renderTypes(){
   const thumbs=fotos.map(x=>{
    const id=String(x.id||x.offline_sync_id||x.tipo_foto);
    const pending=!!x.offline_pending;
-   const preview=x.url&&!pending?
-    '<button type="button" class="evPhotoView" data-ver-foto="'+esc(id)+'" aria-label="Ampliar fotografía">'+
-     '<img src="'+esc(x.url)+'" alt="Evidencia '+esc(t[1])+'" loading="lazy"></button>':
-    '<div class="evPhotoPlaceholder">'+(pending?'⏳ Pendiente de sincronización':'📷 Cargando fotografía…')+'</div>';
+   const preview=x.id&&!pending?
+    '<button type="button" class="evPhotoView" data-ver-foto="'+esc(id)+'" aria-label="Abrir fotografía">📷 VER FOTOGRAFÍA</button>':
+    '<div class="evPhotoPlaceholder">'+(pending?'⏳ Pendiente de sincronización':'📷 Foto no sincronizada')+'</div>';
    return '<div class="evInlinePhoto" data-evidencia-id="'+esc(id)+'">'+
     preview+'<div class="muted evPhotoDate">'+esc(fmt(x.fecha_hora_captura))+'</div>'+
     (pending?'<div class="muted evPhotoPending">Guardada en este teléfono; sin sincronizar.</div>':
@@ -489,14 +488,21 @@ function renderEv(){
  $('confirmarSinEvidencias').classList.toggle('hidden',vigente.some(x=>!x.offline_pending));
  renderTypes();refrescarEtapas();
 }
-function ampliarFotoEvidencia(id){
+let fotoSoporteAbriendo=false;
+async function ampliarFotoEvidencia(id){
  const e=evidenciasVigentesSoporte(DATA?.evidencias||[]).find(x=>String(x.id||x.offline_sync_id||x.tipo_foto)===String(id));
- if(!e?.url)return msg('evMsg','Esta fotografía todavía no está disponible.');
- const label=TYPES.find(t=>t[0]===e.tipo_foto)?.[1]||up(e.tipo_foto).replaceAll('_',' ');
- $('evLightboxImg').src=e.url;
- $('evLightboxTitle').textContent=label+' · '+fmt(e.fecha_hora_captura);
- $('evLightbox').classList.remove('hidden');
- $('evLightboxClose').focus();
+ if(!e?.id||fotoSoporteAbriendo)return msg('evMsg','Esta fotografía todavía no está disponible.');
+ fotoSoporteAbriendo=true;
+ try{
+  const d=await call('view-evidence',{orden_id:ORDEN,evidencia_id:e.id});
+  if(!d.url)throw new Error('No se obtuvo enlace de fotografía');
+  const label=TYPES.find(t=>t[0]===e.tipo_foto)?.[1]||up(e.tipo_foto).replaceAll('_',' ');
+  $('evLightboxImg').src=d.url;
+  $('evLightboxTitle').textContent=label+' · '+fmt(e.fecha_hora_captura);
+  $('evLightbox').classList.remove('hidden');
+  $('evLightboxClose').focus();
+ }catch(err){msg('evMsg',err.message||'No se pudo abrir la fotografía')}
+ finally{fotoSoporteAbriendo=false}
 }
 function cerrarFotoEvidencia(){
  $('evLightbox').classList.add('hidden');
@@ -520,9 +526,7 @@ async function eliminarEvidencia(id){
  finally{EVIDENCIA_BUSY=false}
 }
 function nuevaVersionFoto(tipo){EVTYPE=tipo;renderTypes();$('galInput').value='';$('galInput').click()}
-async function refrescarMiniaturas(){
- try{const d=await call('support-summary',{orden_id:ORDEN});for(const ev of DATA.evidencias||[]){const proof=(d.evidencias||[]).find(x=>x.id===ev.id);if(proof?.url)ev.url=proof.url}renderEv()}catch{renderEv()}
-}function dataUrl(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result));r.onerror=rej;r.readAsDataURL(f)})}function imageFrom(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src})}async function cropped(){if(EVTYPE!=='SERIAL')return null;const im=await imageFrom(ORIG),z=Number($('zoom').value||1),cw=1200,ch=900,c=document.createElement('canvas');c.width=cw;c.height=ch;const ctx=c.getContext('2d'),base=Math.max(cw/im.width,ch/im.height)*z,dw=im.width*base,dh=im.height*base;ctx.drawImage(im,(cw-dw)/2,(ch-dh)/2,dw,dh);return c.toDataURL(FILE?.type==='image/png'?'image/png':'image/jpeg',.9)}async function pick(f){
+async function refrescarMiniaturas(){renderEv()}function dataUrl(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result));r.onerror=rej;r.readAsDataURL(f)})}function imageFrom(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src})}async function cropped(){if(EVTYPE!=='SERIAL')return null;const im=await imageFrom(ORIG),z=Number($('zoom').value||1),cw=1200,ch=900,c=document.createElement('canvas');c.width=cw;c.height=ch;const ctx=c.getContext('2d'),base=Math.max(cw/im.width,ch/im.height)*z,dw=im.width*base,dh=im.height*base;ctx.drawImage(im,(cw-dw)/2,(ch-dh)/2,dw,dh);return c.toDataURL(FILE?.type==='image/png'?'image/png':'image/jpeg',.9)}async function pick(f){
  if(!f||EVIDENCIA_BUSY)return;
  if(f.size>5*1024*1024)return alert('La imagen supera 5 MB.');
  try{FILE=f;ORIG=await dataUrl(f);$('previewBox').classList.add('hidden');await uploadEv()}
@@ -623,6 +627,21 @@ async function confirmarHallazgo(){
    refrescarEtapas();msg('hallazgoMsg','✅ Hallazgo registrado correctamente.',true);
  }catch(e){msg('hallazgoMsg',e.message)}
 }
+const fotosMesaSoportePendientes=new Set();
+window.verFotoSoporteMesa=async function(kind,requerimientoId=''){
+ const key=kind+':'+requerimientoId;
+ if(fotosMesaSoportePendientes.has(key))return;
+ const tab=window.open('about:blank','_blank');
+ if(!tab){msg('evMsg','Permite ventanas emergentes para ver la fotografía');return}
+ try{tab.opener=null}catch{}
+ fotosMesaSoportePendientes.add(key);
+ try{
+  const d=await post(MESA_API,{action:'view-mesa-photo',orden_id:ORDEN,kind,requerimiento_id:requerimientoId});
+  if(!d.url)throw new Error('No se recibió el enlace');
+  tab.location.replace(d.url);
+ }catch(e){try{tab.close()}catch{}msg('evMsg',e.message||'Error abriendo fotografía')}
+ finally{fotosMesaSoportePendientes.delete(key)}
+};
 const MESA_ACTIONS={
  VERIFICAR_POTENCIA:['📶','Verificar potencia óptica','Revisar niveles ópticos del cliente'],
  ACTIVAR_CAMBIAR_ONU:['📡','Activar / cambiar ONU','Autorizar o reemplazar ONU/ONT'],
@@ -712,7 +731,7 @@ function mesaReqLine(r){
        ev=res.evidencia_potencia||null,ip=res.verificacion_ip||null,onuEv=res.evidencia_onu||null,onuRes=res.activacion_onu||null,done=r.estado==='ATENDIDO';
  let extra='';
  if(onuEv||onuRes){
-   extra+='<div class="mesaMirrorStatus '+(done?'ok':'pending')+'"><div><b>📡 ONU/ONT:</b> '+esc(onuRes?.estado||'CONFIRMADA')+'</div>'+(onuEv?.confirmado_at?'<div><b>Confirmada:</b> '+esc(fmt(onuEv.confirmado_at))+'</div>':'')+(onuEv?.url?'<div style="margin-top:6px"><img src="'+esc(onuEv.url)+'" alt="Evidencia ONU" style="max-width:360px;width:100%;max-height:180px;object-fit:contain;border:1px solid #d8e2e6;border-radius:4px;background:#111" onclick="window.open(this.src,\'_blank\')"></div>':'')+'</div>';
+   extra+='<div class="mesaMirrorStatus '+(done?'ok':'pending')+'"><div><b>📡 ONU/ONT:</b> '+esc(onuRes?.estado||'CONFIRMADA')+'</div>'+(onuEv?.confirmado_at?'<div><b>Confirmada:</b> '+esc(fmt(onuEv.confirmado_at))+'</div>':'')+(onuEv?.storage_path?'<div style="margin-top:6px"><button type="button" class="secondary" onclick="verFotoSoporteMesa(\'ONU_HISTORY\',\''+esc(r.id)+'\')">🖼️ VER EVIDENCIA ONU</button></div>':'')+'</div>';
  }
  if(ip){
    const st=String(ip.estado||'').toUpperCase(),label=done?'✅ Confirmada por MikroTik':st==='PENDIENTE'?'⏳ Consultando MikroTik':st==='OK'&&ip.encontrada!==true?'❌ IP no encontrada':st==='ERROR'?'⚠️ Error de consulta':'Pendiente';
@@ -722,12 +741,12 @@ function mesaReqLine(r){
  const ar=MESA_STATE?.acceso||null,rh=res.verificacion_acceso_remoto||null,erActual=ar?.evidencia||null;
  // El estado/evidencia actual de Supabase es el mismo para Fernando y Bryan.
  // Solo se renderiza el requerimiento remoto más reciente: no mostrar fotos históricas.
- const visible=ar?.evidencia?.url?ar.evidencia:null;
+ const visible=ar?.evidencia?.id?ar.evidencia:null;
  const remoteOk=ar?.estado==='CONFIRMADO'&&r.estado==='ATENDIDO';
- const label=remoteOk?'✅ Acceso remoto confirmado':visible?.url?'📷 Evidencia recibida, pendiente confirmación':'⏳ Esperando confirmación de acceso remoto';
+ const label=remoteOk?'✅ Acceso remoto confirmado':visible?.id?'📷 Evidencia recibida, pendiente confirmación':'⏳ Esperando confirmación de acceso remoto';
  extra+='<div class="mesaMirrorStatus '+(remoteOk?'ok':'pending')+'"><b>🔐 '+label+'</b>'+
   (rh?.confirmado_at?'<div>Confirmado: '+esc(fmt(rh.confirmado_at))+'</div>':'')+(rh?.rectificada_at?'<div>✏️ Captura rectificada: '+esc(fmt(rh.rectificada_at))+'</div>':'')+
-  (visible?.url?'<div class="mesaRemoteEvidence"><img src="'+esc(visible.url)+'" alt="Evidencia de acceso remoto" onclick="window.open(this.src,\'_blank\')"></div>':'')+
+  (visible?.id?'<div class="mesaRemoteEvidence"><button type="button" class="secondary" onclick="verFotoSoporteMesa(\'REMOTE\')">🖼️ VER EVIDENCIA REMOTA</button></div>':'')+
  '</div>';
 }
  if(estaVerificando&&res.revision_potencia){
@@ -735,19 +754,19 @@ function mesaReqLine(r){
    extra+='<div class="mesaPowerFix '+(needs?'pending':'corrected')+'"><b>'+
       (needs?'⚠️ FERNANDO SOLICITA CORRECCIÓN DE POTENCIA':'✅ CORRECCIÓN REPORTADA · ESPERANDO NUEVA VERIFICACIÓN')+
      '</b><div>'+esc(review.observacion||'')+'</div>'+
-     (review.url?'<a href="'+esc(review.url)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(review.url)+'" loading="lazy" alt="Captura provisional enviada por Fernando"></a>':'')+
+     (review.storage_path?'<button type="button" class="secondary" onclick="verFotoSoporteMesa(\'POWER_REVIEW\',\''+esc(r.id)+'\')">🖼️ VER CAPTURA PROVISIONAL</button>':'')+
      '<div class="muted">📷 Diagnóstico provisional, NO evidencia final.</div>'+
      (review.trabajo_realizado?'<div><b>Trabajo realizado:</b> '+esc(review.trabajo_realizado)+'</div>':'')+
      (needs?'<button type="button" class="mesaConfirmRevision" onclick="confirmarCorreccionOpticaMesa(\''+esc(r.id)+'\')">✅ YA CORREGÍ · AVISAR A FERNANDO</button>':'')+
      (avisos.length>1?'<div class="muted">Avisos enviados: '+avisos.length+'</div>':'')+'</div>';
  }
- if(pot||ev?.url){
+ if(pot||ev?.storage_path){
    const haceMin=pot?.leido_at?Math.max(0,Math.floor((Date.now()-Date.parse(pot.leido_at))/60000)):null;
    const hist=haceMin===null||!Number.isFinite(haceMin)||haceMin>15;
    const vals=pot?[['Estado',pot.estado||'—'],['Rx ONU',pot.rx_onu_dbm!=null?String(pot.rx_onu_dbm)+' dBm':'—'],['Rx OLT',pot.rx_olt_dbm!=null?String(pot.rx_olt_dbm)+' dBm':'—'],['OLT',pot.olt||'—'],['PON',[pot.tarjeta,pot.puerto].filter(Boolean).join('/')||'—'],['ONT-ID',pot.ont_id??'—'],['SN',pot.sn||'—'],['Distancia',pot.distancia_m!=null?String(pot.distancia_m)+' m':'—'],['Fuente',pot.fuente||'SIN IDENTIFICAR'],['Lectura',pot.leido_at?fmt(pot.leido_at):'—'],['Vigencia',hist?'HISTÓRICA · '+(haceMin===null?'sin fecha':haceMin+' min'):'Reciente · '+haceMin+' min']]:[];
    if(esMasReciente&&potGuardada?.leido_at)vals.push(['Verificación anterior',fmt(potGuardada.leido_at)+' · guardada en historial']);
    const data='<div class="powerMirrorData"><div class="muted" style="margin:0 0 5px"><b>📊 LECTURA ÓPTICA</b></div>'+vals.map(v=>'<div style="margin-top:3px"><b>'+esc(v[0])+':</b> '+esc(v[1])+'</div>').join('')+'</div>';
-   const evidence='<div class="powerMirrorEvidence"><div class="muted" style="margin:0 0 5px"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+(ev?.url?'<img data-power-evidence="'+esc(r.id)+'" src="'+esc(ev.url)+'" alt="Evidencia potencia SmartOLT" onclick="window.open(this.src,\'_blank\')"><div class="muted">✅ Captura SmartOLT guardada'+(ev.rectificada?' · ✏️ rectificada':'')+(ev.subido_at?' · '+esc(fmt(ev.subido_at)):'')+'</div>':'<div class="muted">Sin captura disponible.</div>')+'</div>';
+   const evidence='<div class="powerMirrorEvidence"><div class="muted" style="margin:0 0 5px"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+(ev?.storage_path?'<button type="button" data-power-evidence="'+esc(r.id)+'" class="secondary" onclick="verFotoSoporteMesa(\'POWER\',\''+esc(r.id)+'\')">🖼️ VER CAPTURA SMARTOLT</button><div class="muted">✅ Captura SmartOLT guardada'+(ev.rectificada?' · ✏️ rectificada':'')+(ev.subido_at?' · '+esc(fmt(ev.subido_at)):'')+'</div>':'<div class="muted">Sin captura disponible.</div>')+'</div>';
    extra+='<div class="powerMirrorGrid">'+data+evidence+'</div>';
  }
  return '<div class="mesaMirrorReq '+(done?'done':'pending')+'"><div class="mesaMirrorReqHead"><b>'+(done?'✅ ATENDIDO':'⏳ ESPERANDO MESA TÉCNICA')+' · '+esc(names)+'</b><span>'+(done?'ATENDIDO':'PENDIENTE')+'</span></div><div class="muted">'+esc(fmt(r.solicitado_at))+(done&&r.atendido_at?' · atendido '+esc(fmt(r.atendido_at)):'')+'</div>'+extra+'</div>'
