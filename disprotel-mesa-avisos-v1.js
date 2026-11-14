@@ -60,7 +60,19 @@
    if(id!==FERNANDO||!d.ot||!d.area)return;
    const key=keyFor(d),status=keyStatus(d),now=Date.now();
    if(norm(d.destino)==='SUPERVISOR'&&status.open){
-     if(!requests.has(key)){
+     if(norm(d.accion)==='CORRECCION_LISTA'){
+       const previous=requests.get(key);
+       requests.set(key,{key,created:previous?.created||now,due:now+REMIND_MS,phase:'pendiente',
+         data:{...previous?.data,area:d.area,ot:d.ot,orden_uuid:d.orden_uuid||previous?.data?.orden_uuid||'',
+           solicitud_id:d.solicitud_id||'',grupo:d.grupo||previous?.data?.grupo||'',
+           tipo:d.tipo||previous?.data?.tipo||'',estado:d.estado,actor:d.actor||'Bryan',
+           destino:'SUPERVISOR',accion:'CORRECCION_LISTA',
+           acciones:Array.isArray(d.acciones)?d.acciones:previous?.data?.acciones||[]}});
+       document.querySelectorAll('#disprotelMesaToastStack .disprotelMesaToast').forEach(t=>{
+         if(t.dataset.reqKey===key)t.remove();
+       });
+       save();
+     }else if(!requests.has(key)){
        requests.set(key,{key,created:now,due:now+REMIND_MS,phase:'pendiente',
          data:{area:d.area,ot:d.ot,orden_uuid:d.orden_uuid||'',solicitud_id:d.solicitud_id||'',
            grupo:d.grupo||'',tipo:d.tipo||'',estado:d.estado,actor:d.actor||'',
@@ -241,9 +253,10 @@
        ' · '+String(d.area||'Mesa')+
        ' · '+(r.phase==='en_gestion'?'En gestión':'Por atender');
      const actionInfo=Array.isArray(d.acciones)?d.acciones.join(' · '):'';
-     if(actionInfo){
+     if(actionInfo||norm(d.accion)==='CORRECCION_LISTA'){
        const actionEl=document.createElement('div');actionEl.className='disprotelMesaQueueAction';
-       actionEl.textContent=actionInfo;item.append(groupEl,meta,actionEl);
+       actionEl.textContent=(norm(d.accion)==='CORRECCION_LISTA'?'✅ CORRECCIÓN LISTA · VERIFICAR · ':'')+actionInfo;
+       item.append(groupEl,meta,actionEl);
      }else item.append(groupEl,meta);
      const actions=document.createElement('div');actions.className='disprotelMesaActions';
      const mk=(label,handler)=>{
@@ -313,6 +326,9 @@
      if(area==='IP'&&estado==='PENDIENTE'){icon='🌐';title=who+' solicitó asignación de IP'}
      else if(area==='ONU'&&estado==='SOLICITADO'){icon='📡';title=who+' solicitó revisión de ONU'}
      else if(area==='REMOTO'&&estado==='SOLICITADO'){icon='💻';title=who+' solicitó acceso remoto'}
+     else if(area==='MESA'&&estado==='PENDIENTE'&&norm(d.accion)==='CORRECCION_LISTA'){
+       icon='✅';tone='ok';title=who+' terminó la corrección · volver a verificar';
+     }
      else if(area==='MESA'&&estado==='PENDIENTE'){icon='🧰';title=who+' solicitó apoyo de Mesa Técnica'}
    }else{
      if(area==='IP'&&estado==='ASIGNADA'){icon='✅';tone='ok';title='IP asignada para tu OT'}
@@ -507,7 +523,7 @@
    const d=event?.detail||{};
    track(d);
    const info=describe(d);if(!info||!info.ot)return;
-   const key=[String(d.solicitud_id||info.ot),info.ot,norm(d.area),norm(d.estado),norm(d.destino)].join('|'),now=Date.now();
+   const key=[String(d.solicitud_id||info.ot),info.ot,norm(d.area),norm(d.estado),norm(d.destino),norm(d.accion)].join('|'),now=Date.now();
    for(const [key,at] of seen)if(now-at>60000)seen.delete(key);
    if(seen.has(key)&&now-seen.get(key)<5000)return;
    seen.set(key,now);
