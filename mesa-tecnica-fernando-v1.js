@@ -516,11 +516,18 @@ const obs=new MutationObserver(()=>{ocultarLegacy();if(!$('app')?.classList.cont
 const iniciar=()=>{obs.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});setTimeout(crear,220)};
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',iniciar):iniciar();
 // El panel se actualiza por eventos privados; respaldo espaciado en lugar de 7 s.
-let mesaEventTimer=null;
+let mesaEventTimer=null,ultimaCargaPorEvento=0;
 function mesaEventoActualizado(){
  if(document.hidden||!$('mesaTecnicaFernando')||$('mesaTecnicaFernando').style.display==='none')return;
- clearTimeout(mesaEventTimer);
- mesaEventTimer=setTimeout(()=>cargar(true),800);
+ // Agrupar ráfagas de Realtime: una lectura como máximo cada 3,5 segundos.
+ // No posponer indefinidamente una actualización cuando siguen llegando eventos.
+ if(mesaEventTimer!==null)return;
+ const espera=Math.max(900,3500-(Date.now()-ultimaCargaPorEvento));
+ mesaEventTimer=setTimeout(()=>{
+   mesaEventTimer=null;
+   ultimaCargaPorEvento=Date.now();
+   cargar(true);
+ },espera);
 }
 window.addEventListener('disprotel:mesa-hito',mesaEventoActualizado);
 window.addEventListener('disprotel:mesa-dato',mesaEventoActualizado);
