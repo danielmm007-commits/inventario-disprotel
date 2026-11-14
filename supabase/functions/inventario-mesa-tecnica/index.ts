@@ -30,15 +30,7 @@ async function order(s:any,id:string){
   if(q.error)throw q.error;if(!q.data)throw new Error('Orden no encontrada');return q.data;
 }
 async function signedOnu(s:any,row:any){if(!row?.storage_path)return null;const sg=await s.storage.from('instalacion-evidencias').createSignedUrl(row.storage_path,900);return sg.data?.signedUrl||null}
-async function serialCampo(s:any,o:any){
- if(String(o?.tipo_trabajo||'').startsWith('INSTALACION')){
-  const i=await s.from('instalaciones').select('id').eq('orden_id',o.id).order('created_at',{ascending:false}).limit(1).maybeSingle();if(i.error)throw i.error;if(!i.data)return null;
-  const e=await s.from('instalacion_evidencias').select('id,storage_path,fecha_hora_captura').eq('instalacion_id',i.data.id).eq('tipo_foto','SERIAL').eq('es_actual',true).order('created_at',{ascending:false}).limit(1).maybeSingle();if(e.error)throw e.error;if(!e.data)return null;
-  const sg=await s.storage.from('instalacion-evidencias').createSignedUrl(e.data.storage_path,900);return {...e.data,url:sg.data?.signedUrl||null};
- }
- const e=await s.from('soporte_evidencias').select('id,storage_path_original,fecha_hora_captura').eq('orden_id',o.id).eq('tipo_foto','SERIAL').order('created_at',{ascending:false}).limit(1).maybeSingle();if(e.error)throw e.error;if(!e.data)return null;
- const sg=await s.storage.from('soporte-evidencias').createSignedUrl(e.data.storage_path_original,900);return {...e.data,url:sg.data?.signedUrl||null};
-}
+// La evidencia de serial se consulta por su id en el modulo autorizado, nunca durante estado de Mesa.
 async function accesoEvidencia(s:any,row:any){
  if(!row)return null;
  if(row.soporte_evidencia_id){
