@@ -2,12 +2,15 @@
 window.__evVer=async function(tipo){
   const ev=evMap()[tipo];if(!ev?.id)return msg('No se encontró la evidencia','err');
   if(solicitudesFoto.has(ev.id))return;
+  const tab=window.open('about:blank','_blank');
+  if(!tab)return msg('Permite ventanas emergentes para abrir la fotografía','err');
+  try{tab.opener=null}catch{}
   solicitudesFoto.set(ev.id,true);
   try{
     const d=await post('view-evidence',{evidencia_id:ev.id});
     if(!d.url)throw new Error('Enlace de fotografía no disponible');
-    window.open(d.url,'_blank','noopener,noreferrer');
-  }catch(e){msg('No se pudo abrir fotografía: '+e.message,'err')}
+    tab.location.replace(d.url);
+  }catch(e){tab.close();msg('No se pudo abrir fotografía: '+e.message,'err')}
   finally{solicitudesFoto.delete(ev.id)}
 };
 function render(){if(!ctx)return;ensureTv();const gps=byId('evGps');if(gps)gps.innerHTML=gpsHtml(ctx.instalacion);const m=evMap();for(const k of todosTipos()){const s=byId('st-'+k),a=byId('actions-'+k),ev=m[k],guardada=!!ev,enCambio=cambiando.has(k);if(s){if(guardada){const fecha=new Date(ev.fecha_hora_captura||ev.created_at).toLocaleString('es-EC');s.innerHTML=`<div style="display:grid;grid-template-columns:92px 1fr;gap:12px;align-items:center"><div><div class="muted" style="width:92px;min-height:76px;display:flex;align-items:center;justify-content:center;text-align:center;border:1px solid #d7e1e5;border-radius:10px;background:#f4f7f9">📷 FOTO GUARDADA</div></div><div><span class="badge okb">✅ GUARDADA</span><div class="muted" style="margin-top:5px">${fecha}</div><button type="button" class="secondary" onclick="window.__evVer('${k}')">VER GRANDE</button></div></div>${enCambio?'<div class="msg warn">Elige la nueva evidencia. Apenas la tomes o selecciones, reemplazará automáticamente a la actual.</div>':`<button type="button" class="secondary" onclick="window.__evCambiar('${k}')">🔄 CAMBIAR</button>`}`;}else{s.innerHTML=tiposOpcionales.includes(k)?'<span class="badge">OPCIONAL</span><div class="muted" style="margin-top:5px">Puedes dejarla vacía o agregarla si necesitas documentar algo más.</div>':'<span class="badge wait">PENDIENTE</span><div class="muted" style="margin-top:5px">Toma una foto o selecciónala de la galería.</div>'}}if(a)a.classList.toggle('hidden',guardada&&!enCambio);if(guardada&&enCambio&&a&&!a.querySelector('.evCancel')){const b=document.createElement('button');b.type='button';b.className='secondary evCancel';b.textContent='✖ CANCELAR CAMBIO';b.onclick=()=>cancelarCambio(k);a.appendChild(b)}}const total=tipos().filter(k=>m[k]).length,req=tipos().length;const st=byId('stEvidencias');if(st)st.textContent=total===req?'✅ COMPLETO':`${total}/${req} EVIDENCIAS`}
