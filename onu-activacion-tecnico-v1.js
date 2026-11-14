@@ -57,16 +57,32 @@ async function elegir(sn,btn){
  }catch(e){alert(e.message);btn.disabled=false;btn.textContent='ESTA ES MI ONU'}
 }
 window.identificarOnuCampo=elegir;
+const fotosTecnicoPendientes=new Set();
+async function abrirFotoTecnico(tipo,id=''){
+ if(fotosTecnicoPendientes.has(tipo+id))return;
+ const tab=window.open('about:blank','_blank');
+ if(!tab){alert('Permite ventanas emergentes para ver fotos');return}
+ try{tab.opener=null}catch{}
+ fotosTecnicoPendientes.add(tipo+id);
+ try{
+  const d=tipo==='ONU'?await post(API_MESA,{action:'view-onu-photo',orden_id:orden()}):await post(API_EV,{action:'view-evidence',orden_id:orden(),evidencia_id:id});
+  if(!d.url)throw new Error('No se recibió enlace');
+  tab.location.replace(d.url);
+ }catch(e){try{tab.close()}catch{}alert('No se pudo abrir fotografía: '+(e?.message||e))}
+ finally{fotosTecnicoPendientes.delete(tipo+id)}
+}
+window.verFotoOnuTecnico=()=>abrirFotoTecnico('ONU');
+window.verFotoSerialTecnico=id=>abrirFotoTecnico('SERIAL',id);
 function renderMesa(d){
  const box=document.getElementById('onuActivadaTecnico'),est=document.getElementById('estadoOnuTecnico'),foto=document.getElementById('fotoConfirmacionOnu'),onu=d.onu||null;
- const ev=onu?.evidencia_url?{url:onu.evidencia_url,created_at:onu.confirmado_at}:null;
- if(ev){box.style.border='2px solid #2ca55a';box.style.background='#f2fbf5';est.innerHTML='<b style="color:#167348">✅ ONU ACTIVADA / CONFIRMADA POR MESA TÉCNICA</b><div class="muted" style="margin-top:4px">'+esc(fmt(ev.created_at))+'</div>';foto.innerHTML='<img src="'+esc(ev.url)+'" alt="Confirmación ONU" style="width:110px;height:76px;object-fit:cover;border-radius:8px;border:1px solid #9bc9aa;cursor:pointer" onclick="window.open(this.src,\'_blank\')">'}
+ const ev=onu?.evidencia_disponible?{created_at:onu.confirmado_at}:null;
+ if(ev){box.style.border='2px solid #2ca55a';box.style.background='#f2fbf5';est.innerHTML='<b style="color:#167348">✅ ONU ACTIVADA / CONFIRMADA POR MESA TÉCNICA</b><div class="muted" style="margin-top:4px">'+esc(fmt(ev.created_at))+'</div>';foto.innerHTML='<button type="button" class="secondary" onclick="verFotoOnuTecnico()">🖼️ VER CONFIRMACIÓN ONU</button>'}
  else if(onu){est.innerHTML='<b>⏳ ONU SOLICITADA A MESA TÉCNICA</b><div class="muted" style="margin-top:4px">Fernando gestionará la activación desde Mesa Técnica. La detección Huawei automática está pausada.</div>';foto.innerHTML=''}
  else{est.innerHTML='<b>⚪ AÚN NO SOLICITADA</b><div class="muted" style="margin-top:4px">Se activará al pulsar SOLICITAR ACTIVACIÓN A MESA TÉCNICA.</div>';foto.innerHTML=''}
 }
 function renderEvidencia(d){
  const c=document.getElementById('serialOnuCampo'),ev=(d.evidencias||[]).find(x=>x.tipo_foto==='SERIAL');
- if(ev?.url)c.innerHTML='<b>📷 SERIAL ENVIADO POR CAMPO</b><div style="display:flex;gap:10px;align-items:center;margin-top:7px"><img src="'+esc(ev.url)+'" style="width:110px;height:76px;object-fit:cover;border-radius:8px;border:1px solid #ccd8de;cursor:pointer" onclick="window.open(this.src,\'_blank\')"><div class="muted">'+esc(fmt(ev.fecha_hora_captura))+'<br>Esta foto queda ligada a la OT para Mesa Técnica.</div></div>';
+ if(ev?.id)c.innerHTML='<b>📷 SERIAL ENVIADO POR CAMPO</b><div style="display:flex;gap:10px;align-items:center;margin-top:7px"><button type="button" class="secondary" onclick="verFotoSerialTecnico(\''+esc(ev.id)+'\')">🖼️ VER SERIAL</button><div class="muted">'+esc(fmt(ev.fecha_hora_captura))+'<br>Esta foto queda ligada a la OT para Mesa Técnica.</div></div>';
  else c.innerHTML='<b>📷 SERIAL DE LA ONU</b><div class="muted" style="margin-top:4px">Toma una foto clara de la etiqueta posterior. Sirve para que Fernando identifique la ONU cuando haya varias.</div>';
 }
 function renderDetector(d){
@@ -82,14 +98,20 @@ function renderDetector(d){
   return '<div style="border:1px solid #d6e1e6;border-radius:10px;padding:9px;margin-top:8px;background:#fff"><b>'+esc(o.modelo||'ONU/ONT')+' · '+esc(o.onu_sn_display||o.onu_sn||'—')+'</b><div class="muted" style="margin-top:4px">SN: '+esc(o.onu_sn||'—')+' · PON: '+esc(o.pon||'—')+' · '+esc(o.vendor||'')+'</div>'+(sel?'<div style="margin-top:7px;font-weight:900;color:#167348">✅ ESTA ES LA ONU DE ESTA OT</div>':'<button type="button" style="margin-top:7px" onclick="window.identificarOnuCampo(\''+esc(o.onu_sn||'')+'\',this)">ESTA ES MI ONU</button>')+'</div>'
  }).join('');
 }
+let revisandoOnu=false;
 async function revisar(){
- if(!document.getElementById('onuActivadaTecnico'))return;
+ if(revisandoOnu||!document.getElementById('onuActivadaTecnico'))return;
+ revisandoOnu=true;
+ try{
  const results=await Promise.allSettled([mesa(),evidencia(),detectar()]);
  if(results[0].status==='fulfilled')renderMesa(results[0].value);else document.getElementById('estadoOnuTecnico').textContent='No se pudo consultar Mesa Técnica: '+results[0].reason?.message;
  if(results[1].status==='fulfilled')renderEvidencia(results[1].value);
  if(results[2].status==='fulfilled')renderDetector(results[2].value);else document.getElementById('detectorOnuCampo').innerHTML='<b>📡 DETECTOR HUAWEI</b><div class="muted">'+esc(results[2].reason?.message||'No disponible')+'</div>';
+ }finally{revisandoOnu=false}
 }
 const obs=new MutationObserver(()=>crear());
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',()=>{obs.observe(document.body,{childList:true,subtree:true});setTimeout(crear,300)}):(obs.observe(document.body,{childList:true,subtree:true}),setTimeout(crear,200));
-setInterval(()=>{if(document.visibilityState==='visible'&&document.getElementById('onuActivadaTecnico'))revisar()},5000);
+setInterval(()=>{if(document.visibilityState==='visible'&&document.getElementById('onuActivadaTecnico'))revisar()},30000);
+window.addEventListener('disprotel:ot-sincronizar',()=>{if(document.visibilityState==='visible')revisar()});
+window.addEventListener('disprotel:mesa-hito',()=>{if(document.visibilityState==='visible')revisar()});
 })();
