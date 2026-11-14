@@ -746,6 +746,13 @@ function mesaReqLine(r){
        pot=esMasReciente?lecturaCompartida:potGuardada,
        ev=res.evidencia_potencia||null,ip=res.verificacion_ip||null,onuEv=res.evidencia_onu||null,onuRes=res.activacion_onu||null,done=r.estado==='ATENDIDO';
  let extra='';
+ if(res.respuesta_mesa){
+   const respuesta=res.respuesta_mesa;
+   extra+='<div class="mesaMirrorStatus '+(done?'ok':'pending')+'"><b>📝 Respuesta de Fernando: '+esc(respuesta.estado||'')+'</b>'+
+     '<div>'+esc(respuesta.texto||'')+'</div>'+
+     (respuesta.storage_path?'<button type="button" class="secondary" onclick="verFotoSoporteMesa(\'GENERAL_RESULT\',\''+esc(r.id)+'\')">🖼️ VER EVIDENCIA</button>':'')+
+     '</div>';
+ }
  if(onuEv||onuRes){
    extra+='<div class="mesaMirrorStatus '+(done?'ok':'pending')+'"><div><b>📡 ONU/ONT:</b> '+esc(onuRes?.estado||'CONFIRMADA')+'</div>'+(onuEv?.confirmado_at?'<div><b>Confirmada:</b> '+esc(fmt(onuEv.confirmado_at))+'</div>':'')+(onuEv?.storage_path?'<div style="margin-top:6px"><button type="button" class="secondary" onclick="verFotoSoporteMesa(\'ONU_HISTORY\',\''+esc(r.id)+'\')">🖼️ VER EVIDENCIA ONU</button></div>':'')+'</div>';
  }
