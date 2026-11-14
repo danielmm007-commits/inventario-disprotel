@@ -750,7 +750,38 @@ Deno.serve(async req=>{
       await s.from('orden_historial').insert({orden_id:o.id,evento:'MESA_TECNICA_POTENCIA_VERIFICADA',detalle:{requerimiento_id:rid,optica:resultado.verificacion_potencia},realizado_por_id:me.id});
       return reply({ok:true,optica,...await state(s,o)});
     }
-if(action==='resolve-support-request'){
+if(action==='report-support-correction'){
+      if(!tech(me))return reply({error:'Solo el técnico asignado puede reportar la corrección'},403);
+      const o=await order(s,String(body.orden_id||'')),rid=String(body.requerimiento_id||'').trim();
+      if(!assigned(o,me))return reply({error:'La OT no está asignada a este técnico'},403);
+      if(!rid)return reply({error:'Requerimiento obligatorio'},400);
+      const {data:r,error:rErr}=await s.from('orden_mesa_requerimientos')
+        .select('id,estado,acciones,resultado').eq('id',rid).eq('orden_id',o.id).maybeSingle();
+      if(rErr)throw rErr;if(!r)return reply({error:'Solicitud no encontrada'},404);
+      if(r.estado!=='PENDIENTE')return reply({error:'Esta intervención ya no está pendiente'},409);
+      const respuesta=r.resultado?.respuesta_mesa;
+      if(respuesta?.estado!=='REQUIERE_CORRECCION')return reply({error:'Fernando no ha solicitado una corrección en esta intervención'},409);
+      const previo=r.resultado?.correccion_campo;
+      if(previo?.corregido_at&&Date.parse(previo.corregido_at)>=Date.parse(respuesta.respondido_at))
+        return reply({ok:true,ya_reportado:true,...await state(s,o)});
+      const observacion=String(body.observacion||'').trim().slice(0,1000);
+      const ahora=new Date().toISOString();
+      const correccion={estado:'CORREGIDO_EN_CAMPO',observacion:observacion||'Corrección realizada; verificar nuevamente',
+        corregido_at:ahora,corregido_por_id:me.id};
+      const resultado={...(r.resultado||{}),correccion_campo:correccion,
+        correcciones_campo:[...(Array.isArray(r.resultado?.correcciones_campo)?r.resultado.correcciones_campo:[]),correccion]};
+      // Mantenemos PENDIENTE y actualizamos resultado: el trigger MESA_DATO comunica por Realtime.
+      // Filtro optimista para no sobrescribir una nueva respuesta de Fernando en paralelo.
+      const {data:saved,error:saveErr}=await s.from('orden_mesa_requerimientos').update({resultado,updated_at:ahora})
+        .eq('id',rid).eq('orden_id',o.id).eq('estado','PENDIENTE')
+        .eq('resultado',r.resultado).select('id');
+      if(saveErr)throw saveErr;
+      if(!saved?.length)return reply({error:'La intervención cambió. Actualiza la pantalla antes de informar'},409);
+      await s.from('orden_historial').insert({orden_id:o.id,evento:'MESA_TECNICA_CORRECCION_REALIZADA',
+        detalle:{requerimiento_id:rid,estado:'CORREGIDO_EN_CAMPO',observacion:correccion.observacion},realizado_por_id:me.id});
+      return reply({ok:true,...await state(s,o)});
+    }
+    if(action==='resolve-support-request'){
       if(!supervisor(me))return reply({error:'No autorizado'},403);
       const o=await order(s,String(body.orden_id||'')),rid=String(body.requerimiento_id||'').trim();
       if(!rid)return reply({error:'Requerimiento obligatorio'},400);
@@ -768,6 +799,11 @@ if(action==='resolve-support-request'){
       const detalle=String(body.detalle_resultado||'').trim().slice(0,1500);
       if(estado==='REQUIERE_CORRECCION'&&detalle.length<8)
         return reply({error:'Explica qué debe corregir el técnico'},400);
+      const previo=r.resultado?.respuesta_mesa;
+      const corregido=r.resultado?.correccion_campo;
+      if(previo?.estado==='REQUIERE_CORRECCION'&&estado!=='REQUIERE_CORRECCION'&&
+         (!corregido?.corregido_at||Date.parse(corregido.corregido_at)<Date.parse(previo.respondido_at)))
+        return reply({error:'Primero Bryan debe confirmar YA CORREGÍ para realizar la nueva verificación'},409);
       const mime=String(body.mime_type||'').toLowerCase();
       const base64=String(body.base64||'');
       if(base64&&!['image/jpeg','image/png','image/webp'].includes(mime))
@@ -787,7 +823,8 @@ if(action==='resolve-support-request'){
       const respuesta={estado,texto:detalle||estado,storage_path:imagePath||null,
         respondido_at:now,respondido_por_id:me.id};
       const before=r.resultado||{},hist=Array.isArray(before.respuestas_mesa)?before.respuestas_mesa:[];
-      const resultado={...before,respuesta_mesa:respuesta,respuestas_mesa:[...hist,respuesta]};
+      const resultado={...before,respuesta_mesa:respuesta,respuestas_mesa:[...hist,respuesta],
+        correccion_campo:estado==='REQUIERE_CORRECCION'?null:before.correccion_campo};
       const final=estado==='REQUIERE_CORRECCION'?'PENDIENTE':'ATENDIDO';
       const update:any={resultado,estado:final,updated_at:now};
       if(final==='ATENDIDO'){
