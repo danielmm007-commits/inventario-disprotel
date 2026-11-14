@@ -102,6 +102,7 @@
               actor:String(raw.actor||'').slice(0,60),
               destino:String(raw.destino||'').slice(0,20),
               destinatario:String(raw.destinatario||'').slice(0,64),
+              accion:String(raw.accion||'').slice(0,32),
               acciones:Array.isArray(raw.acciones)?raw.acciones.map(x=>String(x).slice(0,40)).slice(0,8):[]
             });
             return;
