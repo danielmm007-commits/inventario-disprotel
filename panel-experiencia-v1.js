@@ -222,7 +222,7 @@ function ensureMenuShell(){
     const attentionObserver=new MutationObserver(syncAttentionIndicators);attentionObserver.observe(dash,{childList:true,subtree:true,characterData:true});
     syncTechnicalMetrics();
 
-    let moduleLoadSeq=0,moduleLoadRetryTimer=0,moduleLoadPending=false;
+    let moduleLoadSeq=0,moduleLoadRetryTimer=0,moduleLoadPending=false,modulePaintTimer=0;
     function frameLooksBlank(){
       try{
         const w=menuFrame.contentWindow,d=menuFrame.contentDocument,path=String(w?.location?.pathname||'');
@@ -255,7 +255,7 @@ function ensureMenuShell(){
       const source=String(raw||'');
       if(!retry&&moduleLoadPending&&menuFrame.dataset.sourceHref===source)return;
       const seq=++moduleLoadSeq,target=directModuleUrl(source);
-      clearTimeout(moduleLoadRetryTimer);hideModuleRecovery();
+      clearTimeout(moduleLoadRetryTimer);clearTimeout(modulePaintTimer);hideModuleRecovery();
       moduleLoadPending=true;
       menuFrame.style.visibility='visible';
       menuFrame.setAttribute('aria-busy','true');
@@ -274,7 +274,7 @@ function ensureMenuShell(){
     }
     const goMenuHome=()=>{
       localStorage.removeItem(moduleStateKey);
-      clearTimeout(moduleLoadRetryTimer);moduleLoadSeq++;moduleLoadPending=false;hideModuleRecovery();
+      clearTimeout(moduleLoadRetryTimer);clearTimeout(modulePaintTimer);moduleLoadSeq++;moduleLoadPending=false;hideModuleRecovery();
       document.body.classList.remove('moduleOpen');
       menuFrame.src='about:blank';
       menuFrame.removeAttribute('aria-busy');
@@ -287,7 +287,20 @@ function ensureMenuShell(){
       moduleLoadPending=false;clearTimeout(moduleLoadRetryTimer);
       menuFrame.style.visibility='visible';
       menuFrame.removeAttribute('aria-busy');
-      if(frameLooksBlank())moduleRecovery('El módulo terminó de cargar sin contenido visible. Reintenta abrirlo.',menuFrame.dataset.sourceHref||'');
+      // Algunos módulos validan sesión y dibujan su contenido después de onload.
+      // No confundir esa inicialización asíncrona con un iframe definitivamente vacío.
+      clearTimeout(modulePaintTimer);
+      const paintSeq=Number(menuFrame.dataset.loadSeq),paintStarted=Date.now();
+      const verifyPaint=()=>{
+        if(Number(menuFrame.dataset.loadSeq)!==paintSeq||!document.body.classList.contains('moduleOpen'))return;
+        if(!frameLooksBlank()){hideModuleRecovery();return}
+        if(Date.now()-paintStarted<10000){
+          modulePaintTimer=setTimeout(verifyPaint,1500);
+          return;
+        }
+        moduleRecovery('El módulo no mostró contenido después de inicializarse. Reintenta abrirlo.',menuFrame.dataset.sourceHref||'');
+      };
+      if(frameLooksBlank())modulePaintTimer=setTimeout(verifyPaint,1500);
       else hideModuleRecovery();
       try{
         const w=menuFrame.contentWindow,d=menuFrame.contentDocument,path=w.location.pathname,href=w.location.pathname.split('/').pop()+w.location.search+w.location.hash;
