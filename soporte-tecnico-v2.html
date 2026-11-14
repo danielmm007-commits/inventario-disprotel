@@ -664,7 +664,7 @@ function estabilizarMesaEvidencias(d){
   return d;
 }
 function mesaEtapaOpciones(){
- const o=DATA?.orden||{},perfil=up(o.servicio?.tipo_conexion||OPTS?.tecnologia||''),fibra=perfil==='FIBRA',radio=perfil==='RADIO',
+ const o=DATA?.orden||{},perfil=up(o.servicio?.tipo_conexion||OPTS?.tecnologia||''),fibra=/FIBRA|FTTH|GPON|FIBER/.test(perfil),radio=/RADIO|INALAMBRIC|WIRELESS/.test(perfil),
  rs=MESA_STATE?.requerimientos||[],solicitadas=new Set(rs.filter(r=>r.estado==='PENDIENTE').flatMap(r=>Array.isArray(r.acciones)?r.acciones:[])),
  historial=new Set(rs.filter(r=>r.estado==='ATENDIDO').flatMap(r=>Array.isArray(r.acciones)?r.acciones:[]));
  if(!fibra&&!radio)return {bloqueada:true,codes:[],recomendadas:[],perfil,texto:'⚠️ Tecnología FIBRA/RADIO no identificada en el servicio. Revisar el perfil.'};
