@@ -31,6 +31,17 @@ const mesa=(a,p={})=>post(API_MESA,a,p),arApi=(a,p={})=>post(API_AR,a,p);
 function ocultarLegacy(){const sec=$('secPend');if(sec)sec.style.display='none';const old=$('accesoRemotoFernando');if(old)old.style.display='none'}
 function css(){if($('mesaCampoV7Style'))return;const s=document.createElement('style');s.id='mesaCampoV7Style';s.textContent=`
 #mesaTecnicaFernando{border:2px solid #2d7fd1;background:#f8fbff;padding:15px}
+.mesaMsgBlock{margin:10px 0;padding:12px 14px;border:1px solid #a9cee7;border-left:5px solid #2178b2;border-radius:10px;background:#edf7ff;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.mesaMsgBlock>strong{display:block;font-size:11px;letter-spacing:.025em;color:#154e7c;margin-bottom:5px}
+.mesaMsgBlock .mesaMsgText{font-weight:800;font-size:14px;color:#14334c}
+.mesaMsgBlock.mesaReply{background:#effaf3;border-color:#b0dac0;border-left-color:#25885a}
+.mesaMsgBlock.mesaReply>strong{color:#207048}
+.mesaMsgBlock.mesaFix{background:#fff6e6;border-color:#efcf88;border-left-color:#c18a25}
+.mesaMsgBlock.mesaFix>strong{color:#815b18}
+.mesaMsgBlock.mesaFlash{animation:mesaMsgGlow 3s ease-out}
+@keyframes mesaMsgGlow{0%,35%{box-shadow:0 0 0 4px #368cc83f}100%{box-shadow:none}}
+@media(prefers-reduced-motion:reduce){.mesaMsgBlock.mesaFlash{animation:none}}
+
 .mesaHead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}.mesaHead h2{margin:0;color:#0b356f;font-size:20px}.mesaHead p{margin:4px 0 0}
 .mesaTabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.mesaTab{margin:0!important;background:#e8eef1!important;color:#17313d!important}.mesaTab.on{background:#17313d!important;color:#fff!important}
 .mesaStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.mesaStat{padding:9px 11px;border:1px solid #d7e1e5;border-radius:11px;background:#fff}.mesaStat b{display:block;font-size:21px;color:#0b356f}.mesaStat span{font-size:9px;font-weight:900;color:#60737c}
@@ -268,7 +279,7 @@ function batchHtml(o){
     const esperando=resp?.estado==='REQUIERE_CORRECCION'&&(!corr?.corregido_at||Date.parse(corr.corregido_at)<Date.parse(resp.respondido_at));
     const nueva=resp?.estado==='REQUIERE_CORRECCION'&&!esperando;
     detalle=(esperando?'<div class="stepState" style="border-left:3px solid #d48c25;padding:8px;margin:6px 0"><b>⏳ ESPERANDO CORRECCIÓN DE BRYAN</b><div>No debe cerrarse hasta que el técnico informe que corrigió.</div></div>':'')+
-      (nueva?'<div class="stepState" style="border-left:3px solid #19865a;padding:8px;margin:6px 0"><b>✅ BRYAN INFORMA: YA CORREGÍ · VOLVER A VERIFICAR</b><div>'+esc(corr.observacion||'')+'</div><div>'+esc(fmt(corr.corregido_at))+'</div></div>':'')+
+      (nueva?'<div class="mesaMsgBlock mesaReply mesaFlash"><strong>✅ BRYAN INFORMA · YA CORREGÍ · VOLVER A VERIFICAR</strong><div class="mesaMsgText">'+esc(corr.observacion||'')+'</div><div>'+esc(fmt(corr.corregido_at))+'</div></div>':'')+
       (esperando?'':'<button onclick="resolverReqMesa(\''+o.id+'\',\''+r.id+'\')">✅ '+(nueva?'REGISTRAR NUEVA VERIFICACIÓN':'REGISTRAR RESULTADO')+'</button>');
   }
   return '<div class="mesaReq '+(done?'done':'')+'"><div class="mesaReqTop"><div><b>'+
@@ -276,7 +287,7 @@ function batchHtml(o){
     '</b><div class="stepState">'+esc(fmt(r.solicitado_at))+
     (done&&r.atendido_at?' · atendido '+esc(fmt(r.atendido_at)):'')+
     '</div></div>'+(done?badge('ATENDIDO',true):badge('PENDIENTE'))+
-    '</div><div class="mesaReqActions">'+chips+'</div>'+(r.resultado?.respuesta_mesa?'<div class="stepState"><b>Respuesta de Fernando:</b> '+esc(r.resultado.respuesta_mesa.estado)+' · '+esc(r.resultado.respuesta_mesa.texto||'')+(r.resultado.respuesta_mesa.storage_path?' <button type="button" class="secondary" onclick="verFotoMesa(\''+esc(o.id)+'\',\'GENERAL_RESULT\',\''+esc(r.id)+'\')">🖼️ VER EVIDENCIA</button>':'')+'</div>':'')+(r.resultado?.motivo_repeticion?'<div class="stepState" style="padding:8px 10px;margin:6px 0;border-left:3px solid #4a84a8"><b>📝 Motivo de la nueva revisión:</b> '+esc(r.resultado.motivo_repeticion)+'</div>':'')+detalle+'</div>';
+    '</div><div class="mesaReqActions">'+chips+'</div>'+(r.resultado?.respuesta_mesa?'<div class="mesaMsgBlock mesaReply"><strong>✅ FERNANDO RESPONDE · '+esc(r.resultado.respuesta_mesa.estado)+'</strong><div class="mesaMsgText">'+esc(r.resultado.respuesta_mesa.texto||'')+'</div>'+(r.resultado.respuesta_mesa.storage_path?' <button type="button" class="secondary" onclick="verFotoMesa(\''+esc(o.id)+'\',\'GENERAL_RESULT\',\''+esc(r.id)+'\')">🖼️ VER EVIDENCIA</button>':'')+'</div>':'')+(r.resultado?.motivo_repeticion?'<div class="mesaMsgBlock'+(!done&&!r.resultado?.respuesta_mesa?' mesaFlash':'')+'"><strong>📋 BRYAN SOLICITA</strong><div class="mesaMsgText">'+esc(r.resultado.motivo_repeticion)+'</div></div>':'')+detalle+'</div>';
  }).join('')+'</div>';
 }
 function supportDynamicSteps(o){const pending=(o.requerimientos||[]).filter(r=>r.estado==='PENDIENTE'),acts=new Set(pending.flatMap(r=>r.acciones||[]));let out='';if(acts.has('ASIGNAR_NUEVA_IP'))out+=ipStep(o);if(acts.has('VERIFICAR_ACCESO_REMOTO'))out+=remotoStep(o);return out}
