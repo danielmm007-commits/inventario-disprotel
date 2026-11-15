@@ -31,6 +31,18 @@ const mesa=(a,p={})=>post(API_MESA,a,p),arApi=(a,p={})=>post(API_AR,a,p);
 function ocultarLegacy(){const sec=$('secPend');if(sec)sec.style.display='none';const old=$('accesoRemotoFernando');if(old)old.style.display='none'}
 function css(){if($('mesaCampoV7Style'))return;const s=document.createElement('style');s.id='mesaCampoV7Style';s.textContent=`
 #mesaTecnicaFernando{border:2px solid #2d7fd1;background:#f8fbff;padding:15px}
+.otMesaAccordion{width:100%}
+.otMesaSummary{list-style:none;display:block;cursor:pointer;padding:0 14px 9px}
+.otMesaSummary::-webkit-details-marker{display:none}
+.otMesaSummary::marker{content:''}
+.otMesaSummary:focus-visible{outline:3px solid #2580c5;outline-offset:-3px;border-radius:8px}
+.otMesaSummary:hover{background:#eef7fc}
+.otMesaSummary .otHead{padding:11px 0 2px}
+.otMesaAccordionHint{font-size:11px;color:#1b5b84;font-weight:900;display:block;text-align:right}
+.otMesaAccordion[open]>.otMesaSummary .otMesaAccordionHint{color:#247448}
+.otMesaAccordionBody{padding:0 13px 12px}
+.otMesaAccordionBody .mesaReqs{margin-top:6px}
+
 .mesaMsgBlock{margin:10px 0;padding:12px 14px;border:1px solid #a9cee7;border-left:5px solid #2178b2;border-radius:10px;background:#edf7ff;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 .mesaMsgBlock>strong{display:block;font-size:11px;letter-spacing:.025em;color:#154e7c;margin-bottom:5px}
 .mesaMsgBlock .mesaMsgText{font-weight:800;font-size:14px;color:#14334c}
@@ -291,7 +303,30 @@ function batchHtml(o){
  }).join('')+'</div>';
 }
 function supportDynamicSteps(o){const pending=(o.requerimientos||[]).filter(r=>r.estado==='PENDIENTE'),acts=new Set(pending.flatMap(r=>r.acciones||[]));let out='';if(acts.has('ASIGNAR_NUEVA_IP'))out+=ipStep(o);if(acts.has('VERIFICAR_ACCESO_REMOTO'))out+=remotoStep(o);return out}
-function card(o,inst){const estado=o.requiere_accion?'REQUIERE ACCIÓN':o.espera_tecnico?'ESPERANDO TÉCNICO':'SIN ACCIÓN PENDIENTE';const cls=o.requiere_accion?'need':'wait',dir=o.cliente_direccion_final||o.cliente_direccion||'';const steps=inst?clienteStep(o)+onuStep(o)+ipStep(o)+remotoStep(o):supportDynamicSteps(o),reqs=inst?'':batchHtml(o);return `<article class="otMesa ${cls}" data-orden-id="${esc(o.id||'')}"><div class="otHead"><div><div class="otTitle">${esc(o.id_orden||'')} · ${esc(up(o.cliente_nombre_final||o.cliente_nombre||''))}</div>${dir?'<div class="otMeta"><b>📍 '+esc(up(dir))+'</b></div>':''}<div class="otMeta">${inst?'INSTALACIÓN':'SOPORTE'} · Grupo: ${esc(up(o.grupo_asignado||o.grupo_destino||'—'))} · ${esc(fmt(o.mesa?.solicitado_at))}</div></div>${badge(estado,!o.requiere_accion&&!o.espera_tecnico,o.espera_tecnico)}</div>${reqs}${steps?'<div class="otSteps" style="grid-template-columns:repeat('+Math.min(3,Math.max(1,(steps.match(/class="step"/g)||[]).length))+',1fr)">'+steps+'</div>':''}</article>`}
+const APERTURA_OT_MESA=new Map();
+window.alternarTarjetaMesa=summary=>{
+ const d=summary.closest('details'),ot=summary.closest('[data-orden-id]')?.dataset.ordenId;
+ if(!d||!ot)return;
+ // El click ocurre antes de que <details> cambie su atributo open.
+ APERTURA_OT_MESA.set(ot,!d.open);
+};
+function card(o,inst){
+ const estado=o.requiere_accion?'REQUIERE ACCIÓN':o.espera_tecnico?'ESPERANDO TÉCNICO':'SIN ACCIÓN PENDIENTE';
+ const cls=o.requiere_accion?'need':'wait',dir=o.cliente_direccion_final||o.cliente_direccion||'';
+ const steps=inst?clienteStep(o)+onuStep(o)+ipStep(o)+remotoStep(o):supportDynamicSteps(o),reqs=inst?'':batchHtml(o);
+ const open=String(o.id)===FOCUS_OT?true:APERTURA_OT_MESA.has(String(o.id))?APERTURA_OT_MESA.get(String(o.id)):!!o.requiere_accion;
+ return `<article class="otMesa ${cls}" data-orden-id="${esc(o.id||'')}"><details class="otMesaAccordion" ${open?'open':''}>
+  <summary class="otMesaSummary" onclick="alternarTarjetaMesa(this)">
+   <div class="otHead"><div><div class="otTitle">${esc(o.id_orden||'')} · ${esc(up(o.cliente_nombre_final||o.cliente_nombre||''))}</div>
+   <div class="otMeta">${inst?'INSTALACIÓN':'SOPORTE'} · Grupo: ${esc(up(o.grupo_asignado||o.grupo_destino||'—'))}</div></div>
+   ${badge(estado,!o.requiere_accion&&!o.espera_tecnico,o.espera_tecnico)}</div>
+   <span class="otMesaAccordionHint">${open?'▴ OCULTAR DETALLE':'▾ VER DETALLE'}</span>
+  </summary><div class="otMesaAccordionBody">
+  ${dir?'<div class="otMeta"><b>📍 '+esc(up(dir))+'</b></div>':''}
+  <div class="otMeta">Solicitud: ${esc(fmt(o.mesa?.solicitado_at))}</div>
+  ${reqs}${steps?'<div class="otSteps" style="grid-template-columns:repeat('+Math.min(3,Math.max(1,(steps.match(/class="step"/g)||[]).length))+',1fr)">'+steps+'</div>':''}
+  </div></details></article>`;
+}
 // Evitar que un signed URL renovado cause un repintado de la misma foto.
 function claveImagenMesa(url){
  const v=String(url||'');
