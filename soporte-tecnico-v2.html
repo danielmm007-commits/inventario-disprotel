@@ -15,6 +15,10 @@
 @keyframes mesaTechHighlight{0%,35%{box-shadow:0 0 0 4px #4d9fca4a}100%{box-shadow:none}}
 @media(prefers-reduced-motion:reduce){.mesaMsgTech.flash{animation:none}}
 /* Acordeones globales numerales 1-7: contenido y formularios permanecen montados. */
+#supportAccordionToolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:#eaf4fa;border:1px solid #b5d8e8;border-radius:12px;padding:10px 13px;margin:11px 0;font:800 12px Arial,sans-serif;color:#174c6c}
+#supportAccordionToolbar .supportAccordionActions{display:flex;flex-wrap:wrap;gap:7px}
+#supportAccordionToolbar button{width:auto;margin:0;padding:8px 10px;border:1px solid #aed0e2;border-radius:8px;background:#fff;color:#125379;font-size:11px}
+
 .supportStepAccordion{border:0}
 .supportStepAccordion>.supportStepHeader{cursor:pointer;position:relative;padding:4px 42px 4px 0;list-style:none;display:block;min-height:38px}
 .supportStepAccordion>.supportStepHeader::-webkit-details-marker{display:none}
@@ -266,6 +270,14 @@ function instalarAcordeonesSoporte(){
   for(const node of [...section.children])body.append(node);
   section.append(details);
  });
+ // Barra de navegación compacta, no realiza peticiones ni reconstruye formularios.
+ if(!document.getElementById('supportAccordionToolbar')){
+   const toolbar=document.createElement('div');toolbar.id='supportAccordionToolbar';
+   toolbar.innerHTML='<strong>▤ VISTA COMPACTA · NUMERALES 1–7</strong><div class="supportAccordionActions"><button type="button" id="supportOpenAll">▾ ABRIR TODOS</button><button type="button" id="supportCloseAll">▴ CERRAR TODOS</button></div>';
+   const first=$('ordenCard');if(first?.parentElement)first.parentElement.insertBefore(toolbar,first);
+   toolbar.querySelector('#supportOpenAll').onclick=()=>ids.forEach(id=>{const d=$(id)?.querySelector(':scope > details.supportStepAccordion');if(d)d.open=true});
+   toolbar.querySelector('#supportCloseAll').onclick=()=>ids.forEach(id=>{const d=$(id)?.querySelector(':scope > details.supportStepAccordion');if(d)d.open=false});
+ }
 }
 function abrirNumeralSoporte(id){
  const card=$(id);const details=card?.querySelector(':scope > details.supportStepAccordion');
