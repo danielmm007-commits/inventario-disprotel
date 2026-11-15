@@ -314,7 +314,7 @@ function card(o,inst){
  const estado=o.requiere_accion?'REQUIERE ACCIÓN':o.espera_tecnico?'ESPERANDO TÉCNICO':'SIN ACCIÓN PENDIENTE';
  const cls=o.requiere_accion?'need':'wait',dir=o.cliente_direccion_final||o.cliente_direccion||'';
  const steps=inst?clienteStep(o)+onuStep(o)+ipStep(o)+remotoStep(o):supportDynamicSteps(o),reqs=inst?'':batchHtml(o);
- const open=String(o.id)===FOCUS_OT?true:APERTURA_OT_MESA.has(String(o.id))?APERTURA_OT_MESA.get(String(o.id)):!!o.requiere_accion;
+ const open=APERTURA_OT_MESA.has(String(o.id))?APERTURA_OT_MESA.get(String(o.id)):String(o.id)===FOCUS_OT;
  return `<article class="otMesa ${cls}" data-orden-id="${esc(o.id||'')}"><details class="otMesaAccordion" ${open?'open':''}>
   <summary class="otMesaSummary" onclick="alternarTarjetaMesa(this)">
    <div class="otHead"><div><div class="otTitle">${esc(o.id_orden||'')} · ${esc(up(o.cliente_nombre_final||o.cliente_nombre||''))}</div>
