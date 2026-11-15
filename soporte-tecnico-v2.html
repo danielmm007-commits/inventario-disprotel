@@ -4,12 +4,13 @@
 .powerMirrorEvidence img{display:block;width:min(100%,520px);height:160px;object-fit:contain;background:#111;border-radius:7px;border:1px solid #d7e1e5;cursor:pointer;margin:6px auto 0}
 .powerMirrorEvidence .muted{margin-top:6px}
 @media(max-width:820px){.powerMirrorGrid{grid-template-columns:1fr}.powerMirrorEvidence img{width:100%;height:auto;max-height:220px}}
-.mesaMsgTech{margin-top:10px;padding:12px 13px;border:1px solid #bbd9ef;border-left:5px solid #247cbb;border-radius:9px;background:#ecf7ff;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
-.mesaMsgTech strong{display:block;color:#155780;font-size:11px;margin-bottom:5px}
-.mesaMsgTech .mesaMsgTechText{font-size:14px;font-weight:800;color:#14364b}
-.mesaMsgTech.fernando{border-color:#b3dfc1;border-left-color:#25895a;background:#effaf3}
+.mesaMsgTech{margin:12px 0;padding:13px 14px;border:1px solid #a2cce9;border-left:5px solid #247cbb;border-radius:10px;background:#eaf5ff;font-size:13px;line-height:1.5;overflow-wrap:anywhere;box-shadow:0 2px 9px #0b487b10}
+.mesaMsgTech strong{display:block;color:#155780;font-size:12px;font-weight:900;letter-spacing:.02em;margin-bottom:6px}
+.mesaMsgTech .mesaMsgTechText{font-size:15px;font-weight:800;color:#14364b;line-height:1.5;white-space:pre-wrap}
+.mesaMsgTech.fernando{border-color:#95d2ae;border-left-color:#25895a;background:#eaf8ef}
 .mesaMsgTech.fernando strong{color:#176744}
-.mesaMsgTech.warn{border-color:#e9c982;border-left-color:#b18428;background:#fff7e8}
+.mesaMsgTech.warn{border-color:#e8c275;border-left-color:#b18428;background:#fff4df}
+.mesaMsgTech.warn strong{color:#835a13}
 .mesaMsgTech.flash{animation:mesaTechHighlight 3s ease-out}
 @keyframes mesaTechHighlight{0%,35%{box-shadow:0 0 0 4px #4d9fca4a}100%{box-shadow:none}}
 @media(prefers-reduced-motion:reduce){.mesaMsgTech.flash{animation:none}}
@@ -776,7 +777,7 @@ function mesaReqLine(r){
  }
  if(res.respuesta_mesa){
    const respuesta=res.respuesta_mesa;
-   extra+='<div class="mesaMsgTech '+(respuesta.estado==='REQUIERE_CORRECCION'?'warn':'fernando')+' flash"><strong>📝 FERNANDO RESPONDE · '+esc(respuesta.estado||'')+'</strong>'+
+   extra+='<div class="mesaMsgTech '+(respuesta.estado==='REQUIERE_CORRECCION'?'warn':'fernando')+' flash"><strong>'+(respuesta.estado==='REQUIERE_CORRECCION'?'⚠️ FERNANDO SOLICITA CORRECCIÓN':'✅ FERNANDO RESPONDE')+' · '+esc(respuesta.estado||'')+'</strong>'+
      '<div class="mesaMsgTechText">'+esc(respuesta.texto||'')+'</div>'+
      (respuesta.storage_path?'<button type="button" class="secondary" onclick="verFotoSoporteMesa(\'GENERAL_RESULT\',\''+esc(r.id)+'\')">🖼️ VER EVIDENCIA</button>':'')+
      '</div>';
