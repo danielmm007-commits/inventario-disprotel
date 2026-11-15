@@ -497,6 +497,30 @@ Deno.serve(async req=>{
       if(sg.error||!sg.data?.signedUrl)throw sg.error||new Error('No se pudo generar el enlace');
       return reply({ok:true,url:sg.data.signedUrl});
     }
+    if(action==='notification-detail'){
+      // Una lectura pequeña por aviso, únicamente cuando el usuario está autorizado.
+      // Nunca entrega URLs, rutas ni fotografías; tampoco se invoca al renderizar.
+      const o=await order(s,String(body.orden_id||''));
+      if(!supervisor(me)&&!(tech(me)&&assigned(o,me)))
+        return reply({error:'No autorizado para consultar esta solicitud'},403);
+      const rid=String(body.requerimiento_id||'').trim();
+      if(!rid)return reply({error:'Requerimiento obligatorio'},400);
+      const q=await s.from('orden_mesa_requerimientos')
+        .select('id,acciones,estado,resultado')
+        .eq('id',rid).eq('orden_id',o.id).maybeSingle();
+      if(q.error)throw q.error;
+      if(!q.data)return reply({error:'Requerimiento no encontrado'},404);
+      const r=q.data,v=r.resultado||{};
+      const accion=String((r.acciones||[])[0]||'');
+      return reply({ok:true,accion,estado:r.estado,
+        solicitud:String(v.motivo_repeticion||'').slice(0,500),
+        respuesta:v.respuesta_mesa?{
+          estado:String(v.respuesta_mesa.estado||'').slice(0,40),
+          texto:String(v.respuesta_mesa.texto||'').slice(0,500)}:null,
+        correccion:v.correccion_campo?{
+          texto:String(v.correccion_campo.observacion||'').slice(0,500),
+          corregido_at:v.correccion_campo.corregido_at||null}:null});
+    }
     if(action==='status'){
       const o=await order(s,String(body.orden_id||''));if(tech(me)&&!assigned(o,me))return reply({error:'OT fuera de tu asignación'},403);
       return reply({ok:true,orden:o,...await state(s,o)});
