@@ -40,6 +40,12 @@ body{margin:0;padding:15px;background:#edf2f6;color:#203c57;font-family:Arial,He
 .photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2.5mm;align-items:start}
 .photoItem{border:1px solid #d6e0e7;border-radius:7px;background:#fff;overflow:hidden;break-inside:avoid-page;min-width:0}
 .photoItem img{display:block;width:100%;height:29mm;object-fit:cover;background:#f0f3f6}
+.reportPhotoPlaceholder{height:29mm;padding:8px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;background:#f2f7fa;text-align:center}
+.reportPhotoPlaceholder .reportPhotoReveal{display:block;width:100%;max-width:200px;margin:0;padding:9px 6px;border:1px solid #9dbdd1;border-radius:7px;background:#fff;color:#155782;font-size:10px;font-weight:900;cursor:pointer}
+.reportPhotoPlaceholder span{font-size:9px;color:#667e8e}
+.reportPhotoReveal:disabled{opacity:.7;cursor:wait}
+@media print{.reportPhotoReveal{display:none!important}}
+
 .photoItem .photoCaption{border-top:1px solid #e7edf1;text-align:center;font-size:8px;font-weight:750;color:#526478;padding:6px 4px;line-height:1.3;overflow-wrap:anywhere}
 .photoItem .photoDate{text-align:center;padding:0 3px 5px;font-size:7px;color:#8995a0}
 .photoEmpty{padding:12px;color:#71828d;font-size:9px;background:#f7fafc;border:1px dashed #d7e1e8;border-radius:8px}
@@ -180,12 +186,33 @@ html,body{background:#fff;margin:0;padding:0}
 const FOTOS_CAMPO=new Set(['FACHADA','DANO_ENCONTRADO','EQUIPO_INSTALADO','TEST_VELOCIDAD','TV_CANALES','MATERIAL','SERIAL','ADICIONAL']);
 const LABELS_FOTOS={FACHADA:'Fachada / visita',DANO_ENCONTRADO:'Daño encontrado',EQUIPO_INSTALADO:'Equipo intervenido',TEST_VELOCIDAD:'Prueba de velocidad',TV_CANALES:'Televisión / canales',MATERIAL:'Material utilizado',SERIAL:'Serial del equipo',ADICIONAL:'Evidencia adicional'};
 function momentoFoto(v){const t=Date.parse(v||'');return Number.isFinite(t)?t:0}
+// Las fotos no se descargan al cargar la previsualización ni al presionar F5.
+// La misma fuente de evidencias queda disponible para el PDF A4 completo.
+const FOTOS_REPORTE_VISTA=new Map();
 function renderGrupoReporte(id,rows){
+ FOTOS_REPORTE_VISTA.set(id,rows);
  $(id).innerHTML=rows.length?rows.map((x,i)=>
-  '<div class="photoItem"><img src="'+htmlEsc(x.url)+'" alt="'+htmlEsc(x.label)+'" loading="eager">'+
+  '<div class="photoItem"><div class="reportPhotoPlaceholder">'+
+   '<button type="button" class="reportPhotoReveal" data-group="'+htmlEsc(id)+'" data-index="'+i+'">🖼️ VER FOTOGRAFÍA</button>'+
+   '<span>Imagen disponible bajo demanda</span></div>'+
   '<div class="photoCaption">'+(i+1)+'. '+htmlEsc(x.label)+'</div><div class="photoDate">'+htmlEsc(fmt(x.at))+'</div></div>'
  ).join(''):'<div class="photoEmpty muted">No se registraron fotografías en este grupo.</div>';
 }
+document.addEventListener('click',event=>{
+ const btn=event.target.closest('button.reportPhotoReveal');
+ if(!btn)return;
+ const group=btn.dataset.group,idx=Number(btn.dataset.index);
+ const photo=FOTOS_REPORTE_VISTA.get(group)?.[idx];
+ if(!photo?.url)return;
+ // Solo desde una acción real del técnico; no durante Realtime, render ni F5.
+ btn.disabled=true;btn.textContent='CARGANDO FOTOGRAFÍA…';
+ const img=new Image();
+ img.alt=String(photo.label||'Evidencia del soporte');
+ img.decoding='async';
+ img.onload=()=>{btn.closest('.reportPhotoPlaceholder')?.replaceWith(img)};
+ img.onerror=()=>{btn.disabled=false;btn.textContent='↻ REINTENTAR FOTOGRAFÍA'};
+ img.src=photo.url;
+});
 async function evidenciasVigentesReporte(rows){
  // Igual que la pantalla del técnico: sólo la foto vigente de cada tipo,
  // excepto ADICIONAL que permite varias tomas independientes.
