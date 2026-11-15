@@ -14,6 +14,19 @@
 .mesaMsgTech.flash{animation:mesaTechHighlight 3s ease-out}
 @keyframes mesaTechHighlight{0%,35%{box-shadow:0 0 0 4px #4d9fca4a}100%{box-shadow:none}}
 @media(prefers-reduced-motion:reduce){.mesaMsgTech.flash{animation:none}}
+/* Acordeones globales numerales 1-7: contenido y formularios permanecen montados. */
+.supportStepAccordion{border:0}
+.supportStepAccordion>.supportStepHeader{cursor:pointer;position:relative;padding:4px 42px 4px 0;list-style:none;display:block;min-height:38px}
+.supportStepAccordion>.supportStepHeader::-webkit-details-marker{display:none}
+.supportStepAccordion>.supportStepHeader::marker{content:''}
+.supportStepAccordion>.supportStepHeader:focus-visible{outline:3px solid #2b83b9;outline-offset:5px;border-radius:8px}
+.supportStepAccordion>.supportStepHeader:hover{color:#0f5d86}
+.supportStepAccordion>.supportStepHeader::after{content:'▾ ABRIR';position:absolute;top:50%;right:0;transform:translateY(-50%);font-size:11px;font-weight:900;color:#1c5c84;background:#e8f4fb;border:1px solid #bad8e8;border-radius:8px;padding:7px 8px}
+.supportStepAccordion[open]>.supportStepHeader::after{content:'▴ CERRAR';background:#e9f5ee;border-color:#b8d7c3;color:#196a46}
+.supportStepBody{padding-top:10px}
+.supportStepAccordion>.supportStepHeader h2{margin-bottom:0!important}
+.supportStepAccordion>.supportStepHeader .muted{font-size:11px}
+@media(max-width:600px){.supportStepAccordion>.supportStepHeader{padding-right:76px}.supportStepAccordion>.supportStepHeader::after{font-size:10px;padding:6px}}
 .mesaAccordion{overflow:hidden}
 .mesaAccordionSummary{display:block;position:relative;cursor:pointer;padding:11px 39px 11px 12px;list-style:none;user-select:none;border-radius:6px}
 .mesaAccordionSummary::-webkit-details-marker{display:none}
@@ -226,6 +239,38 @@ function instalarDetectorPrevisualizacion(){
  }
  actualizarAccesoPrevisualizacion();
 }
+// El acordeón se construye una sola vez reutilizando los nodos originales.
+// Evita repintar formularios, perder borradores o consultar Supabase al abrir/cerrar.
+function instalarAcordeonesSoporte(){
+ const ids=['ordenCard','hallazgoCard','mesaSoporteCard','reporteCard','invCard','evCard','finalCard'];
+ ids.forEach((id,index)=>{
+  const section=$(id);if(!section||section.querySelector(':scope > details.supportStepAccordion'))return;
+  const original=[...section.children];
+  const head=original.find(el=>el.matches('.stepHead,h2,.badge'))||original[0];
+  if(!head)return;
+  const details=document.createElement('details');
+  details.className='supportStepAccordion';
+  // El numeral de hallazgo se mantiene abierto por defecto; el resto a elección del técnico.
+  details.open=id==='hallazgoCard';
+  const summary=document.createElement('summary');
+  summary.className='supportStepHeader';
+  summary.setAttribute('aria-label','Abrir o cerrar '+id);
+  const body=document.createElement('div');body.className='supportStepBody';
+  details.append(summary,body);
+  if(id==='ordenCard'){
+   const badge=section.querySelector(':scope > .badge');
+   const title=section.querySelector(':scope > h2');
+   if(badge)summary.append(badge);
+   if(title)summary.append(title);
+  }else summary.append(head);
+  for(const node of [...section.children])body.append(node);
+  section.append(details);
+ });
+}
+function abrirNumeralSoporte(id){
+ const card=$(id);const details=card?.querySelector(':scope > details.supportStepAccordion');
+ if(details)details.open=true;
+}
 function retomarNumeralSoporte(){
  const params=new URLSearchParams(location.search);
  if(params.get('retomar')!=='1'||!DATA?.orden)return;
@@ -242,6 +287,7 @@ function retomarNumeralSoporte(){
  }
  const card=$(objetivo);
  if(!card||card.classList.contains('hidden'))return;
+ abrirNumeralSoporte(objetivo);
  card.scrollIntoView({behavior:'auto',block:'start'});
 }
 function refrescarEtapas(){
@@ -911,4 +957,4 @@ if((d.evidencias||[]).some(x=>x.id&&!x.offline_pending&&
 renderGps();renderOptions();renderObservaciones();renderBasket();renderEv();if(DATA.evidencias?.length)refrescarMiniaturas();renderHallazgos();renderAccionesExtra();renderHallazgosRegistrados();renderHallazgoEstado();publicarFlujoSoporte();['ordenCard','hallazgoCard'].forEach(x=>$(x).classList.remove('hidden'));refrescarEtapas();if(['SOPORTE_TECNICO','CAMBIO_EQUIPOS','REUBICACION'].includes(d.orden.tipo_trabajo)){$('mesaSoporteCard').classList.remove('hidden');if(offlineMode){MESA_STATE={requerimientos:[]};renderMesaActions()}if(offlineMode)$('mesaSoporteEstado').textContent='📴 Sin conexión. Puedes continuar el soporte y coordinar con Mesa Técnica por WhatsApp.';else {await mesaStatus();iniciarEspejoMesa()}}
 if(new URLSearchParams(location.search).get('retomar')==='1')
  setTimeout(retomarNumeralSoporte,160);
-}catch(e){$('head').textContent=up(e.message)}}$('productoCant').onchange=updateUnitHint;$('addCant').onclick=addCant;$('addSerial').onclick=addSerial;$('evTypes').addEventListener('click',e=>{const cam=e.target.closest('button[data-ev-cam]');if(cam){if(!EVIDENCIA_BUSY){EVTYPE=cam.dataset.evCam;$('camInput').value='';$('camInput').click()}return}const upload=e.target.closest('button[data-ev-upload]');if(upload){if(!EVIDENCIA_BUSY){EVTYPE=upload.dataset.evUpload;$('galInput').value='';$('galInput').click()}return}const del=e.target.closest('button[data-eliminar-foto]');if(del)return eliminarEvidencia(del.dataset.eliminarFoto);const view=e.target.closest('button[data-ver-foto]');if(view)ampliarFotoEvidencia(view.dataset.verFoto)});$('evLightboxClose').onclick=cerrarFotoEvidencia;$('evLightbox').addEventListener('click',e=>{if(e.target===$('evLightbox'))cerrarFotoEvidencia()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('evLightbox').classList.contains('hidden'))cerrarFotoEvidencia()});$('confirmBasket').onclick=confirmarCanasta;$('editarCanasta').onclick=alternarEditorCanasta;$('editarObservaciones').onclick=alternarEditorObservaciones;$('guardarRegistroTecnico').onclick=()=>guardarRegistroTecnico();$('guardarObservacion').onclick=guardarObservacion;$('sinObservaciones').onclick=()=>guardarRegistroTecnico(NOTAS);$('confirmarSinEvidencias').onclick=()=>{if((DATA?.reporte?.automatismos?.evidencias||[]).length)return msg('evMsg','Este tipo de soporte requiere evidencias; no se puede omitir.');if(!confirm('¿Confirmar que este soporte no requiere fotos?'))return;EVIDENCIAS_OK=true;saveDraft();refrescarEtapas()};$('camBtn').onclick=()=>$('camInput').click();$('galBtn').onclick=()=>$('galInput').click();$('camInput').onchange=e=>{const f=e.target.files?.[0];e.target.value='';pick(f)};$('galInput').onchange=e=>{const f=e.target.files?.[0];e.target.value='';pick(f)};$('zoom').oninput=()=>{$('preview').style.transform=`scale(${$('zoom').value})`};$('subirFoto').onclick=uploadEv;$('previewReport').onclick=previewReport;$('previewDock').onclick=previewReport;instalarDetectorPrevisualizacion();$('hallazgoSel').onchange=()=>{HALLAZGO=$('hallazgoSel').value;SOLUCION='';renderSoluciones();saveDraft()};$('solucionSel').onchange=()=>{SOLUCION=$('solucionSel').value;renderImpacto();saveDraft()};$('accionesExtraBtn').onclick=()=>{$('accionesExtraMenu').classList.toggle('hidden')};$('confirmarHallazgo').onclick=confirmarHallazgo;$('mesaPickerBtn').onclick=()=>{const menu=$('mesaPickerMenu');menu.classList.toggle('hidden');$('mesaPickerBtn').setAttribute('aria-expanded',String(!menu.classList.contains('hidden')))};$('solicitarMesaSoporte').onclick=solicitarMesaSoporte;['diagnostico','solucion','observacion'].forEach(id=>$(id).addEventListener('input',()=>{NOTAS_OK=false;REGISTRO_DIRTY_AT=new Date().toISOString();renderRegistroTecnico();refrescarEtapas();saveDraft()}));window.addEventListener('disprotel:offline-evidence-synced',e=>{if(e.detail?.orden_id!==ORDEN)return;DATA.evidencias=DATA.evidencias||[];DATA.evidencias=DATA.evidencias.filter(x=>x.offline_sync_id!==e.detail.offline_sync_id);if(e.detail.evidencia&&!DATA.evidencias.some(x=>x.id===e.detail.evidencia.id))DATA.evidencias.push(e.detail.evidencia);EVIDENCIAS_OK=true;saveDraft();refrescarMiniaturas();msg('evMsg','✅ Evidencia pendiente sincronizada automáticamente.',true)});load();</script><script src="soporte-retiros-v1.js?v=20260929-0750"></script><script src="disprotel-ot-realtime-v1.js?v=20261014-huawei-on-demand1"></script><script src="disprotel-mesa-avisos-v1.js?v=20261015-pingpong-real1"></script></body></html>
+}catch(e){$('head').textContent=up(e.message)}}$('productoCant').onchange=updateUnitHint;$('addCant').onclick=addCant;$('addSerial').onclick=addSerial;$('evTypes').addEventListener('click',e=>{const cam=e.target.closest('button[data-ev-cam]');if(cam){if(!EVIDENCIA_BUSY){EVTYPE=cam.dataset.evCam;$('camInput').value='';$('camInput').click()}return}const upload=e.target.closest('button[data-ev-upload]');if(upload){if(!EVIDENCIA_BUSY){EVTYPE=upload.dataset.evUpload;$('galInput').value='';$('galInput').click()}return}const del=e.target.closest('button[data-eliminar-foto]');if(del)return eliminarEvidencia(del.dataset.eliminarFoto);const view=e.target.closest('button[data-ver-foto]');if(view)ampliarFotoEvidencia(view.dataset.verFoto)});$('evLightboxClose').onclick=cerrarFotoEvidencia;$('evLightbox').addEventListener('click',e=>{if(e.target===$('evLightbox'))cerrarFotoEvidencia()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('evLightbox').classList.contains('hidden'))cerrarFotoEvidencia()});$('confirmBasket').onclick=confirmarCanasta;$('editarCanasta').onclick=alternarEditorCanasta;$('editarObservaciones').onclick=alternarEditorObservaciones;$('guardarRegistroTecnico').onclick=()=>guardarRegistroTecnico();$('guardarObservacion').onclick=guardarObservacion;$('sinObservaciones').onclick=()=>guardarRegistroTecnico(NOTAS);$('confirmarSinEvidencias').onclick=()=>{if((DATA?.reporte?.automatismos?.evidencias||[]).length)return msg('evMsg','Este tipo de soporte requiere evidencias; no se puede omitir.');if(!confirm('¿Confirmar que este soporte no requiere fotos?'))return;EVIDENCIAS_OK=true;saveDraft();refrescarEtapas()};$('camBtn').onclick=()=>$('camInput').click();$('galBtn').onclick=()=>$('galInput').click();$('camInput').onchange=e=>{const f=e.target.files?.[0];e.target.value='';pick(f)};$('galInput').onchange=e=>{const f=e.target.files?.[0];e.target.value='';pick(f)};$('zoom').oninput=()=>{$('preview').style.transform=`scale(${$('zoom').value})`};$('subirFoto').onclick=uploadEv;$('previewReport').onclick=previewReport;$('previewDock').onclick=previewReport;instalarDetectorPrevisualizacion();$('hallazgoSel').onchange=()=>{HALLAZGO=$('hallazgoSel').value;SOLUCION='';renderSoluciones();saveDraft()};$('solucionSel').onchange=()=>{SOLUCION=$('solucionSel').value;renderImpacto();saveDraft()};$('accionesExtraBtn').onclick=()=>{$('accionesExtraMenu').classList.toggle('hidden')};$('confirmarHallazgo').onclick=confirmarHallazgo;$('mesaPickerBtn').onclick=()=>{const menu=$('mesaPickerMenu');menu.classList.toggle('hidden');$('mesaPickerBtn').setAttribute('aria-expanded',String(!menu.classList.contains('hidden')))};$('solicitarMesaSoporte').onclick=solicitarMesaSoporte;['diagnostico','solucion','observacion'].forEach(id=>$(id).addEventListener('input',()=>{NOTAS_OK=false;REGISTRO_DIRTY_AT=new Date().toISOString();renderRegistroTecnico();refrescarEtapas();saveDraft()}));window.addEventListener('disprotel:offline-evidence-synced',e=>{if(e.detail?.orden_id!==ORDEN)return;DATA.evidencias=DATA.evidencias||[];DATA.evidencias=DATA.evidencias.filter(x=>x.offline_sync_id!==e.detail.offline_sync_id);if(e.detail.evidencia&&!DATA.evidencias.some(x=>x.id===e.detail.evidencia.id))DATA.evidencias.push(e.detail.evidencia);EVIDENCIAS_OK=true;saveDraft();refrescarMiniaturas();msg('evMsg','✅ Evidencia pendiente sincronizada automáticamente.',true)});instalarAcordeonesSoporte();load();</script><script src="soporte-retiros-v1.js?v=20260929-0750"></script><script src="disprotel-ot-realtime-v1.js?v=20261014-huawei-on-demand1"></script><script src="disprotel-mesa-avisos-v1.js?v=20261015-pingpong-real1"></script></body></html>
