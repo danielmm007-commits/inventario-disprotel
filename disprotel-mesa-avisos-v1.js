@@ -13,6 +13,9 @@
  if(window.self!==window.top)return;
  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim().replace(/[\s-]+/g,'_');
  const seen=new Map(),pending=[],orderDetails=new Map(),requests=new Map(),recentlyClosed=new Map();
+ const detalleCache=new Map(),detalleEnCurso=new Map();
+ const API_DETALLE='https://ajnbswrwnjpjypjiorye.supabase.co/functions/v1/inventario-mesa-tecnica';
+
  const STORE='disprotel_mesa_pendientes_fernando_v1';
  const AUDIO_STORE='disprotel_mesa_sonido_v2_'+id;
  const AUDIO_LEGACY_STORE='disprotel_mesa_sonido_v1';
@@ -366,6 +369,15 @@
     .disprotelMesaDetails{margin-top:8px;padding-top:7px;border-top:1px solid #e0ebf0;
       font-size:11px;font-weight:500;display:grid;gap:4px;overflow-wrap:anywhere}
     .disprotelMesaDetails strong{font-weight:800}
+    .disprotelMesaHighlight{padding:10px 11px!important;margin-top:8px;border-radius:9px;
+      border:1px solid #b4d5ed;background:#eef7ff;display:block!important;
+      font-size:12px;line-height:1.45;overflow-wrap:anywhere;animation:mesaDestello 2.5s ease-out}
+    .disprotelMesaHighlight b{display:block;color:#125480;font-size:10px;letter-spacing:.02em;margin-bottom:4px}
+    .disprotelMesaHighlight.mesaCorrected{border-color:#9fd4b7;background:#ebf8f0}
+    .disprotelMesaHighlight.mesaCorrected b{color:#17633b}
+    @keyframes mesaDestello{0%,35%{box-shadow:0 0 0 3px #5baee955}100%{box-shadow:none}}
+    @media(prefers-reduced-motion:reduce){.disprotelMesaHighlight{animation:none}}
+
     .disprotelMesaActions{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
     .disprotelMesaActions button{border:1px solid #cadee8;border-radius:8px;padding:6px 9px;
       background:#f1f7fb;color:#184965;font:700 11px system-ui;cursor:pointer}
@@ -432,18 +444,60 @@
    const rows=[
      ['Cliente',meta.cliente||''],
      ['Tipo de trabajo',typeLabel(meta.tipo||info.tipo||'')],
-     ['Acciones',info.detail||'']
+     ['Intervención',info.detail||'']
    ].filter(([,v])=>v);
-   details.hidden=rows.length===0;
    for(const [label,value] of rows){
      const line=document.createElement('div'),strong=document.createElement('strong');
      strong.textContent=label+': ';line.append(strong,document.createTextNode(value));details.append(line);
    }
+   const data=card._mesaDetail;
+   if(data&&norm(card.dataset.area)==='MESA'){
+     const action=norm(card.dataset.action);
+     const highlight=document.createElement('div');
+     highlight.className='disprotelMesaHighlight'+(action==='CORRECCION_LISTA'?' mesaCorrected':'');
+     const label=document.createElement('b'),value=document.createElement('span');
+     if(action==='CORRECCION_LISTA'){
+       label.textContent='✅ BRYAN SOLUCIONÓ · FERNANDO DEBE VERIFICAR';
+       value.textContent=String(data.correccion?.texto||'Corrección realizada; comprobar nuevamente');
+     }else if(norm(card.dataset.destino)==='SUPERVISOR'){
+       label.textContent='📋 BRYAN SOLICITA';
+       value.textContent=String(data.solicitud||info.detail||'Revisar intervención en la OT');
+     }else{
+       label.textContent='📝 RESPUESTA DE FERNANDO';
+       value.textContent=String(data.respuesta?.texto||data.respuesta?.estado||info.detail||'Revisar resultado');
+     }
+     highlight.append(label,value);details.append(highlight);
+   }
+   details.hidden=details.childElementCount===0;
+ }
+ function consultarDetalleAviso(d,card){
+   if(norm(d.area)!=='MESA'||!d.orden_uuid||!d.solicitud_id)return;
+   const key=[d.solicitud_id,norm(d.accion)].join('|');
+   const apply=data=>{if(!card.isConnected)return;card._mesaDetail=data;enrich(card)};
+   if(detalleCache.has(key)){apply(detalleCache.get(key));return}
+   if(!detalleEnCurso.has(key)){
+     let session={};try{session=JSON.parse(sessionStorage.getItem(KEY)||'{}')}catch{}
+     if(!session.session_token)return;
+     const promise=fetch(API_DETALLE,{method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({session_token:session.session_token,action:'notification-detail',
+         orden_id:d.orden_uuid,requerimiento_id:d.solicitud_id})})
+       .then(async response=>{
+         const data=await response.json();
+         if(!response.ok||!data.ok)throw new Error(data.error||'Detalle no disponible');
+         detalleCache.set(key,data);
+         if(detalleCache.size>120)detalleCache.delete(detalleCache.keys().next().value);
+         return data;
+       }).catch(()=>null).finally(()=>detalleEnCurso.delete(key));
+     detalleEnCurso.set(key,promise);
+   }
+   detalleEnCurso.get(key).then(data=>{if(data)apply(data)});
  }
  function show(d,reminder=false){
    const info=describe(d);if(!info)return;
    const root=ensure(),card=document.createElement('section');card.className='disprotelMesaToast '+info.tone;
-   card.setAttribute('role','status');card.dataset.ot=info.ot;card._mesaInfo=info;
+   card.setAttribute('role','status');card.dataset.ot=info.ot;
+   card.dataset.area=String(d.area||'');card.dataset.action=String(d.accion||'');
+   card.dataset.destino=String(d.destino||'');card._mesaInfo=info;
    const title=document.createElement('div');title.className='disprotelMesaTitle';
    const entry=requests.get(keyFor(d));
    title.textContent=(reminder?(entry?.phase==='en_gestion'?'⏰ Sigue en gestión: ':'⏰ Recordatorio: '):'')+info.icon+' '+info.title;
@@ -477,7 +531,7 @@
      const b=document.createElement('button');b.type='button';b.textContent='🔊 Activar sonido';
      b.className='disprotelMesaEnableSound';b.onclick=enableAudio;actions.append(b);card.append(actions);
    }
-   root.prepend(card);enrich(card);
+   root.prepend(card);enrich(card);consultarDetalleAviso(d,card);
    while([...root.children].filter(el=>el.classList?.contains('disprotelMesaToast')).length>4){
      const oldest=[...root.children].filter(el=>el.classList?.contains('disprotelMesaToast')).at(-1);
      oldest?.remove();
