@@ -14,6 +14,18 @@
 .mesaMsgTech.flash{animation:mesaTechHighlight 3s ease-out}
 @keyframes mesaTechHighlight{0%,35%{box-shadow:0 0 0 4px #4d9fca4a}100%{box-shadow:none}}
 @media(prefers-reduced-motion:reduce){.mesaMsgTech.flash{animation:none}}
+.mesaAccordion{overflow:hidden}
+.mesaAccordionSummary{display:block;position:relative;cursor:pointer;padding:11px 39px 11px 12px;list-style:none;user-select:none;border-radius:6px}
+.mesaAccordionSummary::-webkit-details-marker{display:none}
+.mesaAccordionSummary::marker{content:''}
+.mesaAccordionSummary:focus-visible{outline:3px solid #2484c6;outline-offset:-3px}
+.mesaAccordionSummary:hover{background:#e9f3fa}
+.mesaAccordion .mesaAccordionHint{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:800;color:#285879}
+.mesaAccordion .mesaAccordionHint::after{content:'▾ ABRIR'}
+.mesaAccordion[open] .mesaAccordionHint::after{content:'▴ CERRAR'}
+.mesaAccordionBody{padding:0 11px 11px}
+.mesaAccordion.mesaMirrorReq{padding:0}
+.mesaAccordion .mesaMirrorReqHead{padding-right:4px}
 .mesaMirrorReq{padding:9px 10px;margin:7px 0;border:1px solid #e5c36d;border-left:4px solid #d89d16;border-radius:6px;background:#fffaf0}.mesaMirrorReq.done{border-color:#a8d8bd;border-left-color:#238a5a;background:#f4fbf7}.mesaMirrorReqHead{display:flex;align-items:center;justify-content:space-between;gap:8px}.mesaMirrorReqHead>b{font-size:11px;font-weight:600}.mesaMirrorReqHead>span{font-size:8px;font-weight:600;padding:3px 6px;border-radius:999px;background:#fff0bd;color:#765200}.mesaMirrorReq.done .mesaMirrorReqHead>span{background:#dff4e8;color:#17643f}.mesaMirrorStatus{margin-top:7px;padding:7px 8px;border-radius:5px;background:#fff;border:1px solid #ead9aa;font-size:10px;display:grid;gap:3px}.mesaMirrorStatus.ok{border-color:#b8dec8;background:#f7fcf9}.mesaPowerFix{margin:8px 0;padding:11px;border:1px solid #dfb964;border-radius:9px;background:#fff5df;font-size:12px;display:grid;gap:6px}.mesaPowerFix.corrected{border-color:#a7d8bb;background:#f0fbf4}.mesaPowerFix img{display:block;max-width:310px;width:100%;max-height:190px;object-fit:contain;background:#111;border-radius:7px}.mesaPowerFix .mesaConfirmRevision{background:#147746;color:#fff;margin:7px 0 0;width:auto;padding:10px;font-size:12px}.mesaRemoteEvidence{margin-top:9px;padding:8px;background:#f1f5f8;border:1px solid #d8e4ea;border-radius:9px;text-align:center}.mesaRemoteEvidence img{display:block;width:100%;max-width:560px;height:auto;max-height:260px;object-fit:contain;margin:auto;cursor:pointer;border-radius:7px;background:#111}@media(max-width:600px){.mesaRemoteEvidence img{max-height:180px}}.evChoice{border:1px solid #d5e2e8;border-radius:12px;background:#f8fbfc;overflow:hidden}
 .evChoice .evType{border:0;border-radius:0;width:100%;margin:0;min-height:82px}
 .evMenu{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;background:#fff;border-top:1px solid #d5e2e8}
@@ -763,6 +775,12 @@ function renderMesaActions(){
   if(!x.checked)return;MESA_SELECTED.clear();MESA_SELECTED.add(x.dataset.mesaAction);actualizarMesaResumen();
  });
 }
+// Estado local del acordeón: Realtime no debe reabrir los numerales que Bryan cerró.
+const MESA_ACORDEON_ESTADO=new Map();
+window.recordarMesaAcordeon=el=>{
+ const rid=el?.dataset?.requerimientoId;
+ if(rid)MESA_ACORDEON_ESTADO.set(rid,!!el.open);
+};
 function mesaReqLine(r){
  const names=(r.acciones||[]).map(x=>MESA_ACTIONS[x]?.[1]||x.replaceAll('_',' ')).join(' · '),res=r.resultado||{},
        potGuardada=res.verificacion_potencia||null,lecturaCompartida=MESA_STATE?.optica||null,
@@ -830,7 +848,12 @@ function mesaReqLine(r){
    const evidence='<div class="powerMirrorEvidence"><div class="muted" style="margin:0 0 5px"><b>📷 EVIDENCIA VISUAL SMARTOLT</b></div>'+(ev?.storage_path?'<button type="button" data-power-evidence="'+esc(r.id)+'" class="secondary" onclick="verFotoSoporteMesa(\'POWER\',\''+esc(r.id)+'\')">🖼️ VER CAPTURA SMARTOLT</button><div class="muted">✅ Captura SmartOLT guardada'+(ev.rectificada?' · ✏️ rectificada':'')+(ev.subido_at?' · '+esc(fmt(ev.subido_at)):'')+'</div>':'<div class="muted">Sin captura disponible.</div>')+'</div>';
    extra+='<div class="powerMirrorGrid">'+data+evidence+'</div>';
  }
- return '<div class="mesaMirrorReq '+(done?'done':'pending')+'"><div class="mesaMirrorReqHead"><b>'+(done?'✅ ATENDIDO':'⏳ ESPERANDO MESA TÉCNICA')+' · '+esc(names)+'</b><span>'+(done?'ATENDIDO':'PENDIENTE')+'</span></div><div class="muted">'+esc(fmt(r.solicitado_at))+(done&&r.atendido_at?' · atendido '+esc(fmt(r.atendido_at)):'')+'</div>'+extra+'</div>'
+ const expanded=MESA_ACORDEON_ESTADO.has(String(r.id))?MESA_ACORDEON_ESTADO.get(String(r.id)):!done;
+ return '<details class="mesaMirrorReq mesaAccordion '+(done?'done':'pending')+'" data-requerimiento-id="'+esc(r.id)+'" '+(expanded?'open ':'')+'ontoggle="recordarMesaAcordeon(this)">'+
+   '<summary class="mesaAccordionSummary"><div class="mesaMirrorReqHead"><b>'+(done?'✅ ATENDIDO':'⏳ PENDIENTE')+' · '+esc(names)+'</b><span>'+(done?'ATENDIDO':'PENDIENTE')+'</span></div>'+
+   '<div class="muted">'+esc(fmt(r.solicitado_at))+(done&&r.atendido_at?' · atendido '+esc(fmt(r.atendido_at)):'')+'</div>'+
+   '<span class="mesaAccordionHint" aria-hidden="true"></span></summary>'+
+   '<div class="mesaAccordionBody">'+extra+'</div></details>'
 }
 let CORRECCION_GENERAL_GUARDANDO=false;
 window.reportarCorreccionGeneralMesa=async rid=>{
