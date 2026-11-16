@@ -111,7 +111,14 @@ async function revisar(){
 }
 const obs=new MutationObserver(()=>crear());
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',()=>{obs.observe(document.body,{childList:true,subtree:true});setTimeout(crear,300)}):(obs.observe(document.body,{childList:true,subtree:true}),setTimeout(crear,200));
-setInterval(()=>{if(document.visibilityState==='visible'&&document.getElementById('onuActivadaTecnico'))revisar()},30000);
-window.addEventListener('disprotel:ot-sincronizar',()=>{if(document.visibilityState==='visible')revisar()});
-window.addEventListener('disprotel:mesa-hito',()=>{if(document.visibilityState==='visible')revisar()});
+// Respaldo de baja frecuencia: Realtime sigue actualizando inmediatamente.
+const onuVisible=()=>{
+ const box=document.getElementById('onuActivadaTecnico');
+ if(document.visibilityState!=='visible'||!box)return false;
+ const step=box.closest('details');
+ return (!step||step.open)&&box.getClientRects().length>0;
+};
+setInterval(()=>{if(onuVisible())revisar()},120000);
+window.addEventListener('disprotel:ot-sincronizar',()=>{if(onuVisible())revisar()});
+window.addEventListener('disprotel:mesa-hito',()=>{if(onuVisible())revisar()});
 })();
