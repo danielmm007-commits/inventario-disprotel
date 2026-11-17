@@ -60,6 +60,8 @@
 #evCard .evPhotoDate{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:4px 0 6px}
 #evCard .evPhotoView{display:flex;align-items:center;justify-content:center;width:100%;height:116px;border:0;border-radius:8px;background:#edf2f5;margin:0;padding:0;overflow:hidden;cursor:zoom-in}
 #evCard .evPhotoView img{display:block;width:100%;height:100%;object-fit:contain}
+#evCard .evPhotoView.evMiniLocal{position:relative;padding:0}#evCard .evPhotoView.evMiniLocal img{width:100%;height:100%;object-fit:cover;pointer-events:none}#evCard .evMiniLocalLabel{position:absolute;bottom:4px;left:4px;right:4px;padding:3px;background:#082b5cce;color:#fff;font-size:9px;font-weight:800;border-radius:4px}
+
 #evCard .evPhotoPlaceholder{display:flex;align-items:center;justify-content:center;height:116px;border-radius:8px;background:#edf2f5;font-size:11px;color:#687f8b;text-align:center;padding:8px}
 #evCard .evPhotoDelete{margin-top:7px;width:100%;padding:9px 5px;border-radius:8px;font-size:11px;line-height:1.2}
 #evCard .evPhotoPending{font-size:10px;line-height:1.3;padding:8px 2px;text-align:center}
@@ -526,6 +528,65 @@ function comprobacionesActualesTecnico(rows){
 }
 
 let FIRMA_CATEGORIAS_EV='';
+
+// Piloto FACHADA: miniatura local persistente, NO usa Storage ni URL firmada.
+const MINI_FACHADA_DB='disprotel_mini_fachada_local_v1';
+let miniFachadaDbPromise=null,miniFachadaSeq=0;
+function abrirMiniFachadaDb(){
+ if(!('indexedDB' in window))return Promise.resolve(null);
+ if(!miniFachadaDbPromise)miniFachadaDbPromise=new Promise(resolve=>{
+  try{const req=indexedDB.open(MINI_FACHADA_DB,1);
+   req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('fotos'))req.result.createObjectStore('fotos')};
+   req.onsuccess=()=>resolve(req.result);
+   req.onerror=()=>resolve(null);
+   req.onblocked=()=>resolve(null);
+  }catch{resolve(null)}
+ });
+ return miniFachadaDbPromise;
+}
+async function cacheMiniFachada(op,id,value){
+ const db=await abrirMiniFachadaDb();
+ if(!db||!id)return null;
+ return await new Promise(resolve=>{
+  try{const store=db.transaction('fotos',op==='get'?'readonly':'readwrite').objectStore('fotos');
+   const req=op==='get'?store.get(id):op==='delete'?store.delete(id):store.put(value,id);
+   req.onsuccess=()=>resolve(op==='get'?req.result:null);
+   req.onerror=()=>resolve(null);
+  }catch{resolve(null)}
+ });
+}
+async function crearMiniFachada(file){
+ const url=URL.createObjectURL(file);
+ try{
+  const image=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=url});
+  const factor=Math.min(1,320/Math.max(image.naturalWidth,image.naturalHeight));
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(image.naturalWidth*factor));
+  canvas.height=Math.max(1,Math.round(image.naturalHeight*factor));
+  const ctx=canvas.getContext('2d');if(!ctx)return null;
+  ctx.drawImage(image,0,0,canvas.width,canvas.height);
+  let value=canvas.toDataURL('image/jpeg',.67);
+  if(value.length>85000)value=canvas.toDataURL('image/jpeg',.45);
+  return value.length<=85000?value:null;
+ }finally{URL.revokeObjectURL(url)}
+}
+async function pintarMiniFachadaLocal(){
+ const serial=++miniFachadaSeq;
+ const cards=[...document.querySelectorAll('#evCard .evInlinePhoto[data-evidencia-id]')];
+ for(const card of cards){
+  const id=card.dataset.evidenciaId;
+  const row=evidenciasVigentesSoporte(DATA?.evidencias||[]).find(e=>String(e.id)===id);
+  if(!row||row.tipo_foto!=='FACHADA'||row.offline_pending)continue;
+  const data=await cacheMiniFachada('get',id);
+  if(serial!==miniFachadaSeq||!card.isConnected||!data||!data.startsWith('data:image/jpeg;base64,'))continue;
+  const button=card.querySelector('button.evPhotoView[data-ver-foto]');
+  if(!button)continue;
+  button.replaceChildren();button.classList.add('evMiniLocal');
+  const img=document.createElement('img');img.alt='Miniatura local de fachada';img.src=data;
+  const badge=document.createElement('span');badge.className='evMiniLocalLabel';badge.textContent='🔎 VER FOTOGRAFÍA';
+  button.append(img,badge);
+ }
+}
 function renderTypes(){
  const ev=evidenciasVigentesSoporte(DATA?.evidencias||[]);
  // Tipos históricos o no previstos: también deben mostrarse (nunca ocultar una foto).
@@ -562,6 +623,7 @@ function renderTypes(){
    '</div></div>';
  }).join('');
  $('evSeleccion').textContent='';
+ void pintarMiniFachadaLocal();
 }
 function renderEv(){
  const vigente=evidenciasVigentesSoporte(DATA?.evidencias||[]);
@@ -597,6 +659,7 @@ async function eliminarEvidencia(id){
  try{
   const d=await post(EV_API,{action:'delete',orden_id:ORDEN,evidencia_id:id});
   if(!d?.eliminada)throw Error('No se confirmó la eliminación');
+  void cacheMiniFachada('delete',String(id));
   DATA.evidencias=(DATA.evidencias||[]).filter(x=>String(x.id)!==String(id));
   EVIDENCIAS_OK=evidenciasVigentesSoporte(DATA.evidencias).some(x=>!x.offline_pending);
   saveDraft();
@@ -627,7 +690,12 @@ async function cropped(){if(EVTYPE!=='SERIAL')return null;const im=await imageFr
  if(f.size>5*1024*1024)return alert('La imagen supera 5 MB.');
  try{FILE=await optimizarFotoSoporte(f,EVTYPE==='SERIAL');ORIG=await dataUrl(FILE);$('previewBox').classList.add('hidden');await uploadEv()}
  catch(e){msg('evMsg',e.message)}
-}async function uploadEv(){if(!FILE||!ORIG||EVIDENCIA_BUSY)return;EVIDENCIA_BUSY=true;let p=null;try{msg('evMsg','Guardando la evidencia automáticamente…',true);if(EVTYPE==='FACHADA'&&!GPS){const g=await obtenerGpsSilencioso();if(g){GPS=g;renderGps();saveDraft()}}const syncId=crypto.randomUUID();p={orden_id:ORDEN,tipo_foto:EVTYPE,mime_type:FILE.type||'image/jpeg',base64_original:ORIG,base64_vista:await cropped(),fecha_hora_captura:new Date().toISOString(),offline_sync_id:syncId};if(GPS)Object.assign(p,{latitud:GPS.lat,longitud:GPS.lon,gps_precision_m:GPS.acc,gps_capturado_at:GPS.at});const d=await post(EV_API,p);DATA.evidencias=DATA.evidencias||[];if(EVTYPE!=='ADICIONAL')DATA.evidencias=DATA.evidencias.filter(x=>x.tipo_foto!==EVTYPE);if(!DATA.evidencias.some(x=>x.id===d.evidencia?.id))DATA.evidencias.push(d.evidencia);FILE=null;ORIG=null;EV_MENU=null;EVIDENCIAS_OK=true;$('previewBox').classList.add('hidden');await refrescarMiniaturas();saveDraft();msg('evMsg','✅ Evidencia guardada. Puedes subir una foto corregida si es necesario.',true)}catch(e){const reachable=await window.DisprotelOffline?.isReachable?.().catch(()=>false);if(!reachable&&p){const id=await window.DisprotelOffline.queueEvidence(EV_API,p);DATA.evidencias=DATA.evidencias||[];DATA.evidencias.push({id:'local-'+id,tipo_foto:p.tipo_foto,fecha_hora_captura:p.fecha_hora_captura,offline_pending:true,offline_sync_id:id});FILE=null;ORIG=null;EVIDENCIAS_OK=false;$('previewBox').classList.add('hidden');renderEv();saveDraft();msg('evMsg','📴 Foto guardada en este dispositivo; aún no está sincronizada.',true);return}msg('evMsg',e.message)}finally{EVIDENCIA_BUSY=false}}function hallazgoRelacion(h,s){return (OPTS?.hallazgo_soluciones||[]).find(x=>x.hallazgo_id===h&&x.solucion?.codigo===s)}
+}async function uploadEv(){if(!FILE||!ORIG||EVIDENCIA_BUSY)return;EVIDENCIA_BUSY=true;let p=null;try{msg('evMsg','Guardando la evidencia automáticamente…',true);if(EVTYPE==='FACHADA'&&!GPS){const g=await obtenerGpsSilencioso();if(g){GPS=g;renderGps();saveDraft()}}const syncId=crypto.randomUUID();p={orden_id:ORDEN,tipo_foto:EVTYPE,mime_type:FILE.type||'image/jpeg',base64_original:ORIG,base64_vista:await cropped(),fecha_hora_captura:new Date().toISOString(),offline_sync_id:syncId};if(GPS)Object.assign(p,{latitud:GPS.lat,longitud:GPS.lon,gps_precision_m:GPS.acc,gps_capturado_at:GPS.at});const d=await post(EV_API,p);
+ if(EVTYPE==='FACHADA'&&d.evidencia?.id){
+  try{const mini=await crearMiniFachada(FILE);if(mini)await cacheMiniFachada('put',String(d.evidencia.id),mini)}
+  catch(e){console.warn('Miniatura local no disponible',e)}
+ }
+ DATA.evidencias=DATA.evidencias||[];if(EVTYPE!=='ADICIONAL')DATA.evidencias=DATA.evidencias.filter(x=>x.tipo_foto!==EVTYPE);if(!DATA.evidencias.some(x=>x.id===d.evidencia?.id))DATA.evidencias.push(d.evidencia);FILE=null;ORIG=null;EV_MENU=null;EVIDENCIAS_OK=true;$('previewBox').classList.add('hidden');await refrescarMiniaturas();saveDraft();msg('evMsg','✅ Evidencia guardada. Puedes subir una foto corregida si es necesario.',true)}catch(e){const reachable=await window.DisprotelOffline?.isReachable?.().catch(()=>false);if(!reachable&&p){const id=await window.DisprotelOffline.queueEvidence(EV_API,p);DATA.evidencias=DATA.evidencias||[];DATA.evidencias.push({id:'local-'+id,tipo_foto:p.tipo_foto,fecha_hora_captura:p.fecha_hora_captura,offline_pending:true,offline_sync_id:id});FILE=null;ORIG=null;EVIDENCIAS_OK=false;$('previewBox').classList.add('hidden');renderEv();saveDraft();msg('evMsg','📴 Foto guardada en este dispositivo; aún no está sincronizada.',true);return}msg('evMsg',e.message)}finally{EVIDENCIA_BUSY=false}}function hallazgoRelacion(h,s){return (OPTS?.hallazgo_soluciones||[]).find(x=>x.hallazgo_id===h&&x.solucion?.codigo===s)}
 function hallazgoActual(){return (OPTS?.hallazgos||[]).find(x=>x.codigo===HALLAZGO)}
 function solucionActual(){const h=hallazgoActual();if(!h)return null;const rel=(OPTS?.hallazgo_soluciones||[]).find(x=>x.hallazgo_id===h.id&&x.solucion?.codigo===SOLUCION);return rel?.solucion||null}
 function impactoTexto(a={}){
