@@ -100,16 +100,23 @@ function fmt(v){if(!v)return'—';try{return new Date(v).toLocaleString('es-EC')
 async function load(){try{ctx=await post('context');render();await cargarReporte()}catch(e){msg(e.message,'err')}}
 async function saveGps(){if(!navigator.geolocation)return msg('Este dispositivo no permite obtener GPS.','err');msg('Obteniendo ubicación GPS...','warn');navigator.geolocation.getCurrentPosition(async p=>{try{await post('save-gps',{latitud:p.coords.latitude,longitud:p.coords.longitude,gps_precision_m:p.coords.accuracy,capturado_at:new Date().toISOString()});msg('✅ Ubicación guardada.');await load()}catch(e){msg(e.message,'err')}},e=>msg('No se pudo obtener la ubicación: '+e.message,'err'),{enableHighAccuracy:true,timeout:15000,maximumAge:0})}
 async function fileToPayload(file){let f=file;if(/heic|heif/i.test((file.type||'')+' '+(file.name||''))){if(typeof heic2any!=='function')throw new Error('No se pudo convertir la foto HEIC');const out=await heic2any({blob:file,toType:'image/jpeg',quality:.85});f=new File([Array.isArray(out)?out[0]:out],'foto.jpg',{type:'image/jpeg'})}const img=await createImageBitmap(f);const max=1600,scale=Math.min(1,max/Math.max(img.width,img.height));const cv=document.createElement('canvas');cv.width=Math.round(img.width*scale);cv.height=Math.round(img.height*scale);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);img.close?.();const blob=await new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('No se pudo comprimir la imagen')),'image/jpeg',.82));const b64=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',').pop());fr.onerror=rej;fr.readAsDataURL(blob)});return {mime_type:'image/jpeg',base64:b64,tomada_at:new Date(file.lastModified||Date.now()).toISOString()}}
-async function upload(tipo,file){const previa=!!evMap()[tipo];try{msg(previa?'Reemplazando evidencia...':'Procesando y guardando foto...','warn');const p=await fileToPayload(file);const d=await post('upload',{tipo,...p});
+async function upload(tipo,file){const previa=!!evMap()[tipo];try{msg(previa?'Reemplazando evidencia...':'Procesando y guardando foto...','warn');const p=await fileToPayload(file);
+ // Se codifica solo la miniatura; la foto original sigue igual.
+ let imgBlob=null,miniB64='';
+ try{
+  imgBlob=await miniDesdeBlobInst(file);
+  if(imgBlob&&imgBlob.size<=100*1024){
+   miniB64=await new Promise((resolve,reject)=>{
+    const rd=new FileReader();rd.onload=()=>resolve(String(rd.result).split(',').pop());
+    rd.onerror=()=>reject(new Error('Miniatura no disponible'));rd.readAsDataURL(imgBlob)
+   });
+  }
+ }catch(err){console.warn('Miniatura omitida',err)}
+ const d=await post('upload',{tipo,...p,base64_miniatura:miniB64});
  const prev=evMap()[tipo];
  ctx.evidencias=d.evidencias||[];
  const current=evMap()[tipo];
- if(current?.id){
-  try{
-   const imgBlob=await miniDesdeBlobInst(file);
-   if(imgBlob)await miniInst('put',miniKeyInst(current),imgBlob);
-  }catch(err){console.warn('Miniatura local no disponible',err)}
- }
+ if(current?.id&&imgBlob)await miniInst('put',miniKeyInst(current),imgBlob);
  if(prev?.id&&prev.id!==current?.id)void miniInst('delete',miniKeyInst(prev));
  cambiando.delete(tipo);render();await cargarReporte();msg(previa?'✅ Evidencia reemplazada y actualizada.':'✅ Evidencia guardada.')}catch(e){msg(e.message,'err')}}
 function wire(tipo){const cam=byId('cam-'+tipo),gal=byId('gal-'+tipo),bc=byId('btncam-'+tipo),bg=byId('btngal-'+tipo);if(bc)bc.onclick=()=>{if(cam){cam.value='';cam.click()}};if(bg)bg.onclick=()=>{if(gal){gal.value='';gal.click()}};if(cam)cam.onchange=()=>{const f=cam.files?.[0];if(f)upload(tipo,f).finally(()=>cam.value='')};if(gal)gal.onchange=()=>{const f=gal.files?.[0];if(f)upload(tipo,f).finally(()=>gal.value='')}}
