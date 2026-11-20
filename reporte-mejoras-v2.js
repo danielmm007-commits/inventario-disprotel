@@ -12,14 +12,106 @@ function line(k,v){return `<div class="dataLine"><b>${esc(k)}</b><span>${esc(v||
 function norm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ')}
 function equipKey(x){const p=x.producto||{},s=norm([p.marca,p.modelo,p.producto,p.codigo].join(' '));if(s.includes('MERCUSYS')&&s.includes('AC1900'))return'AC1900';if(s.includes('MERCUSYS')&&s.includes('AC1300'))return'AC1300';if(s.includes('MERCUSYS')&&s.includes('AC3000'))return'AC3000';if(s.includes('CUDY'))return'CUDY';if(s.includes('ONU')&&s.includes('CATV'))return'ONU_CATV';if(s.includes('ONU')&&s.includes('BRIDGE'))return'ONU_BRIDGE';if(s.includes('DECOD')||s.includes('SINTONIZADOR'))return'DECOD';if(s.includes('SWITCH')&&(/8/.test(s)))return'SWITCH8';if(s.includes('TENDA')&&s.includes('F6'))return'TENDA_F6';if(s.includes('TENDA')&&(s.includes('N300')||s.includes('300')))return'TENDA_N300';if(s.includes('NEXXT'))return'NEXXT';return''}
 function equipmentCard(x){const p=x.producto||{},name=[p.marca,p.modelo].filter(Boolean).join(' ')||p.producto||p.codigo||'EQUIPO',img=EQUIP_IMG[equipKey(x)];return `<div class="equipCard"><div class="equipPhoto">${img?`<img src="${img}" alt="${esc(name)}">`:'<span class="equipFallback">📡</span>'}</div><div class="equipName">${esc(name.toUpperCase())}</div><div class="equipSerial">Serial: <b>${esc(x.serial?.serial||'—')}</b></div></div>`}
-function idHtml(doc,label){return `<div class="idCard">${doc?.url?`<a href="${doc.url}" target="_blank" rel="noopener" style="display:block;width:100%"><img src="${doc.url}" alt="${esc(label)}"></a>`:`<div class="idEmpty">${esc(label)}<br>NO CARGADA</div>`}</div>`}
-function render(r,congelado){const o=r.orden||{},c=r.cliente||{},sol=r.solicitante||{},t=r.tecnico||{},sv=r.servicio||{},i=r.instalacion||{},docs=r.documentos||{},items=r.items||[],ev=(r.evidencias||[]).filter(x=>x?.url),equipos=items.filter(x=>String(x.tipo_control||'').toUpperCase()==='SERIAL'||x.serial?.serial),materiales=items.filter(x=>!equipos.includes(x));const final=congelado||o.estado==='COMPLETADA'||!!r.cierre||modo()==='final',lat=Number(i.latitud),lon=Number(i.longitud),hasGps=Number.isFinite(lat)&&Number.isFinite(lon),coords=hasGps?`${fmt(lat)}, ${fmt(lon)}`:'—',prec=Number(i.gps_precision_m),precTxt=Number.isFinite(prec)?` · precisión ±${Math.round(prec)} m`:'';const cierreFecha=r.cierre?.cerrado_at||i.fecha_hora||i.fecha_registro||o.fecha_solicitud,logo=typeof LOGO!=='undefined'?LOGO:'',updated=c.datos_actualizados_campo,clienteExtra=updated&&c.nombre_original&&String(c.nombre_original).trim().toUpperCase()!==String(c.nombre||'').trim().toUpperCase()?line('Solicitud original:',c.nombre_original):'',servicio=sv.tv?'INTERNET + TV':'INTERNET',evCols=evidenceCols(ev.length);document.getElementById('contenido').innerHTML=`<div class="reportTop"><img class="reportLogo" src="${logo}" alt="DISPROTEL"><div><div class="reportTitle">REPORTE DE INSTALACIÓN</div><div class="reportSub">${final?'REPORTE FINAL':'VISTA PREVIA'} · documento técnico de la OT</div></div><div class="stateBadge ${final?'final':''}">${final?'✅ FINALIZADO':'◷ NO FINALIZADO'}</div></div><div class="topStrip"><div class="topCell"><div class="topLabel">OT</div><div class="topVal">${esc(o.id_orden||'—')}</div></div><div class="topCell"><div class="topLabel">Fecha y hora</div><div class="topVal">${esc(fecha(cierreFecha))}</div></div><div class="topCell"><div class="topLabel">Solicitante</div><div class="topVal">${esc(sol.nombre||'—')}</div></div><div class="topCell"><div class="topLabel">Técnico</div><div class="topVal">${esc(t.nombre||'—')}</div></div><div class="topCell"><div class="topLabel">Grupo técnico</div><div class="topVal">${esc(t.grupo||'—')}</div></div><div class="topCell"><div class="topLabel">Router cobertura</div><div class="topVal">${esc(o.router_cobertura||'—')}</div></div></div><div class="repSec"><div class="repHead">👤 CLIENTE / DATOS CONFIRMADOS</div><div class="clientGrid"><div>${line('Cliente:',c.nombre)}${clienteExtra}${line('Cédula:',c.identificacion)}${line('Teléfono:',c.telefono)}${line('Dirección:',c.direccion)}${line('Referencia:',c.referencia)}${line('Cantón / Parroquia / Sector:',[c.canton,c.parroquia,c.zona].filter(Boolean).join(' · '))}</div><div>${updated?'<div class="fieldRibbon">ⓘ DATOS ACTUALIZADOS POR TÉCNICO EN CAMPO</div>':''}<div class="gpsBox"><b>📍 UBICACIÓN GPS DE LA INSTALACIÓN</b><div style="margin-top:1mm">${esc(coords+precTxt)}</div>${hasGps?`<a class="gpsLink" href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener">ABRIR UBICACIÓN EN MAPS ↗</a>`:'<div style="margin-top:1mm">GPS no registrado</div>'}</div></div></div></div><div class="repSec"><div class="repHead">📶 SERVICIO</div><div class="serviceGrid"><div>${line('Tipo de trabajo:',tipo(o.tipo_trabajo))}${line('Servicio:',servicio)}${line('Plan:',sv.plan)}${line('IP confirmada:',sv.ip)}${line('Responsable de IP:',sv.ip_confirmada_por)}${line('Fecha confirmación IP:',fecha(sv.ip_confirmimada_at||sv.ip_confirmada_at))}</div><div class="idGrid">${idHtml(docs.frente,'FRENTE DE CÉDULA')}${idHtml(docs.reverso,'REVERSO DE CÉDULA')}</div></div></div><div class="repSec"><div class="repHead">📡 EQUIPOS INSTALADOS</div><div class="equipGrid">${equipos.length?equipos.map(equipmentCard).join(''):'<div class="notes" style="grid-column:1/-1">Sin equipos serializados registrados.</div>'}</div></div><div class="bottomGrid"><div class="repSec"><div class="repHead">🧰 MATERIALES UTILIZADOS</div><table class="matTable">${materiales.length?materiales.map(x=>`<tr><td>${esc(x.producto?.producto||x.producto?.codigo||'Material')}</td><td>${esc(x.cantidad||0)} ${esc(x.unidad||'')}</td></tr>`).join(''):'<tr><td>Sin materiales</td><td>—</td></tr>'}</table></div><div class="repSec"><div class="repHead">📷 EVIDENCIAS FOTOGRÁFICAS</div><div class="evidenceGrid" style="--cols:${evCols}">${ev.length?ev.map(x=>`<div class="evCard ${x.tipo_foto==='ACCESO_REMOTO'?'accesoRemoto':''}"><img class="evImg" src="${x.url}" alt="${esc(evLabel(x.tipo_foto))}"><div class="evCap">${esc(evLabel(x.tipo_foto))}</div></div>`).join(''):'<div class="notes">Sin evidencias con vista previa.</div>'}</div></div></div>${i.observacion?`<div class="obsMini"><b>📝 OBSERVACIONES:</b> ${esc(i.observacion)}</div>`:''}<div class="notes">ℹ️ Al finalizar la OT, el reporte queda congelado y la orden pasa a solo lectura.</div><div class="repFooter"><span>DISPROTEL · ${esc(o.id_orden||'')}</span><span class="previewMark">${final?'✓ REPORTE FINAL':'👁 VISTA PREVIA PARA REVISIÓN'}</span></div>`;if(typeof ajustarHojaA4==='function')setTimeout(ajustarHojaA4,80)}
-let cargaReporteEnCurso=null;
-async function loadApproved(){
+
+/* PREVIA BAJO DEMANDA: no crear <img src=URL_SUPABASE> automáticamente.
+   La imagen completa solo se solicita al pulsar VER o al imprimir/guardar PDF. */
+const fotosReporteDemanda=[];
+let fotosReportePreparadas=false,preparandoFotosReporte=false,instalacionMiniDbPromise=null;
+function agregarFotoReporte(url,label,key){
+ if(!url)return '<div class="idEmpty">SIN FOTOGRAFÍA</div>';
+ const idx=fotosReporteDemanda.push({url:String(url),label:String(label||''),key:String(key||'')})-1;
+ return '<div class="reportPhotoSlot" data-report-photo="'+idx+'"><div class="reportPhotoIcon">📷</div>'+
+   '<button type="button" class="reportPhotoShow" data-report-show="'+idx+'">VER FOTO</button></div>';
+}
+function abrirMiniReporteDb(){
+ if(!('indexedDB' in window))return Promise.resolve(null);
+ if(!instalacionMiniDbPromise)instalacionMiniDbPromise=new Promise(resolve=>{
+  try{const request=indexedDB.open('disprotel_instalacion_miniaturas_v1',1);
+   request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains('fotos'))request.result.createObjectStore('fotos')};
+   request.onsuccess=()=>resolve(request.result);
+   request.onerror=()=>resolve(null);request.onblocked=()=>resolve(null)
+  }catch{resolve(null)}
+ });
+ return instalacionMiniDbPromise;
+}
+async function miniReporteLocal(key){
+ if(!key)return null;
+ const db=await abrirMiniReporteDb();if(!db)return null;
+ return await new Promise(resolve=>{
+  try{const req=db.transaction('fotos','readonly').objectStore('fotos').get(key);
+    req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>resolve(null)
+  }catch{resolve(null)}
+ });
+}
+async function mostrarMiniaturasReporte(){
+ const actuales=[...document.querySelectorAll('[data-report-photo]')];
+ for(const slot of actuales){
+  const idx=Number(slot.dataset.reportPhoto),foto=fotosReporteDemanda[idx];
+  if(!foto?.key||!slot.isConnected)continue;
+  const blob=await miniReporteLocal(foto.key);
+  if(!blob||!slot.isConnected||slot.dataset.reportPhoto!==String(idx))continue;
+  const src=URL.createObjectURL(blob),img=document.createElement('img');
+  img.className='reportPhotoMini';img.alt=foto.label;img.src=src;
+  img.onload=()=>URL.revokeObjectURL(src);img.onerror=()=>URL.revokeObjectURL(src);
+  slot.querySelector('.reportPhotoIcon')?.replaceWith(img);
+ }
+}
+async function cargarFotoReporte(idx){
+ const slot=document.querySelector('[data-report-photo="'+idx+'"]'),foto=fotosReporteDemanda[idx];
+ if(!slot||!foto?.url)return false;
+ if(slot.querySelector('img.reportPhotoFull'))return true;
+ const img=new Image();img.className='reportPhotoFull';img.alt=foto.label;
+ img.decoding='async';
+ const loaded=new Promise(resolve=>{img.onload=()=>resolve(true);img.onerror=()=>resolve(false)});
+ img.src=foto.url;
+ if(!await loaded)return false;
+ slot.replaceChildren(img);
+ return true;
+}
+async function imprimirReporteConFotos(){
+ if(preparandoFotosReporte)return;
+ preparandoFotosReporte=true;
+ const buttons=['imprimir','guardar'].map(id=>document.getElementById(id)).filter(Boolean);
+ const originales=buttons.map(b=>b.textContent);
+ buttons.forEach(b=>{b.disabled=true;b.textContent='CARGANDO EVIDENCIAS…'});
+ try{
+  // Si el reporte lleva varios minutos abierto, renovar los enlaces antes de descargarlos.
+  if(Date.now()-ultimaCargaReporte>7*60*1000)await loadApproved(true);
+  const outcomes=await Promise.all(fotosReporteDemanda.map((_,i)=>cargarFotoReporte(i)));
+  if(outcomes.some(ok=>!ok))throw new Error('Alguna fotografía no pudo cargarse. Comprueba tu conexión e intenta nuevamente.');
+  fotosReportePreparadas=true;
+  if(typeof ajustarHojaA4==='function')ajustarHojaA4();
+  window.print();
+ }catch(error){alert('No se pudo preparar el PDF completo: '+(error.message||error))}
+ finally{preparandoFotosReporte=false;buttons.forEach((b,i)=>{b.disabled=false;b.textContent=originales[i]})}
+}
+document.addEventListener('click',event=>{
+ const button=event.target.closest('[data-report-show]');
+ if(!button)return;
+ const index=Number(button.dataset.reportShow);
+ button.disabled=true;button.textContent='CARGANDO…';
+ cargarFotoReporte(index).then(ok=>{
+  if(!ok){button.disabled=false;button.textContent='REINTENTAR';}
+ });
+});
+function idHtml(doc,label){return `<div class="idCard">${doc?.url?agregarFotoReporte(doc.url,label,''):`<div class="idEmpty">${esc(label)}<br>NO CARGADA</div>`}</div>`}
+function render(r,congelado){fotosReporteDemanda.length=0;fotosReportePreparadas=false;const o=r.orden||{},c=r.cliente||{},sol=r.solicitante||{},t=r.tecnico||{},sv=r.servicio||{},i=r.instalacion||{},docs=r.documentos||{},items=r.items||[],ev=(r.evidencias||[]).filter(x=>x?.url),equipos=items.filter(x=>String(x.tipo_control||'').toUpperCase()==='SERIAL'||x.serial?.serial),materiales=items.filter(x=>!equipos.includes(x));const final=congelado||o.estado==='COMPLETADA'||!!r.cierre||modo()==='final',lat=Number(i.latitud),lon=Number(i.longitud),hasGps=Number.isFinite(lat)&&Number.isFinite(lon),coords=hasGps?`${fmt(lat)}, ${fmt(lon)}`:'—',prec=Number(i.gps_precision_m),precTxt=Number.isFinite(prec)?` · precisión ±${Math.round(prec)} m`:'';const cierreFecha=r.cierre?.cerrado_at||i.fecha_hora||i.fecha_registro||o.fecha_solicitud,logo=typeof LOGO!=='undefined'?LOGO:'',updated=c.datos_actualizados_campo,clienteExtra=updated&&c.nombre_original&&String(c.nombre_original).trim().toUpperCase()!==String(c.nombre||'').trim().toUpperCase()?line('Solicitud original:',c.nombre_original):'',servicio=sv.tv?'INTERNET + TV':'INTERNET',evCols=evidenceCols(ev.length);document.getElementById('contenido').innerHTML=`<div class="reportTop"><img class="reportLogo" src="${logo}" alt="DISPROTEL"><div><div class="reportTitle">REPORTE DE INSTALACIÓN</div><div class="reportSub">${final?'REPORTE FINAL':'VISTA PREVIA'} · documento técnico de la OT</div></div><div class="stateBadge ${final?'final':''}">${final?'✅ FINALIZADO':'◷ NO FINALIZADO'}</div></div><div class="topStrip"><div class="topCell"><div class="topLabel">OT</div><div class="topVal">${esc(o.id_orden||'—')}</div></div><div class="topCell"><div class="topLabel">Fecha y hora</div><div class="topVal">${esc(fecha(cierreFecha))}</div></div><div class="topCell"><div class="topLabel">Solicitante</div><div class="topVal">${esc(sol.nombre||'—')}</div></div><div class="topCell"><div class="topLabel">Técnico</div><div class="topVal">${esc(t.nombre||'—')}</div></div><div class="topCell"><div class="topLabel">Grupo técnico</div><div class="topVal">${esc(t.grupo||'—')}</div></div><div class="topCell"><div class="topLabel">Router cobertura</div><div class="topVal">${esc(o.router_cobertura||'—')}</div></div></div><div class="repSec"><div class="repHead">👤 CLIENTE / DATOS CONFIRMADOS</div><div class="clientGrid"><div>${line('Cliente:',c.nombre)}${clienteExtra}${line('Cédula:',c.identificacion)}${line('Teléfono:',c.telefono)}${line('Dirección:',c.direccion)}${line('Referencia:',c.referencia)}${line('Cantón / Parroquia / Sector:',[c.canton,c.parroquia,c.zona].filter(Boolean).join(' · '))}</div><div>${updated?'<div class="fieldRibbon">ⓘ DATOS ACTUALIZADOS POR TÉCNICO EN CAMPO</div>':''}<div class="gpsBox"><b>📍 UBICACIÓN GPS DE LA INSTALACIÓN</b><div style="margin-top:1mm">${esc(coords+precTxt)}</div>${hasGps?`<a class="gpsLink" href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener">ABRIR UBICACIÓN EN MAPS ↗</a>`:'<div style="margin-top:1mm">GPS no registrado</div>'}</div></div></div></div><div class="repSec"><div class="repHead">📶 SERVICIO</div><div class="serviceGrid"><div>${line('Tipo de trabajo:',tipo(o.tipo_trabajo))}${line('Servicio:',servicio)}${line('Plan:',sv.plan)}${line('IP confirmada:',sv.ip)}${line('Responsable de IP:',sv.ip_confirmada_por)}${line('Fecha confirmación IP:',fecha(sv.ip_confirmimada_at||sv.ip_confirmada_at))}</div><div class="idGrid">${idHtml(docs.frente,'FRENTE DE CÉDULA')}${idHtml(docs.reverso,'REVERSO DE CÉDULA')}</div></div></div><div class="repSec"><div class="repHead">📡 EQUIPOS INSTALADOS</div><div class="equipGrid">${equipos.length?equipos.map(equipmentCard).join(''):'<div class="notes" style="grid-column:1/-1">Sin equipos serializados registrados.</div>'}</div></div><div class="bottomGrid"><div class="repSec"><div class="repHead">🧰 MATERIALES UTILIZADOS</div><table class="matTable">${materiales.length?materiales.map(x=>`<tr><td>${esc(x.producto?.producto||x.producto?.codigo||'Material')}</td><td>${esc(x.cantidad||0)} ${esc(x.unidad||'')}</td></tr>`).join(''):'<tr><td>Sin materiales</td><td>—</td></tr>'}</table></div><div class="repSec"><div class="repHead">📷 EVIDENCIAS FOTOGRÁFICAS</div><div class="evidenceGrid" style="--cols:${evCols}">${ev.length?ev.map(x=>`<div class="evCard ${x.tipo_foto==='ACCESO_REMOTO'?'accesoRemoto':''}">${agregarFotoReporte(x.url,evLabel(x.tipo_foto),x.id?ordenId()+':'+x.id:'')}<div class="evCap">${esc(evLabel(x.tipo_foto))}</div></div>`).join(''):'<div class="notes">Sin evidencias con vista previa.</div>'}</div></div></div>${i.observacion?`<div class="obsMini"><b>📝 OBSERVACIONES:</b> ${esc(i.observacion)}</div>`:''}<div class="notes">ℹ️ Al finalizar la OT, el reporte queda congelado y la orden pasa a solo lectura.</div><div class="repFooter"><span>DISPROTEL · ${esc(o.id_orden||'')}</span><span class="previewMark">${final?'✓ REPORTE FINAL':'👁 VISTA PREVIA PARA REVISIÓN'}</span></div>`;void mostrarMiniaturasReporte();if(typeof ajustarHojaA4==='function')setTimeout(ajustarHojaA4,80)}
+let cargaReporteEnCurso=null,ultimaCargaReporte=0;
+async function loadApproved(force=false){
+ if(force)cargaReporteEnCurso=null;
  if(cargaReporteEnCurso)return cargaReporteEnCurso;
- cargaReporteEnCurso=(async()=>{const c=creds(),id=ordenId();if(!(c.session_token||c.pin)||!id)return;css();try{const rr=await fetch(API+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:c.usuario||'',pin:c.pin||'',session_token:c.session_token||'',action:'summary',orden_id:id})});const d=await rr.json();if(!rr.ok)throw new Error(d.error||'No se pudo cargar el reporte');render(d.reporte||{},!!d.congelado)}catch(e){console.warn(e)}})().catch(e=>{cargaReporteEnCurso=null;throw e});
+ cargaReporteEnCurso=(async()=>{const c=creds(),id=ordenId();if(!(c.session_token||c.pin)||!id)return;css();try{const rr=await fetch(API+'?t='+Date.now(),{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:c.usuario||'',pin:c.pin||'',session_token:c.session_token||'',action:'summary',orden_id:id})});const d=await rr.json();if(!rr.ok)throw new Error(d.error||'No se pudo cargar el reporte');ultimaCargaReporte=Date.now();render(d.reporte||{},!!d.congelado)}catch(e){console.warn(e)}})().catch(e=>{cargaReporteEnCurso=null;throw e});
  return cargaReporteEnCurso;
 }
-window.addEventListener('DOMContentLoaded',()=>setTimeout(loadApproved,350));
+window.addEventListener('DOMContentLoaded',()=>{
+ document.getElementById('imprimir')?.addEventListener('click',event=>{event.stopImmediatePropagation();event.preventDefault();void imprimirReporteConFotos()},true);
+ document.getElementById('guardar')?.addEventListener('click',event=>{event.stopImmediatePropagation();event.preventDefault();void imprimirReporteConFotos()},true);
+ setTimeout(loadApproved,350);
+});
 window.addEventListener('load',()=>setTimeout(loadApproved,650));
+document.addEventListener('keydown',event=>{
+ if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='p'&&!fotosReportePreparadas){
+  event.preventDefault();void imprimirReporteConFotos();
+ }
+});
 })();
