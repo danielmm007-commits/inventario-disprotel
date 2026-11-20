@@ -51,18 +51,67 @@ async function miniReporteLocal(key){
   }catch{resolve(null)}
  });
 }
+async function guardarMiniReporteLocal(key,blob){
+ if(!key||!blob)return false;
+ const db=await abrirMiniReporteDb();if(!db)return false;
+ return await new Promise(resolve=>{
+  try{const tx=db.transaction('fotos','readwrite'),req=tx.objectStore('fotos').put(blob,key);
+   req.onsuccess=()=>resolve(true);req.onerror=()=>resolve(false)
+  }catch{resolve(false)}
+ });
+}
+async function miniaturaDesdeOriginal(blob){
+ if(!blob||blob.size>8*1024*1024)throw new Error('Imagen demasiado grande para miniatura');
+ const bitmap=await createImageBitmap(blob);
+ try{
+  const scale=Math.min(1,360/Math.max(bitmap.width,bitmap.height));
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(bitmap.width*scale));
+  canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+  const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Canvas no disponible');
+  ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+  return await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(new Error('No se pudo generar miniatura')),'image/jpeg',.66));
+ }finally{bitmap.close?.()}
+}
+const previewOriginalPendiente=new Map();
+async function obtenerMiniReporte(foto){
+ const cache=await miniReporteLocal(foto.key);
+ if(cache)return cache;
+ if(!foto.url)return null;
+ if(previewOriginalPendiente.has(foto.key))return previewOriginalPendiente.get(foto.key);
+ const req=(async()=>{
+  // Primera visita de foto antigua: descargar UNA VEZ y conservar solo JPEG pequeño.
+  // A partir de entonces, ni F5 ni Realtime descargan esta evidencia.
+  const response=await fetch(foto.url,{mode:'cors',cache:'default'});
+  if(!response.ok)throw new Error('Fotografía no disponible');
+  const blob=await miniaturaDesdeOriginal(await response.blob());
+  await guardarMiniReporteLocal(foto.key,blob);
+  return blob;
+ })().catch(()=>null).finally(()=>previewOriginalPendiente.delete(foto.key));
+ previewOriginalPendiente.set(foto.key,req);
+ return req;
+}
+let miniPreviewRevision=0;
 async function mostrarMiniaturasReporte(){
+ const revision=++miniPreviewRevision;
  const actuales=[...document.querySelectorAll('[data-report-photo]')];
- for(const slot of actuales){
-  const idx=Number(slot.dataset.reportPhoto),foto=fotosReporteDemanda[idx];
-  if(!foto?.key||!slot.isConnected)continue;
-  const blob=await miniReporteLocal(foto.key);
-  if(!blob||!slot.isConnected||slot.dataset.reportPhoto!==String(idx))continue;
-  const src=URL.createObjectURL(blob),img=document.createElement('img');
-  img.className='reportPhotoMini';img.alt=foto.label;img.src=src;
-  img.onload=()=>URL.revokeObjectURL(src);img.onerror=()=>URL.revokeObjectURL(src);
-  slot.querySelector('.reportPhotoIcon')?.replaceWith(img);
- }
+ // Carga inicial limitada a 2 descargas simultáneas, sin reintentos ni polling.
+ let siguiente=0;
+ const worker=async()=>{
+  while(revision===miniPreviewRevision&&siguiente<actuales.length){
+   const slot=actuales[siguiente++];
+   const idx=Number(slot.dataset.reportPhoto),foto=fotosReporteDemanda[idx];
+   if(!foto?.key||!slot.isConnected)continue;
+   const blob=await obtenerMiniReporte(foto);
+   if(revision!==miniPreviewRevision||!blob||!slot.isConnected||slot.dataset.reportPhoto!==String(idx))continue;
+   const url=URL.createObjectURL(blob),img=document.createElement('img');
+   img.className='reportPhotoMini';img.alt=foto.label;
+   img.onload=()=>URL.revokeObjectURL(url);img.onerror=()=>URL.revokeObjectURL(url);
+   img.src=url;
+   slot.querySelector('.reportPhotoIcon')?.replaceWith(img);
+  }
+ };
+ await Promise.all([worker(),worker()]);
 }
 async function cargarFotoReporte(idx){
  const slot=document.querySelector('[data-report-photo="'+idx+'"]'),foto=fotosReporteDemanda[idx];
@@ -102,7 +151,7 @@ document.addEventListener('click',event=>{
   if(!ok){button.disabled=false;button.textContent='REINTENTAR';}
  });
 });
-function idHtml(doc,label){return `<div class="idCard">${doc?.url?agregarFotoReporte(doc.url,label,''):`<div class="idEmpty">${esc(label)}<br>NO CARGADA</div>`}</div>`}
+function idHtml(doc,label){return `<div class="idCard">${doc?.url?agregarFotoReporte(doc.url,label,doc.id?ordenId()+':documento:'+doc.id:''):`<div class="idEmpty">${esc(label)}<br>NO CARGADA</div>`}</div>`}
 function render(r,congelado){fotosReporteDemanda.length=0;fotosReportePreparadas=false;const o=r.orden||{},c=r.cliente||{},sol=r.solicitante||{},t=r.tecnico||{},sv=r.servicio||{},i=r.instalacion||{},docs=r.documentos||{},items=r.items||[],ev=(r.evidencias||[]).filter(x=>x?.url),equipos=items.filter(x=>String(x.tipo_control||'').toUpperCase()==='SERIAL'||x.serial?.serial),materiales=items.filter(x=>!equipos.includes(x));const final=congelado||o.estado==='COMPLETADA'||!!r.cierre||modo()==='final',lat=Number(i.latitud),lon=Number(i.longitud),hasGps=Number.isFinite(lat)&&Number.isFinite(lon),coords=hasGps?`${fmt(lat)}, ${fmt(lon)}`:'—',prec=Number(i.gps_precision_m),precTxt=Number.isFinite(prec)?` · precisión ±${Math.round(prec)} m`:'';const cierreFecha=r.cierre?.cerrado_at||i.fecha_hora||i.fecha_registro||o.fecha_solicitud,logo=typeof LOGO!=='undefined'?LOGO:'',updated=c.datos_actualizados_campo,clienteExtra=updated&&c.nombre_original&&String(c.nombre_original).trim().toUpperCase()!==String(c.nombre||'').trim().toUpperCase()?line('Solicitud original:',c.nombre_original):'',servicio=sv.tv?'INTERNET + TV':'INTERNET',evCols=evidenceCols(ev.length);document.getElementById('contenido').innerHTML=`<div class="reportTop"><img class="reportLogo" src="${logo}" alt="DISPROTEL"><div><div class="reportTitle">REPORTE DE INSTALACIÓN</div><div class="reportSub">${final?'REPORTE FINAL':'VISTA PREVIA'} · documento técnico de la OT</div></div><div class="stateBadge ${final?'final':''}">${final?'✅ FINALIZADO':'◷ NO FINALIZADO'}</div></div><div class="topStrip"><div class="topCell"><div class="topLabel">OT</div><div class="topVal">${esc(o.id_orden||'—')}</div></div><div class="topCell"><div class="topLabel">Fecha y hora</div><div class="topVal">${esc(fecha(cierreFecha))}</div></div><div class="topCell"><div class="topLabel">Solicitante</div><div class="topVal">${esc(sol.nombre||'—')}</div></div><div class="topCell"><div class="topLabel">Técnico</div><div class="topVal">${esc(t.nombre||'—')}</div></div><div class="topCell"><div class="topLabel">Grupo técnico</div><div class="topVal">${esc(t.grupo||'—')}</div></div><div class="topCell"><div class="topLabel">Router cobertura</div><div class="topVal">${esc(o.router_cobertura||'—')}</div></div></div><div class="repSec"><div class="repHead">👤 CLIENTE / DATOS CONFIRMADOS</div><div class="clientGrid"><div>${line('Cliente:',c.nombre)}${clienteExtra}${line('Cédula:',c.identificacion)}${line('Teléfono:',c.telefono)}${line('Dirección:',c.direccion)}${line('Referencia:',c.referencia)}${line('Cantón / Parroquia / Sector:',[c.canton,c.parroquia,c.zona].filter(Boolean).join(' · '))}</div><div>${updated?'<div class="fieldRibbon">ⓘ DATOS ACTUALIZADOS POR TÉCNICO EN CAMPO</div>':''}<div class="gpsBox"><b>📍 UBICACIÓN GPS DE LA INSTALACIÓN</b><div style="margin-top:1mm">${esc(coords+precTxt)}</div>${hasGps?`<a class="gpsLink" href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener">ABRIR UBICACIÓN EN MAPS ↗</a>`:'<div style="margin-top:1mm">GPS no registrado</div>'}</div></div></div></div><div class="repSec"><div class="repHead">📶 SERVICIO</div><div class="serviceGrid"><div>${line('Tipo de trabajo:',tipo(o.tipo_trabajo))}${line('Servicio:',servicio)}${line('Plan:',sv.plan)}${line('IP confirmada:',sv.ip)}${line('Responsable de IP:',sv.ip_confirmada_por)}${line('Fecha confirmación IP:',fecha(sv.ip_confirmimada_at||sv.ip_confirmada_at))}</div><div class="idGrid">${idHtml(docs.frente,'FRENTE DE CÉDULA')}${idHtml(docs.reverso,'REVERSO DE CÉDULA')}</div></div></div><div class="repSec"><div class="repHead">📡 EQUIPOS INSTALADOS</div><div class="equipGrid">${equipos.length?equipos.map(equipmentCard).join(''):'<div class="notes" style="grid-column:1/-1">Sin equipos serializados registrados.</div>'}</div></div><div class="bottomGrid"><div class="repSec"><div class="repHead">🧰 MATERIALES UTILIZADOS</div><table class="matTable">${materiales.length?materiales.map(x=>`<tr><td>${esc(x.producto?.producto||x.producto?.codigo||'Material')}</td><td>${esc(x.cantidad||0)} ${esc(x.unidad||'')}</td></tr>`).join(''):'<tr><td>Sin materiales</td><td>—</td></tr>'}</table></div><div class="repSec"><div class="repHead">📷 EVIDENCIAS FOTOGRÁFICAS</div><div class="evidenceGrid" style="--cols:${evCols}">${ev.length?ev.map(x=>`<div class="evCard ${x.tipo_foto==='ACCESO_REMOTO'?'accesoRemoto':''}">${agregarFotoReporte(x.url,evLabel(x.tipo_foto),x.id?ordenId()+':'+x.id:'')}<div class="evCap">${esc(evLabel(x.tipo_foto))}</div></div>`).join(''):'<div class="notes">Sin evidencias con vista previa.</div>'}</div></div></div>${i.observacion?`<div class="obsMini"><b>📝 OBSERVACIONES:</b> ${esc(i.observacion)}</div>`:''}<div class="notes">ℹ️ Al finalizar la OT, el reporte queda congelado y la orden pasa a solo lectura.</div><div class="repFooter"><span>DISPROTEL · ${esc(o.id_orden||'')}</span><span class="previewMark">${final?'✓ REPORTE FINAL':'👁 VISTA PREVIA PARA REVISIÓN'}</span></div>`;void mostrarMiniaturasReporte();if(typeof ajustarHojaA4==='function')setTimeout(ajustarHojaA4,80)}
 let cargaReporteEnCurso=null,ultimaCargaReporte=0;
 async function loadApproved(force=false){
