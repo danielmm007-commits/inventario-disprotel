@@ -7,11 +7,12 @@ function ordenId(){return new URLSearchParams(location.search).get('orden')||''}
 function fecha(v){if(!v)return'—';try{return new Date(v).toLocaleString('es-EC')}catch{return String(v)}}function fmt(n){const x=Number(n);return Number.isFinite(x)?x.toFixed(6):''}
 function tipo(v){return ({INSTALACION_INTERNET:'INSTALACIÓN INTERNET',INSTALACION_INTERNET_TV:'INSTALACIÓN INTERNET + TV',ACTIVACION_TV_EXISTENTE:'ACTIVACIÓN TV',CAMBIO_EQUIPOS:'CAMBIO DE EQUIPOS',SOPORTE_TECNICO:'SOPORTE TÉCNICO',REUBICACION:'REUBICACIÓN',RETIRO:'RETIRO'})[v]||String(v||'TRABAJO').replaceAll('_',' ')}
 function evLabel(t){return({SERIAL:'Serial / equipo',VIVIENDA:'Fachada',EQUIPOS_GENERAL:'Equipos instalados',SPEEDTEST:'Speedtest',TV:'TV funcionando',ADICIONAL_1:'Adicional 1',ADICIONAL_2:'Adicional 2',ACCESO_REMOTO:'🟠 Confirmación de acceso remoto'})[t]||t}
-function css(){if(document.getElementById('reporteAprobadoCss'))return;const s=document.createElement('style');s.id='reporteAprobadoCss';s.textContent=`.reportPhotoSlot{height:100%;min-height:18mm;width:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1mm;background:#f0f5f8;overflow:hidden;border-radius:5px;position:relative}
+function css(){if(document.getElementById('reporteAprobadoCss'))return;const s=document.createElement('style');s.id='reporteAprobadoCss';s.textContent=`.reportPhotoSlot{box-sizing:border-box;width:100%;height:25mm;min-height:0;max-height:25mm;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1mm;background:#f0f5f8;overflow:hidden;border-radius:5px;position:relative;flex:0 0 auto}
+.idCard .reportPhotoSlot{height:31mm;min-height:31mm;max-height:31mm}
 .reportPhotoIcon{font-size:17px;line-height:1}
-.reportPhotoShow{border:1px solid #9eb9ce;border-radius:4px;background:#fff;color:#175f8a;font-size:7px;padding:3px 5px;cursor:pointer}
+.reportPhotoShow{border:1px solid #9eb9ce;border-radius:4px;background:#fff;color:#175f8a;font-size:7px;padding:3px 5px;cursor:pointer;position:absolute;bottom:2px;left:50%;transform:translateX(-50%);white-space:nowrap;z-index:1}
 .reportPhotoShow:disabled{opacity:.6}
-.reportPhotoMini{width:100%;height:100%;object-fit:cover;display:block}
+.reportPhotoMini{width:100%;height:100%;min-height:0;max-height:100%;object-fit:cover;display:block}
 .evCard .reportPhotoFull{width:100%;height:25mm;object-fit:cover;display:block}
 .idCard .reportPhotoFull{width:100%;height:31mm;object-fit:cover;display:block}
 @media print{.reportPhotoShow{display:none!important}}
